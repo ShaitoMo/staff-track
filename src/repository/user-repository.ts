@@ -32,4 +32,15 @@ export class UserRepository {
             throw error
         }
     }
+    static async getAllUsers(): Promise<SafeUser[]> {
+        const users = await prisma.user.findMany();
+        return users.map(user => ({
+            userId: user.userId,
+            name: user.name,
+            phone: user.phone,
+            roleId: user.roleId,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+        }));
+    }
 }

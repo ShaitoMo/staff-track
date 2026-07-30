@@ -17,11 +17,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
-    // TODO: hash with bcrypt before storing — plaintext for now
-    const passwordHash = password;
-
     try {
-        const user = await UserService.createUser({ name, phone, passwordHash, roleId });
+        const user = await UserService.createUser(validationResult.data);
         return NextResponse.json(user, { status: 201 })
     } catch (error) {
         if (error instanceof DuplicatePhoneError) {
@@ -31,3 +28,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid roleId' }, { status: 400 })
     }
 }
+export async function GET() {
+    try {
+        const users = await UserService.getAllUsers();
+        return NextResponse.json(users, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    }
+} 
