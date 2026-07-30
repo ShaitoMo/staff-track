@@ -1,0 +1,245 @@
+// Supermarket Staff & Work-Tracking System — Prisma schema
+// Translated from the latest supermarket_schema.dbml:
+//   - machine_employee_id lives on user_branches (clock-in machine numbers people PER BRANCH)
+//   - users.phone is NOT NULL
+//   - tasks target EXACTLY ONE of assigned_to (a person) OR assigned_role_id (a role)
+//
+// ON DELETE rules are intentionally NOT set here (they "live in the SQL").
+// The tasks person-or-role XOR is a CHECK Prisma can't express — add it in a raw migration:
+//   ALTER TABLE tasks ADD CONSTRAINT tasks_person_xor_role
+//     CHECK (num_nonnulls(assigned_to, assigned_role_id) = 1);
+// scheduled_vs_actual (FR6) is a VIEW; model separately or query raw.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum TaskStatus {
+  pending
+  completed
+  verified
+  rejected
+
+  @@map("task_status")
+}
+
+enum TaskOrigin {
+  assigned
+  self
+
+  @@map("task_origin")
+}
+
+enum AttendanceSource {
+  csv_import
+  machine
+  manual
+
+  @@map("attendance_source")
+}
+
+// ---------- Core ----------
+
+model Role {
+  roleId Int    @id @default(autoincrement()) @map("role_id")
+  name   String @unique @db.VarChar
+
+  users User[]
+  tasks Task[] // tasks targeting this whole role (assigned_role_id)
+
+  @@map("roles")
+}
+
+model User {
+  userId       Int      @id @default(autoincrement()) @map("user_id")
+  name         String   @db.VarChar
+  phone        String   @unique @db.VarChar
+  passwordHash String   @map("password_hash") @db.VarChar
+  roleId       Int      @map("role_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  role Role @relation(fields: [roleId], references: [roleId])
+
+  // back-relations
+  branchLinks            UserBranch[]
+  shifts                 Shift[]        @relation("ShiftWorker")
+  shiftsCreated          Shift[]        @relation("ShiftCreator")
+  attendance             Attendance[]
+  importBatches          ImportBatch[]
+  tasksAssigned          Task[]         @relation("TaskAssignee")
+  tasksCreated           Task[]         @relation("TaskAssigner")
+  taskInstancesCompleted TaskInstance[] @relation("TaskCompleter")
+  taskInstancesReviewed  TaskInstance[] @relation("TaskReviewer")
+  media                  Media[]
+
+  @@map("users")
+}
+
+model Branch {
+  branchId Int     @id @default(autoincrement()) @map("branch_id")
+  name     String  @db.VarChar
+  location String? @db.VarChar
+
+  userBranches UserBranch[]
+  registers    Register[]
+  shifts       Shift[]
+  attendance   Attendance[]
+  tasks        Task[]
+
+  @@map("branches")
+}
+
+// many-to-many: which branches a person may work at / a manager can see.
+// machine_employee_id lives here: the clock-in machine numbers people PER BRANCH.
+model UserBranch {
+  userId            Int     @map("user_id")
+  branchId          Int     @map("branch_id")
+  machineEmployeeId String? @map("machine_employee_id") @db.VarChar
+
+  user   User   @relation(fields: [userId], references: [userId])
+  branch Branch @relation(fields: [branchId], references: [branchId])
+
+  @@id([userId, branchId])
+  // clock-in ID unique within a branch; multiple NULLs allowed (Postgres)
+  @@unique([branchId, machineEmployeeId])
+  @@map("user_branches")
+}
+
+model Register {
+  registerId Int    @id @default(autoincrement()) @map("register_id")
+  branchId   Int    @map("branch_id")
+  name       String @db.VarChar
+
+  branch Branch  @relation(fields: [branchId], references: [branchId])
+  shifts Shift[]
+
+  // required so shifts can reference (branch_id, register_id) as a composite FK
+  @@unique([branchId, registerId])
+  @@map("registers")
+}
+
+model Shift {
+  shiftId    Int      @id @default(autoincrement()) @map("shift_id")
+  userId     Int      @map("user_id")
+  branchId   Int      @map("branch_id")
+  registerId Int?     @map("register_id") // NULL for non-cashier shifts
+  shiftDate  DateTime @map("shift_date") @db.Date
+  startTime  DateTime @map("start_time") @db.Time
+  endTime    DateTime @map("end_time") @db.Time
+  createdBy  Int      @map("created_by") // manager who scheduled
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz // bumped on edit (FR2)
+
+  user    User @relation("ShiftWorker", fields: [userId], references: [userId])
+  creator User @relation("ShiftCreator", fields: [createdBy], references: [userId])
+
+  branch Branch @relation(fields: [branchId], references: [branchId])
+
+  // Composite FK: a cashier's register must live at the shift's own branch.
+  // MATCH SIMPLE (Postgres default): when register_id is NULL the check is skipped.
+  // branchId is shared with the Branch relation above — Prisma allows a scalar
+  // field to participate in multiple relations.
+  register Register? @relation(fields: [branchId, registerId], references: [branchId, registerId])
+
+  @@map("shifts")
+}
+
+// one row per CSV/Excel upload from the clock-in machine (FR5 v1)
+model ImportBatch {
+  batchId    Int      @id @default(autoincrement()) @map("batch_id")
+  fileName   String   @map("file_name") @db.VarChar
+  importedBy Int      @map("imported_by")
+  importedAt DateTime @default(now()) @map("imported_at") @db.Timestamptz
+  rowCount   Int      @default(0) @map("row_count")
+
+  importer   User         @relation(fields: [importedBy], references: [userId])
+  attendance Attendance[]
+
+  @@map("import_batches")
+}
+
+model Attendance {
+  attendanceId  Int              @id @default(autoincrement()) @map("attendance_id")
+  userId        Int              @map("user_id")
+  branchId      Int              @map("branch_id")
+  clockIn       DateTime         @map("clock_in") @db.Timestamptz
+  clockOut      DateTime?        @map("clock_out") @db.Timestamptz
+  source        AttendanceSource @default(csv_import)
+  importBatchId Int?             @map("import_batch_id") // NULL when source = manual
+
+  user        User         @relation(fields: [userId], references: [userId])
+  branch      Branch       @relation(fields: [branchId], references: [branchId])
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [batchId])
+
+  // re-uploading the same CSV must not duplicate rows
+  @@unique([userId, clockIn])
+  @@map("attendance")
+}
+
+// the task DEFINITION (one-off or recurring).
+// Targets EXACTLY ONE of: a named person (assignedTo) OR a whole role (assignedRoleId).
+model Task {
+  taskId         Int        @id @default(autoincrement()) @map("task_id")
+  title          String     @db.VarChar
+  description    String?    @db.Text
+  branchId       Int        @map("branch_id")
+  assignedTo     Int?       @map("assigned_to") // named person; NULL when task targets a role
+  assignedRoleId Int?       @map("assigned_role_id") // whole role; NULL when task targets a person
+  assignedBy     Int        @map("assigned_by")
+  origin         TaskOrigin @default(assigned)
+  isRecurring    Boolean    @default(false) @map("is_recurring")
+  recurrence     String?    @db.VarChar // 'daily', 'weekly:mon,wed'; NULL if one-off
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  branch     Branch @relation(fields: [branchId], references: [branchId])
+  assignee   User?  @relation("TaskAssignee", fields: [assignedTo], references: [userId])
+  assigner   User   @relation("TaskAssigner", fields: [assignedBy], references: [userId])
+  targetRole Role?  @relation(fields: [assignedRoleId], references: [roleId])
+
+  instances TaskInstance[]
+
+  @@map("tasks")
+}
+
+// one row per occurrence — completion + verification live here
+model TaskInstance {
+  instanceId  Int        @id @default(autoincrement()) @map("instance_id")
+  taskId      Int        @map("task_id")
+  dueDate     DateTime   @map("due_date") @db.Date
+  status      TaskStatus @default(pending)
+  completedBy Int?       @map("completed_by")
+  completedAt DateTime?  @map("completed_at") @db.Timestamptz
+  reviewedBy  Int?       @map("reviewed_by") // manager who verified or rejected (FR9)
+  reviewedAt  DateTime?  @map("reviewed_at") @db.Timestamptz
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  task      Task  @relation(fields: [taskId], references: [taskId])
+  completer User? @relation("TaskCompleter", fields: [completedBy], references: [userId])
+  reviewer  User? @relation("TaskReviewer", fields: [reviewedBy], references: [userId])
+
+  media Media[]
+
+  @@map("task_instances")
+}
+
+// photo proof, attached to a specific completion
+model Media {
+  mediaId         Int      @id @default(autoincrement()) @map("media_id")
+  taskInstanceId  Int      @map("task_instance_id")
+  filePath        String   @map("file_path") @db.VarChar
+  uploadedBy      Int      @map("uploaded_by")
+  serverTimestamp DateTime @default(now()) @map("server_timestamp") @db.Timestamptz
+
+  taskInstance TaskInstance @relation(fields: [taskInstanceId], references: [instanceId])
+  uploader     User         @relation(fields: [uploadedBy], references: [userId])
+
+  @@map("media")
+}
