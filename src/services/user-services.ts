@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import { User, SafeUser } from "@/types/user";
+import { User, SafeUser, UpdateUserInput } from "@/types/user";
 import { UserRepository } from "@/repository/user-repository";
 
 const SALT_ROUNDS = 10;
@@ -17,5 +17,11 @@ export class UserService {
     }
     static async getAllUsers(): Promise<SafeUser[]> {
         return UserRepository.getAllUsers();
+    }
+    static async getUserById(userId: number): Promise<SafeUser | null> {
+        return UserRepository.getUserById(userId);
+    }
+    static async updateUser(userId: number, data: UpdateUserInput): Promise<SafeUser> {
+        return UserRepository.updateUser(userId, data);
     }
 }

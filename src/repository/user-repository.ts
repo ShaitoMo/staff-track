@@ -1,6 +1,8 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { CreateUserInput, SafeUser } from '@/types/user'
+import { CreateUserInput, SafeUser, UpdateUserInput } from '@/types/user'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
+import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
 export class UserRepository {
     static async createUser(data: CreateUserInput): Promise<SafeUser> {
@@ -42,5 +44,59 @@ export class UserRepository {
             isActive: user.isActive,
             createdAt: user.createdAt,
         }));
+    }
+    static async getUserById(userId: number): Promise<SafeUser | null> {
+        const user = await prisma.user.findUnique({
+            where: { userId },
+        });
+
+        if (!user) {
+            return null;
+        }
+
+        return {
+            userId: user.userId,
+            name: user.name,
+            phone: user.phone,
+            roleId: user.roleId,
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+        };
+    }
+    static async updateUser(userId: number, data: UpdateUserInput): Promise<SafeUser> {
+        try {
+            const user = await prisma.user.update({
+                where: { userId },
+                data: {
+                    name: data.name,
+                    phone: data.phone,
+                    roleId: data.roleId,
+                    isActive: data.isActive,
+                },
+            })
+
+            return {
+                userId: user.userId,
+                name: user.name,
+                phone: user.phone,
+                roleId: user.roleId,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+            }
+        } catch (error: unknown) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                throw new DuplicatePhoneError()
+            }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2025'
+            ) {
+                throw new UserNotFoundError()
+            }
+            throw error
+        }
     }
 }
