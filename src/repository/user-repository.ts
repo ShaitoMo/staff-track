@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { CreateUserInput, SafeUser, UpdateUserInput } from '@/types/user'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 
 export class UserRepository {
     static async createUser(data: CreateUserInput): Promise<SafeUser> {
@@ -26,10 +27,16 @@ export class UserRepository {
             }
         } catch (error: unknown) {
             if (
-                error instanceof Error &&
-                error.message.includes('Unique constraint failed on the fields')
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
             ) {
                 throw new DuplicatePhoneError()
+            }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2003'
+            ) {
+                throw new InvalidRoleError()
             }
             throw error
         }
@@ -90,6 +97,28 @@ export class UserRepository {
             ) {
                 throw new DuplicatePhoneError()
             }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2025'
+            ) {
+                throw new UserNotFoundError()
+            }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2003'
+            ) {
+                throw new InvalidRoleError()
+            }
+            throw error
+        }
+    }
+    static async updatePassword(userId: number, passwordHash: string): Promise<void> {
+        try {
+            await prisma.user.update({
+                where: { userId },
+                data: { passwordHash },
+            })
+        } catch (error: unknown) {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
                 error.code === 'P2025'

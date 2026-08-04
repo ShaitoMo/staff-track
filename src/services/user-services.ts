@@ -24,4 +24,8 @@ export class UserService {
     static async updateUser(userId: number, data: UpdateUserInput): Promise<SafeUser> {
         return UserRepository.updateUser(userId, data);
     }
+    static async updatePassword(userId: number, password: string): Promise<void> {
+        const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+        await UserRepository.updatePassword(userId, passwordHash);
+    }
 }

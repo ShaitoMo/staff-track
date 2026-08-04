@@ -3,6 +3,7 @@ import { UserService } from '@/services/user-services'
 import { UserUpdateSchema } from '@/types/user'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 
 export async function GET(
     _req: NextRequest,
@@ -37,7 +38,12 @@ export async function PATCH(
 
     const userId = Number(userIdParam);
 
-    const body = await req.json();
+    let body
+    try {
+        body = await req.json();
+    } catch {
+        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
     const { name, phone, roleId, isActive } = body;
 
     const validationResult = UserUpdateSchema.safeParse({ name, phone, roleId, isActive });
@@ -60,7 +66,10 @@ export async function PATCH(
         if (error instanceof DuplicatePhoneError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
+        if (error instanceof InvalidRoleError) {
+            return NextResponse.json({ error: error.message }, { status: 400 })
+        }
         console.error(error);
-        return NextResponse.json({ error: 'Invalid roleId' }, { status: 400 })
+        return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
     }
 }

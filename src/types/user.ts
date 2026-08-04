@@ -23,3 +23,9 @@ export const UserUpdateSchema = z.object({
 })
 
 export type UpdateUserInput = z.infer<typeof UserUpdateSchema>
+
+export const UpdatePasswordSchema = z.object({
+    password: z.string().min(8).max(100),
+})
+
+export type UpdatePasswordInput = z.infer<typeof UpdatePasswordSchema>
