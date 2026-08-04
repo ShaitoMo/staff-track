@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserValidateSchema } from '@/types/user'
-import { UserService } from '@/services/user-services'
+import { UserService } from '@/services/user-service'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 
