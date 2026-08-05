@@ -12,4 +12,7 @@ export class RoleService {
     static async getRoleById(roleId: number): Promise<Role | null> {
         return RolesRepository.getRoleById(roleId)
     }
+    static async updateRole(roleId: number, data: CreateRoleInput): Promise<Role> {
+        return RolesRepository.updateRole(roleId, data)
+    }
 }

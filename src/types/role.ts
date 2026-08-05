@@ -5,7 +5,7 @@ export const RoleValidateSchema = z.object({
 })
 export type Role = z.infer<typeof RoleValidateSchema>
 
-export type CreateRoleInput = Omit<Role, 'roleId'>
-
 export const CreateRoleSchema = RoleValidateSchema.omit({ roleId: true })
+
+export type CreateRoleInput = z.infer<typeof CreateRoleSchema>
 
