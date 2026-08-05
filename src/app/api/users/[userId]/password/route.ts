@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { UserService } from '@/services/user-services'
+import { UserService } from '@/services/user-service'
 import { UpdatePasswordSchema } from '@/types/user'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
