@@ -29,5 +29,18 @@ export class RolesRepository {
             }
             throw error
         }
+
     }
+    static async getRoleById(roleId: number): Promise<Role | null> {
+        const role = await prisma.role.findUnique({
+            where: {   
+                roleId: roleId,
+            },
+            select: {
+                roleId: true,
+                name: true,
+            },
+        })
+        return role
+    }   
 }

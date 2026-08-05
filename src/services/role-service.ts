@@ -9,4 +9,7 @@ export class RoleService {
     static async createRole(data: CreateRoleInput): Promise<Role> {
         return RolesRepository.createRole(data)
     }
+    static async getRoleById(roleId: number): Promise<Role | null> {
+        return RolesRepository.getRoleById(roleId)
+    }
 }
