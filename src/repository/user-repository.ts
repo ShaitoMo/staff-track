@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { prisma } from '@/lib/db'
+import { db } from '@/lib/db'
 import { CreateUserInput, SafeUser, UpdateUserInput } from '@/types/user'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
@@ -17,7 +17,7 @@ const SAFE_USER_SELECT = {
 export class UserRepository {
     static async createUser(data: CreateUserInput): Promise<SafeUser> {
         try {
-            return await prisma.user.create({
+            return await db.user.create({
                 data: {
                     name: data.name,
                     phone: data.phone,
@@ -43,19 +43,19 @@ export class UserRepository {
         }
     }
     static async getAllUsers(): Promise<SafeUser[]> {
-        return prisma.user.findMany({
+        return db.user.findMany({
             select: SAFE_USER_SELECT,
         });
     }
     static async getUserById(userId: number): Promise<SafeUser | null> {
-        return prisma.user.findUnique({
+        return db.user.findUnique({
             where: { userId },
             select: SAFE_USER_SELECT,
         });
     }
     static async updateUser(userId: number, data: UpdateUserInput): Promise<SafeUser> {
         try {
-            return await prisma.user.update({
+            return await db.user.update({
                 where: { userId },
                 data: {
                     name: data.name,
@@ -89,7 +89,7 @@ export class UserRepository {
     }
     static async updatePassword(userId: number, passwordHash: string): Promise<void> {
         try {
-            await prisma.user.update({
+            await db.user.update({
                 where: { userId },
                 data: { passwordHash },
             })
