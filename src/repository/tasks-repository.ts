@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
-import { Task } from "../types/task";
+import { Task, UpdateTaskInput } from "../types/task";
 import { db } from "@/lib/db";
+import { TaskNotFoundError } from "@/exceptions/task-not-found-error";
+import { InvalidTaskAssignmentError } from "@/exceptions/invalid-task-assignment-error";
 
 export class TasksRepository {
     static async getAllTasks(): Promise<Task[]> {
@@ -14,6 +16,35 @@ export class TasksRepository {
         });
 
         return task ? TasksRepository.toTask(task) : null;
+    }
+
+    static async updateTask(taskId: number, data: UpdateTaskInput): Promise<Task> {
+        try {
+            const task = await db.task.update({
+                where: { taskId },
+                data: {
+                    title: data.title,
+                    description: data.description,
+                    assignedTo: data.assigned_to,
+                    assignedRoleId: data.assigned_role_id,
+                    isRecurring: data.is_recurring,
+                    recurrence: data.recurrence,
+                    active: data.active,
+                },
+            });
+
+            return TasksRepository.toTask(task);
+        } catch (error: unknown) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2025') {
+                    throw new TaskNotFoundError()
+                }
+                if (error.code === 'P2003') {
+                    throw new InvalidTaskAssignmentError()
+                }
+            }
+            throw error
+        }
     }
 
     private static toTask(task: {
