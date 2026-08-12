@@ -227,6 +227,10 @@ model TaskInstance {
 
   media Media[]
 
+  // one occurrence per task per day. Every instance insert goes through
+  // ON CONFLICT DO NOTHING, so generation is idempotent: the daily top-up job
+  // re-inserts the same 14-day window every run and this absorbs the overlap.
+  @@unique([taskId, dueDate])
   @@map("task_instances")
 }
 

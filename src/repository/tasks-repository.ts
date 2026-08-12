@@ -1,12 +1,56 @@
 import { Prisma } from "@prisma/client";
-import { Task, UpdateTaskInput } from "../types/task";
+import { CreateTaskInput, Task, UpdateTaskInput } from "../types/task";
 import { db } from "@/lib/db";
+import { TaskInstanceRepository } from "@/repository/task-instance-repository";
 import { TaskNotFoundError } from "@/exceptions/task-not-found-error";
 import { InvalidTaskAssignmentError } from "@/exceptions/invalid-task-assignment-error";
 
 export class TasksRepository {
     static async getAllTasks(): Promise<Task[]> {
         const tasks = await db.task.findMany();
+        return tasks.map(TasksRepository.toTask);
+    }
+
+    /**
+     * Creates a task and its instances atomically: a task whose instance insert failed would be
+     * invisible to every worker, since workers only ever see instances.
+     */
+    static async createTask(data: CreateTaskInput, dueDates: Date[]): Promise<Task> {
+        try {
+            return await db.$transaction(async (tx) => {
+                const task = await tx.task.create({
+                    data: {
+                        title: data.title,
+                        description: data.description ?? null,
+                        branchId: data.branch_id,
+                        assignedTo: data.assigned_to ?? null,
+                        assignedRoleId: data.assigned_role_id ?? null,
+                        assignedBy: data.assigned_by,
+                        origin: data.origin,
+                        isRecurring: data.is_recurring,
+                        recurrence: data.recurrence ?? null,
+                    },
+                });
+
+                await TaskInstanceRepository.createInstances(task.taskId, dueDates, tx);
+
+                return TasksRepository.toTask(task);
+            });
+        } catch (error: unknown) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+                throw new InvalidTaskAssignmentError()
+            }
+            throw error
+        }
+    }
+
+    /** Recurring tasks the top-up job should keep stocked with instances. */
+    static async getActiveRecurringTasks(): Promise<Task[]> {
+        const tasks = await db.task.findMany({
+            where: { active: true, isRecurring: true, recurrence: { not: null } },
+            orderBy: { taskId: 'asc' },
+        });
+
         return tasks.map(TasksRepository.toTask);
     }
 
