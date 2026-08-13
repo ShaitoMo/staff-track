@@ -6,6 +6,7 @@ import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { PhotoRequiredError } from '@/exceptions/photo-required-error'
+import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 
 /**
  * PATCH /api/task-instances/:instanceId/complete
@@ -67,7 +68,7 @@ export async function PATCH(
         if (error instanceof ForbiddenError) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
-        if (error instanceof InvalidStatusTransitionError) {
+        if (error instanceof InvalidStatusTransitionError || error instanceof InactiveTaskError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof InvalidPhotoError) {

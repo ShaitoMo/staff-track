@@ -1,4 +1,11 @@
-import { getDates, addDays, toUtcDate, isValidRecurrence, WINDOW_DAYS } from '@/lib/recurrence';
+import {
+    getDates,
+    addDays,
+    toUtcDate,
+    isValidRecurrence,
+    surplusInstanceIds,
+    WINDOW_DAYS,
+} from '@/lib/recurrence';
 import { InvalidRecurrenceError } from '@/exceptions/invalid-recurrence-error';
 
 /** UTC midnight for a 'YYYY-MM-DD' string, matching how Postgres `date` values arrive. */
@@ -155,6 +162,83 @@ describe('isValidRecurrence', () => {
 
     it.each([['monthly'], ['weekly:'], ['weekly:funday'], ['']])('rejects %p', (rule) => {
         expect(isValidRecurrence(rule)).toBe(false);
+    });
+});
+
+describe('surplusInstanceIds', () => {
+    /** Pending rows as the repository hands them over: id plus UTC-midnight due date. */
+    const rows = (entries: [number, string][]) =>
+        entries.map(([instanceId, date]) => ({ instanceId, dueDate: d(date) }));
+
+    it('reports nothing when every row matches the rule', () => {
+        const dates = getDates('daily', d('2026-08-12'), d('2026-08-14'));
+        const pending = rows([[1, '2026-08-12'], [2, '2026-08-13'], [3, '2026-08-14']]);
+
+        expect(surplusInstanceIds(dates, pending)).toEqual([]);
+    });
+
+    it('reports the rows a narrowed rule no longer lands on', () => {
+        // 'daily' cut back to 'weekly:mon' over a week that starts on a Wednesday
+        const pending = rows([
+            [1, '2026-08-12'], // Wed
+            [2, '2026-08-13'], // Thu
+            [3, '2026-08-14'], // Fri
+            [4, '2026-08-17'], // Mon — the only survivor
+        ]);
+        const dates = getDates('weekly:mon', d('2026-08-12'), d('2026-08-18'));
+
+        expect(surplusInstanceIds(dates, pending)).toEqual([1, 2, 3]);
+    });
+
+    it('reports every row when the task no longer generates anything', () => {
+        const pending = rows([[1, '2026-08-12'], [2, '2026-08-13']]);
+
+        expect(surplusInstanceIds([], pending)).toEqual([1, 2]);
+    });
+
+    it('reports nothing when there are no rows to begin with', () => {
+        expect(surplusInstanceIds(getDates('daily', d('2026-08-12'), d('2026-08-14')), [])).toEqual([]);
+    });
+
+    it('reports a row beyond the window, which the rule cannot reach', () => {
+        const dates = getDates('daily', d('2026-08-12'), d('2026-08-14'));
+        const pending = rows([[1, '2026-08-13'], [2, '2026-08-20']]);
+
+        expect(surplusInstanceIds(dates, pending)).toEqual([2]);
+    });
+
+    it('ignores expected dates that have no row, since those are the insert pass to fix', () => {
+        const dates = getDates('daily', d('2026-08-12'), d('2026-08-16'));
+        const pending = rows([[1, '2026-08-13']]);
+
+        expect(surplusInstanceIds(dates, pending)).toEqual([]);
+    });
+
+    it('matches on the calendar day, so a stored time component is not read as a mismatch', () => {
+        const pending = [{ instanceId: 1, dueDate: new Date('2026-08-12T18:30:00.000Z') }];
+
+        expect(surplusInstanceIds([d('2026-08-12')], pending)).toEqual([]);
+    });
+
+    it('keeps a row that appears twice in the rule from being reported', () => {
+        expect(surplusInstanceIds([d('2026-08-12'), d('2026-08-12')], rows([[1, '2026-08-12']])))
+            .toEqual([]);
+    });
+
+    it('returns ids in the order the rows arrived', () => {
+        const pending = rows([[9, '2026-08-20'], [4, '2026-08-21'], [7, '2026-08-22']]);
+
+        expect(surplusInstanceIds([], pending)).toEqual([9, 4, 7]);
+    });
+
+    it('does not mutate what it is given', () => {
+        const dates = [d('2026-08-12')];
+        const pending = rows([[1, '2026-08-13']]);
+
+        surplusInstanceIds(dates, pending);
+
+        expect(dates).toEqual([d('2026-08-12')]);
+        expect(pending).toEqual(rows([[1, '2026-08-13']]));
     });
 });
 

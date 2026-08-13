@@ -68,6 +68,32 @@ export function getDates(rule: string, from: Date, to: Date): Date[] {
     return dates;
 }
 
+/**
+ * Which of the given pending instances the rule no longer accounts for.
+ *
+ * `validDates` is what the task's current rule lands on across the window; `pending` is the rows
+ * that actually exist from the window's start onwards. Anything present but not expected is
+ * surplus — left behind by a rule that was narrowed, switched off, or replaced.
+ *
+ * Pure: no clock, no database, no notion of what a task is. Feed it dates and rows, get ids back.
+ *
+ * Dates are compared at UTC midnight, so a row whose `dueDate` carries a time component still
+ * matches the rule's bare date for the same calendar day.
+ *
+ * The caller must not pass `validDates: []` for a rule it failed to expand — an unparseable rule
+ * means 'unknown', not 'nothing', and every forward row would be reported as surplus.
+ */
+export function surplusInstanceIds(
+    validDates: readonly Date[],
+    pending: readonly { instanceId: number; dueDate: Date }[],
+): number[] {
+    const expected = new Set(validDates.map((date) => toUtcDate(date).getTime()));
+
+    return pending
+        .filter((instance) => !expected.has(toUtcDate(instance.dueDate).getTime()))
+        .map((instance) => instance.instanceId);
+}
+
 /** Returns null for 'daily' (every day allowed), or the set of weekday numbers for 'weekly:...'. */
 function parseRule(rule: string): Set<number> | null {
     const normalized = rule.trim().toLowerCase();
