@@ -18,6 +18,23 @@ export const TaskSchema = z.object({
 });
 export type Task = z.infer<typeof TaskSchema>;
 
+/**
+ * PATCH /api/tasks/:taskId
+ *
+ * Holds the same invariant as CreateTaskSchema — `is_recurring` is true exactly when there is a
+ * parseable rule — but has to hold it against a partial body, where an absent field means 'leave
+ * it alone' rather than 'null'.
+ *
+ * Hence the pairing rule: `is_recurring` and `recurrence` must be sent together or not at all.
+ * Sent alone, neither can be judged. `{ is_recurring: true }` is valid only if the stored rule is
+ * non-null, and `{ recurrence: null }` only if the task is not recurring — the body simply does
+ * not say. So editing a recurring task's rule means sending `is_recurring: true` alongside it,
+ * restating the kind rather than changing it — `updateTask` refuses any actual change, since a
+ * task is one-off or recurring from creation. Requiring the pair keeps the schedule fully
+ * described by the request, which
+ * is what lets it be rejected here with a 400 rather than discovered later by a job that quietly
+ * generates nothing.
+ */
 export const UpdateTaskSchema = z.object({
     title: z.string().min(1).max(255).optional(),
     description: z.string().nullable().optional(),
@@ -28,6 +45,47 @@ export const UpdateTaskSchema = z.object({
     active: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
+}).superRefine((data, ctx) => {
+    const { is_recurring: isRecurring, recurrence } = data;
+
+    if (isRecurring === undefined && recurrence === undefined) {
+        return;
+    }
+
+    if (isRecurring === undefined || recurrence === undefined) {
+        ctx.addIssue({
+            code: 'custom',
+            path: [isRecurring === undefined ? 'is_recurring' : 'recurrence'],
+            message: 'Send is_recurring and recurrence together: neither describes the resulting schedule on its own',
+        });
+        return;
+    }
+
+    if (isRecurring) {
+        if (recurrence === null) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['recurrence'],
+                message: 'A recurring task requires a recurrence rule',
+            });
+        } else if (!isValidRecurrence(recurrence)) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['recurrence'],
+                message: "Recurrence must be 'daily' or 'weekly:<days>' (e.g. 'weekly:mon,wed')",
+            });
+        }
+
+        return;
+    }
+
+    if (recurrence !== null) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['recurrence'],
+            message: 'A one-off task must have a null recurrence',
+        });
+    }
 });
 
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;

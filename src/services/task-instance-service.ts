@@ -14,6 +14,7 @@ import {
 } from '@/types/task-instance';
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error';
 import { NotAssignedToTaskError, NotBranchManagerError, SelfReviewError } from '@/exceptions/forbidden-error';
+import { InactiveTaskError } from '@/exceptions/inactive-task-error';
 
 type InstanceForWrite = NonNullable<
     Awaited<ReturnType<typeof TaskInstanceRepository.getInstanceForWrite>>
@@ -80,6 +81,11 @@ export class TaskInstanceService {
         });
     }
 
+    /**
+     * Review is not gated on the task still being active, deliberately. An instance that was
+     * already `completed` when its task was deactivated must keep its route to verified or
+     * rejected, or the photo sits there forever with nobody able to sign it off.
+     */
     static async reviewInstance(params: {
         instanceId: number;
         decision: typeof TaskStatus.verified | typeof TaskStatus.rejected;
@@ -120,12 +126,20 @@ export class TaskInstanceService {
      * A task targets either a named person or a whole role.
      *   - person: only that person may complete it.
      *   - role:   an active holder of that role who works at the task's branch may complete it.
+     *
+     * A deactivated task accepts no completions at all. The read filter already hides its pending
+     * instances, but hiding is not enforcing: a client holding an id from before the flag flipped
+     * would otherwise still be able to complete cancelled work.
      */
     private static async assertMayComplete(
         instance: InstanceForWrite,
         completedBy: number,
     ): Promise<void> {
-        const { assignedTo, assignedRoleId, branchId } = instance.task;
+        const { assignedTo, assignedRoleId, branchId, active } = instance.task;
+
+        if (!active) {
+            throw new InactiveTaskError();
+        }
 
         if (assignedTo !== null) {
             if (assignedTo !== completedBy) {

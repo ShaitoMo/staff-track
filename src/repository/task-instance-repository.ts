@@ -73,7 +73,13 @@ export class TaskInstanceRepository {
                 status: true,
                 completedBy: true,
                 task: {
-                    select: { taskId: true, branchId: true, assignedTo: true, assignedRoleId: true },
+                    select: {
+                        taskId: true,
+                        branchId: true,
+                        assignedTo: true,
+                        assignedRoleId: true,
+                        active: true,
+                    },
                 },
             },
         });
@@ -149,6 +155,70 @@ export class TaskInstanceRepository {
         return result.count;
     }
 
+    /**
+     * Removes the pending instances of deactivated *recurring* tasks — work that is cancelled.
+     *
+     * Only `pending` rows are eligible, so nothing carrying a photo, a completer or a review
+     * decision can be reached. Returns how many rows were removed.
+     *
+     * This covers the tasks the per-task diff never visits: an inactive task is absent from
+     * `getActiveRecurringTasks`, so the reconcile loop skips it and something has to sweep up
+     * behind it. Everything a *live* rule fails to justify is the diff's job, not this one's.
+     *
+     * Recurring only, and that restriction is load-bearing rather than cautious. Deleting here is
+     * safe precisely because the insert pass regenerates the window on the next run, so a
+     * reactivated recurring task gets its instances back. A one-off has no such pass — its single
+     * instance is authored at task creation and never recreated — so pruning one would strand the
+     * task forever: it would exist with no instance, and workers only ever see instances.
+     * One-off cancellation is handled without deleting anything, by the read filter (hidden while
+     * inactive) and the completion guard (refused while inactive), both of which simply stop
+     * applying if the task is switched back on.
+     */
+    static async deleteCancelledPendingInstances(): Promise<number> {
+        const result = await db.taskInstance.deleteMany({
+            where: {
+                status: TaskStatus.pending,
+                task: { isRecurring: true, active: false },
+            },
+        });
+
+        return result.count;
+    }
+
+    /**
+     * The task's own pending instances from `from` onwards, for the reconcile diff.
+     *
+     * Bounded at `from` deliberately: rows before it are overdue work that was assigned and not
+     * done, and that record is the point of the system. The diff must never be in a position to
+     * delete them, so they are not fetched.
+     */
+    static async getPendingInstancesFrom(
+        taskId: number,
+        from: Date,
+    ): Promise<{ instanceId: number; dueDate: Date }[]> {
+        return db.taskInstance.findMany({
+            where: { taskId, status: TaskStatus.pending, dueDate: { gte: from } },
+            select: { instanceId: true, dueDate: true },
+            orderBy: { dueDate: 'asc' },
+        });
+    }
+
+    /**
+     * Deletes the given instances, re-asserting `pending` at delete time: a completion landing
+     * between the diff's read and this write would otherwise lose its photo.
+     */
+    static async deletePendingInstancesByIds(instanceIds: number[]): Promise<number> {
+        if (instanceIds.length === 0) {
+            return 0;
+        }
+
+        const result = await db.taskInstance.deleteMany({
+            where: { instanceId: { in: instanceIds }, status: TaskStatus.pending },
+        });
+
+        return result.count;
+    }
+//a helper that builds the where clause for the list query, including the assignedToUser filter
     private static buildWhere(filters: TaskInstanceFilters): Prisma.TaskInstanceWhereInput {
         const { branchId, dueDate, status, assignedToUser } = filters;
 
@@ -169,9 +239,16 @@ export class TaskInstanceRepository {
             dueDate,
             status,
             ...(Object.keys(task).length > 0 ? { task } : {}),
+            // A deactivated task's outstanding work is cancelled, so its pending instances drop
+            // out of the list. Anything already completed stays: the photo and the sign-off are
+            // the record of work that did happen, and a flag flipped today cannot unmake that.
+            OR: [
+                { status: { not: TaskStatus.pending } },
+                { task: { active: true } },
+            ],
         };
     }
-
+//a helper that converts the instance with joins to the detail view, including media and task details
     private static toView(instance: InstanceWithJoins): TaskInstanceDetailView {
         return {
             instance_id: instance.instanceId,

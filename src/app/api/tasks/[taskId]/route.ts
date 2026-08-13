@@ -3,6 +3,7 @@ import { TaskService } from '@/services/task-service'
 import { UpdateTaskSchema } from '@/types/task'
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error'
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error'
+import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error'
 
 export async function GET(
     _req: NextRequest,
@@ -71,7 +72,7 @@ export async function PATCH(
         if (error instanceof TaskNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        if (error instanceof InvalidTaskAssignmentError) {
+        if (error instanceof InvalidTaskAssignmentError || error instanceof InvalidScheduleChangeError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         console.error(error);
