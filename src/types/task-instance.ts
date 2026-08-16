@@ -1,18 +1,19 @@
 import { z } from 'zod';
-import { TaskStatus } from '@prisma/client';
 import { DateOnlySchema } from '@/types/date-only';
+
+/** Mirrors the task_status enum; spelled out so this layer stays free of Prisma. */
+export const TASK_STATUSES = ['pending', 'completed', 'verified', 'rejected'] as const;
+
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 // ---------- Query filters (GET /api/task-instances) ----------
 
-/**
- * Query parameters arrive as strings, so numeric ids are coerced here rather than in the route.
- * Every filter is optional; supplying none lists all instances.
- */
+/** Coerces string query parameters to numbers; all filters optional. */
 export const TaskInstanceFiltersSchema = z.object({
     user_id: z.coerce.number().int().positive().optional(),
     branch_id: z.coerce.number().int().positive().optional(),
     date: DateOnlySchema.optional(),
-    status: z.enum(TaskStatus).optional(),
+    status: z.enum(TASK_STATUSES).optional(),
 });
 
 export type TaskInstanceFiltersInput = z.infer<typeof TaskInstanceFiltersSchema>;
@@ -32,7 +33,7 @@ export const CompleteTaskInstanceSchema = z.object({
 
 /** PATCH /api/task-instances/:id/review */
 export const ReviewTaskInstanceSchema = z.object({
-    decision: z.enum([TaskStatus.verified, TaskStatus.rejected]),
+    decision: z.enum(['verified', 'rejected']),
     // acting user; see the note on CompleteTaskInstanceSchema
     reviewed_by: z.coerce.number().int().positive(),
 });

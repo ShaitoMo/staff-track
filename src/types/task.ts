@@ -19,21 +19,11 @@ export const TaskSchema = z.object({
 export type Task = z.infer<typeof TaskSchema>;
 
 /**
- * PATCH /api/tasks/:taskId
+ * PATCH /api/tasks/:taskId — partial body, so an absent field means 'leave it alone'.
  *
- * Holds the same invariant as CreateTaskSchema — `is_recurring` is true exactly when there is a
- * parseable rule — but has to hold it against a partial body, where an absent field means 'leave
- * it alone' rather than 'null'.
- *
- * Hence the pairing rule: `is_recurring` and `recurrence` must be sent together or not at all.
- * Sent alone, neither can be judged. `{ is_recurring: true }` is valid only if the stored rule is
- * non-null, and `{ recurrence: null }` only if the task is not recurring — the body simply does
- * not say. So editing a recurring task's rule means sending `is_recurring: true` alongside it,
- * restating the kind rather than changing it — `updateTask` refuses any actual change, since a
- * task is one-off or recurring from creation. Requiring the pair keeps the schedule fully
- * described by the request, which
- * is what lets it be rejected here with a 400 rather than discovered later by a job that quietly
- * generates nothing.
+ * `is_recurring` and `recurrence` must be sent together: alone, neither describes the resulting
+ * schedule, so it could not be judged here and would surface later as a job generating nothing.
+ * Restating the kind is required, not changing it — `updateTask` refuses an actual change.
  */
 export const UpdateTaskSchema = z.object({
     title: z.string().min(1).max(255).optional(),
@@ -91,13 +81,10 @@ export const UpdateTaskSchema = z.object({
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 
 /**
- * POST /api/tasks
- *
- * Two independent either/or rules are enforced here, both mirroring constraints the database
- * also holds, so a bad body is refused with a 400 naming the field rather than a 500 from Postgres:
- *
- *   1. person XOR role  - exactly one of assigned_to / assigned_role_id (tasks_person_xor_role)
- *   2. one-off XOR recurring - due_date alone, or a parseable recurrence alone
+ * POST /api/tasks. Two either/or rules, mirroring database constraints so a bad body is a 400
+ * naming the field rather than a 500 from Postgres:
+ *   1. person XOR role — exactly one of assigned_to / assigned_role_id (tasks_person_xor_role)
+ *   2. one-off XOR recurring — due_date alone, or a parseable recurrence alone
  */
 export const CreateTaskSchema = z.object({
     title: z.string().min(1).max(255),
