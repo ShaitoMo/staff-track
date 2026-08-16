@@ -123,3 +123,21 @@ also returns `400`.
 **Decide:** leave as-is for consistency, or move all duplicate-resource errors
 (including `DuplicatePhoneError`) to `409` together. Changing only the new ones
 would make the inconsistency worse, not better.
+
+## 4. Attendance import matches on the machine number only
+
+`POST /api/attendance/import` resolves each row through
+`user_branches.machine_employee_id`. A number nobody at the branch is linked to
+becomes a row error naming both the number and the `Name` from the file; the rest
+of the file still imports.
+
+Falling back to the `Name` column was considered and **rejected**: the name is free
+text typed into the clock machine, `users.name` has no unique constraint, and a
+wrong match silently attributes one person's hours to another with nothing
+downstream to catch it. Linking a number is a one-time cost per employee.
+
+**Revisit if:** the machine reassigns or resets employee numbers, or whoever
+uploads cannot administer user-branch links. The shape would be: number first,
+then an exact case-insensitive name match among staff at that branch, an error on
+ambiguity, and a `records_matched_by_name` count in the response so the fallback
+is never silent.

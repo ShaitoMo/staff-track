@@ -1,4 +1,4 @@
-import { TaskStatus } from '@prisma/client';
+import { TaskStatus } from '@/types/task-instance';
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error';
 
 /**
@@ -11,10 +11,10 @@ import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transi
  * verified and rejected are terminal.
  */
 export const STATUS_TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
-    [TaskStatus.pending]: [TaskStatus.completed],
-    [TaskStatus.completed]: [TaskStatus.verified, TaskStatus.rejected],
-    [TaskStatus.verified]: [],
-    [TaskStatus.rejected]: [],
+    pending: ['completed'],
+    completed: ['verified', 'rejected'],
+    verified: [],
+    rejected: [],
 };
 
 export function canTransition(from: TaskStatus, to: TaskStatus): boolean {
