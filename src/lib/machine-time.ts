@@ -39,6 +39,29 @@ function offsetAt(instant: number): number {
 }
 
 /**
+ * The calendar day an instant falls on **in Beirut**, as UTC midnight.
+ *
+ * The anchor matches the one every other date in the codebase uses: Postgres `date` columns come
+ * back from Prisma at UTC midnight, so a day meant for comparison against `due_date` has to be
+ * anchored the same way. This is `toUtcDate` from `lib/recurrence.ts` with the zone applied first,
+ * and it returns the identical shape — only the answer differs, and only near midnight.
+ *
+ * What it fixes is *which* day it is. `toUtcDate(new Date())` answers with the UTC calendar day,
+ * and Beirut runs two to three hours ahead of it — so every night between local midnight and
+ * 02:00 or 03:00, 'today' came back as yesterday. Anything generating or pruning a window from
+ * that answer was working a day behind the branch it serves.
+ */
+export function machineDayOf(instant: Date): Date {
+    const wallClock = new Date(instant.getTime() + offsetAt(instant.getTime()));
+
+    return new Date(Date.UTC(
+        wallClock.getUTCFullYear(),
+        wallClock.getUTCMonth(),
+        wallClock.getUTCDate(),
+    ));
+}
+
+/**
  * A machine reading to the instant it happened.
  *
  * Beirut is +02:00 in winter and +03:00 in summer, so the offset cannot be a constant: it depends

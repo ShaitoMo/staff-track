@@ -8,9 +8,9 @@ import {
     getDates,
     isValidRecurrence,
     surplusInstanceIds,
-    toUtcDate,
     WINDOW_DAYS,
 } from '@/lib/recurrence';
+import { machineDayOf } from '@/lib/machine-time';
 import { CreateTaskInput, Task, UpdateTaskInput } from '../types/task';
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error';
@@ -80,7 +80,7 @@ export class TaskService {
      * reason the job's prune is: a recurring task's instances regenerate from its rule.
      */
     private static async syncGeneratedInstances(task: Task, today = new Date()): Promise<void> {
-        const from = toUtcDate(today);
+        const from = machineDayOf(today);
         const to = addDays(from, WINDOW_DAYS);
 
         const generates = task.active && task.is_recurring && task.recurrence !== null;
@@ -138,12 +138,12 @@ export class TaskService {
     static async reconcileInstances(
         today = new Date(),
     ): Promise<{ tasks: number; created: number; deleted: number }> {
-        const from = toUtcDate(today);
+        const from = machineDayOf(today);
 
         // Backdating would be destructive rather than merely wrong: with `from` in the past, the
         // window closes before most forward rows, and the diff reports all of them as surplus.
         // The parameter is here to make a run deterministic, not to replay an earlier day.
-        if (from.getTime() < toUtcDate(new Date()).getTime()) {
+        if (from.getTime() < machineDayOf(new Date()).getTime()) {
             throw new RangeError(
                 'reconcileInstances cannot run against a past date: the prune would delete instances that are still due',
             );
@@ -197,7 +197,7 @@ export class TaskService {
             return [data.due_date as Date];
         }
 
-        const from = toUtcDate(new Date());
+        const from = machineDayOf(new Date());
 
         return getDates(data.recurrence as string, from, addDays(from, WINDOW_DAYS));
     }
