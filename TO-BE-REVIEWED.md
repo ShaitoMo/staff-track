@@ -141,3 +141,71 @@ uploads cannot administer user-branch links. The shape would be: number first,
 then an exact case-insensitive name match among staff at that branch, an error on
 ambiguity, and a `records_matched_by_name` count in the response so the fallback
 is never silent.
+
+## 5. FR6 compares schedule to attendance in TypeScript, not in a Postgres view
+
+`schema.prisma` says `scheduled_vs_actual` "is a VIEW; model separately or query
+raw". `GET /api/schedule-vs-actual` instead reads shifts and punches through the
+existing repositories and pairs them in `src/lib/schedule-vs-actual.ts`.
+
+**Why:** the matching rule is the part that keeps changing — the first draft of it
+shipped a false `no_show` for anyone working a split day — and in SQL none of it
+would be unit-testable. As a pure function it has 27 cases covering DST, split
+days, overnight pairs and forgotten clock-outs. A branch-week is a few hundred
+rows on both sides, so the in-memory join costs nothing yet.
+
+**Revisit if:** the report is asked for across all branches over a quarter, or a
+dashboard polls it. `ScheduleVsActualRow` is already the view's shape, so the move
+is a new repository method behind the same service call.
+
+## 5a. A punch is an interval, and may cover more than one shift
+
+`compareScheduleWithAttendance` matches a punch to a shift by **interval overlap**,
+and does not mark a punch as spent once matched.
+
+The rejected alternative — matching on `clock_in` and consuming each punch so no
+two shifts could claim it — is worth recording because it looks correct. Given two
+shift rows 09:00-17:00 and 17:00-21:00 worked on a single punch (in 08:55, out
+21:03), the morning shift consumes the punch and the evening shift reports
+`no_show` for a man who was in the building for twelve hours. Consumption existed
+to stop back-to-back shifts both reading `on_time` off one arrival; overlap draws
+that distinction on its own, and reports the skipped-evening case as `left_early`
+with a real number instead. The five-row table in
+`src/lib/schedule-vs-actual.test.ts` is the regression suite.
+
+The one shape that still needs a bound is an **open** punch: with no clock-out it
+would overlap every later shift forever, so it falls back to arrival containment
+inside `EARLY_ARRIVAL_WINDOW_MINUTES`.
+
+## 5b. The report cannot see work that was never scheduled
+
+One row per *scheduled shift*, by definition — so someone who came in on a day
+they had no shift does not appear anywhere in it, and neither does a punch at a
+branch they were not scheduled at. Only the `no_show` direction of the mismatch is
+reported.
+
+The other direction is its own query (punches with no shift around them) and
+arguably its own endpoint; folding it into these rows would mean rows with no
+`shift_id`, which is what the flag set and the FR6 shape were built to avoid.
+
+## 5c. Lateness policy is a constant
+
+`LATE_GRACE_MINUTES = 5` and `EARLY_ARRIVAL_WINDOW_MINUTES = 120` live in
+`src/lib/schedule-vs-actual.ts`. Not a query parameter on purpose: a tunable grace
+period lets the report be re-run until the numbers look acceptable. When policy
+turns out to differ per branch it becomes a column on `branches`, read by the
+service and passed into the comparison — the function already takes everything it
+needs as arguments.
+
+## 5d. No stored link between a punch and a shift
+
+The pairing is recomputed on every request; nothing is persisted. That means there
+is nowhere for a **human correction** to live — a manager who knows a punch
+belongs to the other shift cannot say so, because the answer is derived fresh each
+time. The same gap covers payroll: changing the grace period retroactively
+reclassifies shifts that were already reviewed.
+
+**The trigger is a person disagreeing with the machine, not data volume.** When it
+lands, it is a nullable `attendance.shift_id` resolved on write, with reconcile on
+shift create/edit/delete, and `compareScheduleWithAttendance` doubles as the
+backfill for existing rows.

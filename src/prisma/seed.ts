@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, TaskOrigin, TaskStatus, AttendanceSource } from "@prisma/client";
 import dotenv from "dotenv";
+import { machineTimeToUtc } from "@/lib/machine-time";
 
 dotenv.config();
 
@@ -10,6 +11,18 @@ const prisma = new PrismaClient({ adapter });
 // time-only values only care about the HH:MM:SS portion; date part is ignored by @db.Time
 const time = (hhmm: string) => new Date(`1970-01-01T${hhmm}:00Z`);
 const date = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T00:00:00Z`);
+
+// A clock-machine reading, written the way the machine prints it: local wall clock at the branch.
+// `attendance.clock_in` is `timestamptz`, so the reading has to be resolved to the instant it
+// actually happened -- the same conversion the CSV importer applies on the way in. Writing the UTC
+// literal directly is how these rows previously sat three hours from the shifts they belong to,
+// which made every seeded punch read as three hours late.
+const punch = (yyyyMmDd: string, hhmm: string) => {
+  const [year, month, day] = yyyyMmDd.split("-").map(Number);
+  const [hours, minutes] = hhmm.split(":").map(Number);
+
+  return machineTimeToUtc(year, month, day, hours, minutes);
+};
 
 async function main() {
   // wipe in FK-safe (child -> parent) order so this script is re-runnable
@@ -147,23 +160,23 @@ async function main() {
       {
         userId: bob.userId,
         branchId: mainBranch.branchId,
-        clockIn: new Date("2026-07-21T09:02:00Z"),
-        clockOut: new Date("2026-07-21T17:05:00Z"),
+        clockIn: punch("2026-07-21", "09:02"),
+        clockOut: punch("2026-07-21", "17:05"),
         source: AttendanceSource.csv_import,
         importBatchId: importBatch.batchId,
       },
       {
         userId: carol.userId,
         branchId: mainBranch.branchId,
-        clockIn: new Date("2026-07-21T12:01:00Z"),
-        clockOut: new Date("2026-07-21T20:03:00Z"),
+        clockIn: punch("2026-07-21", "12:01"),
+        clockOut: punch("2026-07-21", "20:03"),
         source: AttendanceSource.csv_import,
         importBatchId: importBatch.batchId,
       },
       {
         userId: frank.userId,
         branchId: mainBranch.branchId,
-        clockIn: new Date("2026-07-21T06:00:00Z"),
+        clockIn: punch("2026-07-21", "06:00"),
         clockOut: null,
         source: AttendanceSource.manual,
         importBatchId: null,
