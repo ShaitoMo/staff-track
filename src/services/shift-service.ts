@@ -19,6 +19,8 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
+import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 
 export class ShiftService {
     static async getShiftById(shiftId: number): Promise<ShiftView | null> {
