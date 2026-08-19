@@ -1,4 +1,5 @@
 import { ShiftRepository, ShiftFilters, OverlapQuery } from '@/repository/shift-repository'
+import { ShiftPeriodRepository, ShiftPeriodRecord } from '@/repository/shift-period-repository'
 import { UserRepository } from '@/repository/user-repository'
 import { BranchRepository } from '@/repository/branch-repository'
 import { RegisterRepository } from '@/repository/register-repository'
@@ -19,6 +20,8 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
+import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 
 export class ShiftService {
     static async getShiftById(shiftId: number): Promise<ShiftView | null> {
@@ -53,23 +56,26 @@ export class ShiftService {
     /**
      * Schedules a shift.
      *
-     * The four checks run before the insert because the database either cannot make them at all
-     * (the overlap) or makes them in a shape no client can act on (a foreign-key violation naming
-     * a constraint). Order matters only in that the branch is settled first, since the two checks
-     * after it are both relative to it.
+     * The checks run before the insert because the database either cannot make them at all (the
+     * overlap) or makes them in a shape no client can act on (a foreign-key violation naming a
+     * constraint). Order matters only in that the branch is settled first, since the checks after
+     * it are all relative to it.
      */
     static async createShift(data: CreateShiftInput): Promise<ShiftView> {
         await ShiftService.assertBranchExists(data.branch_id)
         await ShiftService.assertUserWorksAtBranch(data.user_id, data.branch_id)
         await ShiftService.assertRegisterAtBranch(data.register_id, data.branch_id)
+
+        const span = await ShiftService.resolveSpan(data)
+
         await ShiftService.assertNoDoubleBooking({
             userId: data.user_id,
             shiftDate: data.shift_date,
-            startTime: data.start_time,
-            endTime: data.end_time,
+            startTime: span.startTime,
+            endTime: span.endTime,
         })
 
-        return ShiftRepository.createShift(data)
+        return ShiftRepository.createShift(data, span)
     }
 
     /**
@@ -142,6 +148,44 @@ export class ShiftService {
             startTime: data.start_time ?? TimeOnlySchema.parse(before.start_time),
             endTime: data.end_time ?? TimeOnlySchema.parse(before.end_time),
         }
+    }
+
+    /**
+     * The span to store on the shift: the period's defaults when period_id is given, copied onto
+     * the row rather than read live through the relation — editing a period's defaults later must
+     * not retroactively change what a past shift meant, and FR6 lateness has to be measured against
+     * the time actually scheduled. Otherwise the caller's own start_time/end_time, exactly as before.
+     *
+     * CreateShiftSchema refuses any other shape (period_id together with times, or neither), so by
+     * the time this runs exactly one of the two sources is available.
+     */
+    private static async resolveSpan(data: CreateShiftInput): Promise<{ startTime: Date; endTime: Date }> {
+        if (data.period_id === undefined) {
+            return { startTime: data.start_time as Date, endTime: data.end_time as Date }
+        }
+
+        const period = await ShiftService.assertPeriodAtBranch(data.period_id, data.branch_id)
+
+        return { startTime: period.defaultStart, endTime: period.defaultEnd }
+    }
+
+    /**
+     * A period that exists but is scoped to another branch cannot supply this shift's hours — a
+     * NULL branch_id on the period is the chain-wide default and matches every branch, matching
+     * ShiftPeriod's own schema comment.
+     */
+    private static async assertPeriodAtBranch(periodId: number, branchId: number): Promise<ShiftPeriodRecord> {
+        const period = await ShiftPeriodRepository.getPeriodById(periodId)
+
+        if (!period) {
+            throw new ShiftPeriodNotFoundError()
+        }
+
+        if (period.branchId !== null && period.branchId !== branchId) {
+            throw new ShiftPeriodNotAtBranchError()
+        }
+
+        return period
     }
 
     private static async assertBranchExists(branchId: number): Promise<void> {
