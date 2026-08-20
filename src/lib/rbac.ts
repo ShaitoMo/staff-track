@@ -12,10 +12,7 @@ export function requireRole(user: AccessTokenPayload, roles: string[]): void {
     }
 }
 
-/**
- * Throws unless the caller may act on this branch. Owner is unrestricted by design (FR10: "owner
- * sees all branches"); everyone else must have the branch in their own branchIds.
- */
+/** Throws unless the caller may act on this branch. Owner is unrestricted (FR10); everyone else needs it in their own branchIds. */
 export function requireBranchAccess(user: AccessTokenPayload, branchId: number): void {
     if (user.role === OWNER_ROLE) {
         return
@@ -26,11 +23,7 @@ export function requireBranchAccess(user: AccessTokenPayload, branchId: number):
     }
 }
 
-/**
- * The users/:userId/* pattern (own shifts, own tasks, own branches, own password): the subject
- * themselves always may, and owner/manager may on anyone's behalf (FR10: "staff see only their
- * own data"). Distinct from requireRole because "it's about me" is its own bypass, not a role.
- */
+/** For users/:userId/* routes: the subject themselves always may; owner/manager may on anyone's behalf. */
 export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number, roles: string[]): void {
     if (user.userId === targetUserId) {
         return

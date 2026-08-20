@@ -154,6 +154,5 @@ export const CreateTaskSchema = z.object({
     }
 });
 
-/** assigned_by is session-derived, not client-supplied — see the route, which merges it in after
- * CreateTaskSchema validates everything the client actually sends. */
+/** assigned_by is session-derived — the route merges it in after CreateTaskSchema validates the rest. */
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema> & { assigned_by: number };

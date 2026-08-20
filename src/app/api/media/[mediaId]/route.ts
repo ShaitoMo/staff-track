@@ -6,13 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
 
-/**
- * GET /api/media/:mediaId — one media record: metadata plus its stored file path.
- *
- * `file_path` is a storage reference, not a servable URL — `uploads/` sits outside `public/` so
- * nothing serves the file itself yet (see TO-BE-REVIEWED.md #1f). This is the metadata half only.
- * Same owner/manager/assignee access rule as its parent task instance.
- */
+/** GET /api/media/:mediaId — metadata only; `file_path` isn't a servable URL yet (TO-BE-REVIEWED.md #1f). Same access rule as its parent task instance. */
 export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/media/[mediaId]'>

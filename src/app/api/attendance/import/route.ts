@@ -11,8 +11,7 @@ import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 /**
  * POST /api/attendance/import — a clock-machine export (FR5 v1).
  *
- * multipart/form-data: `file` (the CSV/Excel export) plus `branch_id`. The importer is the
- * session, not a request field.
+ * multipart/form-data: `file` (the CSV/Excel export) plus `branch_id`. Importer comes from the session.
  *
  * 201 even when rows inside the file failed: the batch was created and the response carries the
  * per-row errors, because a manager fixing three bad lines out of four hundred needs the other

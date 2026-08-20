@@ -6,11 +6,7 @@ import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 
-/**
- * PATCH /api/task-instances/:instanceId/review
- *
- * Body: { decision: 'verified' | 'rejected' }. The reviewer is the session, not a request field.
- */
+/** PATCH .../review — body is just { decision }; the reviewer is the session, not a request field. */
 export async function PATCH(
     req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]/review'>

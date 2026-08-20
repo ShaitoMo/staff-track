@@ -6,13 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 
-/**
- * GET /api/task-instances/:instanceId/media — every photo on one occurrence, newest first.
- *
- * A non-existent instance is a 404; an existing one with no photos yet is a 200 with `[]` — the
- * two must not read the same, so the instance is checked before the media is listed. Same
- * owner/manager/assignee access rule as GET /api/task-instances/:instanceId.
- */
+/** GET /api/task-instances/:instanceId/media — newest first; 404 vs empty `[]` kept distinct. Same access rule as GET .../:instanceId. */
 export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]/media'>

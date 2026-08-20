@@ -76,8 +76,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        // A chain-wide period (no branchId) is an owner-level action; a branch-specific one just
-        // needs access to that branch, same as everywhere else.
+        // A chain-wide period (no branchId) is owner-only; a branch-specific one just needs access to it.
         if (validationResult.data.branchId === null || validationResult.data.branchId === undefined) {
             requireRole(user, [OWNER_ROLE])
         } else {

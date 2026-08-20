@@ -7,13 +7,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 
 /**
  * GET /api/task-instances?user_id=&date=&branch_id=&status=
- *
- * The worker's daily list. Every filter is optional and they combine with AND.
- *
- * Staff (anyone who isn't owner/manager) can only ever see their own instances — user_id is forced
- * to the caller's own id regardless of what the query asked for, rather than 403ing on a mismatch,
- * since "show me my list" is the normal request this endpoint serves for that role. A manager is
- * scoped to their own branches; owner is unrestricted.
+ * Staff get user_id forced to themselves (not 403'd — "my list" is the normal request here); manager scoped to their branches; owner unrestricted.
  */
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams

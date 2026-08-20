@@ -12,8 +12,7 @@ export const ImportAttendanceSchema = z.object({
     branch_id: z.coerce.number().int().positive(),
 });
 
-/** imported_by is session-derived, not client-supplied — see the route, which merges it in after
- * ImportAttendanceSchema validates everything the client actually sends. */
+/** imported_by is session-derived — the route merges it in after ImportAttendanceSchema validates the rest. */
 export type ImportAttendanceInput = z.infer<typeof ImportAttendanceSchema> & { imported_by: number };
 
 export interface ImportAttendanceResult {

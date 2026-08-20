@@ -4,11 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 
-/**
- * GET /api/import-batches — every clock-machine upload, newest first. Not branch-scoped: a batch
- * records who uploaded a file and when, not which branch it covered (nothing on ImportBatch names
- * one), so this is gated by role only rather than filtered by requireBranchAccess.
- */
+/** GET /api/import-batches — newest first. Role-gated only, no requireBranchAccess: ImportBatch names no branch. */
 export async function GET(req: NextRequest) {
     const user = getCurrentUser(req)
 
