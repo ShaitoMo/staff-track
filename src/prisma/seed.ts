@@ -39,6 +39,9 @@ async function main() {
   await prisma.role.deleteMany();
 
   // ---------- Roles ----------
+  // "owner" is checked by name in src/lib/rbac.ts (OWNER_ROLE) — sees every branch regardless of
+  // user_branches links, unlike "manager" which is scoped to its own links.
+  const ownerRole = await prisma.role.create({ data: { name: "owner" } });
   const managerRole = await prisma.role.create({ data: { name: "manager" } });
   const cashierRole = await prisma.role.create({ data: { name: "cashier" } });
   const stockerRole = await prisma.role.create({ data: { name: "stocker" } });
@@ -52,6 +55,10 @@ async function main() {
   });
 
   // ---------- Users ----------
+  // No user_branches link — owner's access isn't scoped by branch links at all (see rbac.ts).
+  await prisma.user.create({
+    data: { name: "Olivia Owner", phone: "555-0099", passwordHash: "placeholder-hash", roleId: ownerRole.roleId },
+  });
   const alice = await prisma.user.create({
     data: { name: "Alice Manager", phone: "555-0100", passwordHash: "placeholder-hash", roleId: managerRole.roleId },
   });

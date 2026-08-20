@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { AttendanceService } from '@/services/attendance-service'
 import { ImportAttendanceSchema } from '@/types/attendance-import'
 import { InvalidImportFileError } from '@/lib/attendance-import'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
@@ -15,6 +18,12 @@ import { UserNotFoundError } from '@/exceptions/user-not-found-error'
  * 397 imported. Only an unreadable file is a 400.
  */
 export async function POST(req: NextRequest) {
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     let formData: FormData
     try {
         formData = await req.formData();
@@ -46,6 +55,9 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, validationResult.data.branch_id)
+
         const result = await AttendanceService.importAttendance({
             file,
             filters: validationResult.data,
@@ -53,6 +65,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(result, { status: 201 })
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof InvalidImportFileError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
