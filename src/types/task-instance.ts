@@ -18,6 +18,19 @@ export const TaskInstanceFiltersSchema = z.object({
 
 export type TaskInstanceFiltersInput = z.infer<typeof TaskInstanceFiltersSchema>;
 
+/**
+ * GET /api/users/:userId/tasks — the user comes from the path, so only the date window and
+ * status survive from TaskInstanceFiltersSchema; due_from/due_to bound due_date inclusively,
+ * mirroring UserShiftFiltersSchema's from/to.
+ */
+export const UserTaskInstanceFiltersSchema = z.object({
+    due_from: DateOnlySchema.optional(),
+    due_to: DateOnlySchema.optional(),
+    status: z.enum(TASK_STATUSES).optional(),
+});
+
+export type UserTaskInstanceFiltersInput = z.infer<typeof UserTaskInstanceFiltersSchema>;
+
 // ---------- Write payloads ----------
 
 /**

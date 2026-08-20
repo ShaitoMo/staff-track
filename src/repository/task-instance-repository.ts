@@ -17,6 +17,10 @@ export interface AssignedToUserFilter {
 export interface TaskInstanceFilters {
     branchId?: number;
     dueDate?: Date;
+    // Inclusive range, for the worker's own list (GET /users/:userId/tasks). Ignored when
+    // dueDate is also given, since an exact date already answers the question a range would.
+    dueFrom?: Date;
+    dueTo?: Date;
     status?: TaskStatus;
     assignedToUser?: AssignedToUserFilter;
 }
@@ -220,7 +224,7 @@ export class TaskInstanceRepository {
     }
 //a helper that builds the where clause for the list query, including the assignedToUser filter
     private static buildWhere(filters: TaskInstanceFilters): Prisma.TaskInstanceWhereInput {
-        const { branchId, dueDate, status, assignedToUser } = filters;
+        const { branchId, dueDate, dueFrom, dueTo, status, assignedToUser } = filters;
 
         const task: Prisma.TaskWhereInput = {};
 
@@ -236,7 +240,9 @@ export class TaskInstanceRepository {
         }
 
         return {
-            dueDate,
+            dueDate: dueDate ?? (dueFrom !== undefined || dueTo !== undefined
+                ? { gte: dueFrom, lte: dueTo }
+                : undefined),
             status,
             ...(Object.keys(task).length > 0 ? { task } : {}),
             // A deactivated task's outstanding work is cancelled, so its pending instances drop
