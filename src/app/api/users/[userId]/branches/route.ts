@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserBranchService } from '@/services/user-branch-service'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/users/[userId]/branches'>
 ) {
     const { userId: userIdParam } = await ctx.params;
@@ -15,10 +18,20 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
 
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     try {
+        requireSelfOrRole(user, userId, [OWNER_ROLE, MANAGER_ROLE])
         const branches = await UserBranchService.getBranchesByUser(userId);
         return NextResponse.json(branches, { status: 200 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

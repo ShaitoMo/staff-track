@@ -5,9 +5,9 @@ import {
 } from '@/repository/task-instance-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
-import { RoleRepository } from '@/repository/role-repository';
 import { deletePhoto, savePhoto } from '@/lib/storage';
 import { assertTransition } from '@/lib/task-status';
+import { MANAGER_ROLE, OWNER_ROLE } from '@/lib/rbac';
 import {
     TaskInstanceDetailView,
     TaskInstanceFiltersInput,
@@ -212,21 +212,27 @@ export class TaskInstanceService {
         }
     }
 
-    /** Review is restricted to active managers attached to the task's own branch. */
+    /**
+     * Review is restricted to an active owner (any branch) or manager (their own branches) —
+     * closing the gap TO-BE-REVIEWED.md §1a and TASK-FEATURE.md §9.1 named: previously any active
+     * user at the branch, regardless of role, could verify or reject a colleague's work.
+     *
+     * This checks the *named* reviewer's role, not the caller's session — `reviewed_by` is still a
+     * request field rather than session-derived (see TO-BE-REVIEWED.md §1b), so this closes "is the
+     * named reviewer a manager", not "is the caller who they claim to be".
+     */
     private static async assertMayReview(userId: number, branchId: number): Promise<void> {
-        const user = await UserRepository.getUserById(userId);
+        const context = await UserRepository.getAuthContext(userId);
 
-        if (!user || !user.isActive) {
+        if (!context || !context.isActive) {
             throw new NotBranchManagerError();
         }
 
-        const role = await RoleRepository.getRoleById(user.roleId);
-
-        if (!role || role.name !== 'manager') {
-            throw new NotBranchManagerError();
+        if (context.roleName !== OWNER_ROLE && context.roleName !== MANAGER_ROLE) {
+            throw new NotBranchManagerError('Only a manager may review a task instance');
         }
 
-        if (!(await TaskInstanceService.worksAtBranch(userId, branchId))) {
+        if (context.roleName !== OWNER_ROLE && !context.branchIds.includes(branchId)) {
             throw new NotBranchManagerError('You are not attached to the branch this task belongs to');
         }
     }

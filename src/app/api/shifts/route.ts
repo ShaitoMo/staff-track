@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ShiftService } from '@/services/shift-service'
 import { CreateShiftSchema, ShiftFiltersSchema } from '@/types/shift'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
@@ -31,10 +34,29 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+
+        if (validationResult.data.branch_id !== undefined) {
+            requireBranchAccess(user, validationResult.data.branch_id)
+        }
+
         const shifts = await ShiftService.getShifts(validationResult.data)
-        return NextResponse.json(shifts, { status: 200 })
+        const visible = user.role === OWNER_ROLE
+            ? shifts
+            : shifts.filter((shift) => user.branchIds.includes(shift.branch_id))
+
+        return NextResponse.json(visible, { status: 200 })
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 })
     }
@@ -49,6 +71,12 @@ export async function GET(req: NextRequest) {
  * is well-formed but names a pair that cannot exist.
  */
 export async function POST(req: NextRequest) {
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     let body
     try {
         body = await req.json();
@@ -67,9 +95,14 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, validationResult.data.branch_id)
         const shift = await ShiftService.createShift(validationResult.data);
         return NextResponse.json(shift, { status: 201 })
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof ShiftOverlapError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }

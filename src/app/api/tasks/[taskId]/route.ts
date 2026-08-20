@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TaskService } from '@/services/task-service'
 import { UpdateTaskSchema } from '@/types/task'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
@@ -8,7 +11,7 @@ import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error'
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/tasks/[taskId]'>
 ) {
     const { taskId: taskIdParam } = await ctx.params;
@@ -19,6 +22,12 @@ export async function GET(
 
     const taskId = Number(taskIdParam);
 
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     try {
         const task = await TaskService.getTaskById(taskId);
 
@@ -26,8 +35,14 @@ export async function GET(
             return NextResponse.json({ error: 'Task not found' }, { status: 404 });
         }
 
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, task.branch_id)
+
         return NextResponse.json(task, { status: 200 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
     }
@@ -44,6 +59,18 @@ export async function PATCH(
     }
 
     const taskId = Number(taskIdParam);
+
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const existing = await TaskService.getTaskById(taskId);
+
+    if (!existing) {
+        return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
 
     let body
     try {
@@ -73,9 +100,14 @@ export async function PATCH(
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, existing.branch_id)
         const task = await TaskService.updateTask(taskId, validationResult.data);
         return NextResponse.json(task, { status: 200 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof TaskNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

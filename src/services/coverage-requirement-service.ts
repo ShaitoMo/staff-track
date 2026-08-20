@@ -28,6 +28,11 @@ export class CoverageRequirementService {
         return CoverageRequirementRepository.createRequirement(data)
     }
 
+    /** Minimal read — used by route guards to resolve a requirement's branch before an edit. */
+    static async getRequirementById(requirementId: number): Promise<{ branchId: number } | null> {
+        return CoverageRequirementRepository.getRequirementById(requirementId)
+    }
+
     static async updateRequirement(
         requirementId: number,
         data: UpdateCoverageRequirementInput,
