@@ -36,19 +36,14 @@ export type UserTaskInstanceFiltersInput = z.infer<typeof UserTaskInstanceFilter
 /**
  * PATCH /api/task-instances/:id/complete
  *
- * `completed_by` is the acting user. It is a request field only because authentication does
- * not exist yet — once it does, this comes from the session and leaves the payload.
- * Note that no timestamp is accepted: completed_at is taken from the server clock.
+ * No body fields beyond the multipart `photo` — the acting user is the session (getCurrentUser),
+ * not a request field. Note that no timestamp is accepted either: completed_at is taken from the
+ * server clock.
  */
-export const CompleteTaskInstanceSchema = z.object({
-    completed_by: z.coerce.number().int().positive(),
-});
 
-/** PATCH /api/task-instances/:id/review */
+/** PATCH /api/task-instances/:id/review — the acting user is the session, not a request field. */
 export const ReviewTaskInstanceSchema = z.object({
     decision: z.enum(['verified', 'rejected']),
-    // acting user; see the note on CompleteTaskInstanceSchema
-    reviewed_by: z.coerce.number().int().positive(),
 });
 
 export type ReviewTaskInstanceInput = z.infer<typeof ReviewTaskInstanceSchema>;

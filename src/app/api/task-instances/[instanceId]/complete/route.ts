@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TaskInstanceService } from '@/services/task-instance-service'
-import { CompleteTaskInstanceSchema } from '@/types/task-instance'
+import { getCurrentUser } from '@/lib/auth'
 import { InvalidPhotoError } from '@/lib/storage'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
@@ -11,8 +11,8 @@ import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 /**
  * PATCH /api/task-instances/:instanceId/complete
  *
- * multipart/form-data: `photo` (required file) and `completed_by`.
- * No timestamp is read from the request — completed_at comes from the server clock.
+ * multipart/form-data: `photo` (required file). The completer is the session, not a request field.
+ * No timestamp is read from the request either — completed_at comes from the server clock.
  */
 export async function PATCH(
     req: NextRequest,
@@ -22,6 +22,12 @@ export async function PATCH(
 
     if (!/^\d+$/.test(instanceIdParam)) {
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
+    }
+
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     let formData: FormData
@@ -34,18 +40,6 @@ export async function PATCH(
         )
     }
 
-    const validationResult = CompleteTaskInstanceSchema.safeParse({
-        completed_by: formData.get('completed_by') ?? undefined,
-    });
-
-    if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
-    }
-
     const photo = formData.get('photo');
 
     // a text field named `photo` is not a photo; require an actual upload
@@ -56,7 +50,7 @@ export async function PATCH(
     try {
         const instance = await TaskInstanceService.completeInstance({
             instanceId: Number(instanceIdParam),
-            completedBy: validationResult.data.completed_by,
+            completedBy: user.userId,
             photo,
         });
 
