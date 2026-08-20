@@ -11,10 +11,12 @@ import {
     TaskInstanceDetailView,
     TaskInstanceFiltersInput,
     TaskInstanceListView,
+    UserTaskInstanceFiltersInput,
 } from '@/types/task-instance';
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error';
 import { NotAssignedToTaskError, NotBranchManagerError, SelfReviewError } from '@/exceptions/forbidden-error';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
+import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 
 type InstanceForWrite = NonNullable<
     Awaited<ReturnType<typeof TaskInstanceRepository.getInstanceForWrite>>
@@ -46,6 +48,36 @@ export class TaskInstanceService {
         }
 
         return TaskInstanceRepository.getTaskInstances(repositoryFilters);
+    }
+
+    /**
+     * GET /users/:userId/tasks — one worker's own list (FR: personal + claimable role tasks).
+     *
+     * Unlike getTaskInstances' user_id filter, the user comes from the path here, so an unknown
+     * one is a 404 rather than a quietly empty list.
+     */
+    static async getTaskInstancesForUser(
+        userId: number,
+        filters: UserTaskInstanceFiltersInput,
+    ): Promise<TaskInstanceListView[]> {
+        const user = await UserRepository.getUserById(userId);
+
+        if (!user) {
+            throw new UserNotFoundError();
+        }
+
+        const branchLinks = await UserBranchRepository.getUserBranches({ userId: user.userId });
+
+        return TaskInstanceRepository.getTaskInstances({
+            status: filters.status,
+            dueFrom: filters.due_from,
+            dueTo: filters.due_to,
+            assignedToUser: {
+                userId: user.userId,
+                roleId: user.roleId,
+                branchIds: branchLinks.map((link) => link.branchId),
+            },
+        });
     }
 
     static async getTaskInstanceById(instanceId: number): Promise<TaskInstanceDetailView | null> {
