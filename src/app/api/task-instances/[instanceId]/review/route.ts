@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { ReviewTaskInstanceSchema } from '@/types/task-instance'
+import { getCurrentUser } from '@/lib/auth'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
@@ -8,7 +9,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 /**
  * PATCH /api/task-instances/:instanceId/review
  *
- * Body: { decision: 'verified' | 'rejected', reviewed_by }
+ * Body: { decision: 'verified' | 'rejected' }. The reviewer is the session, not a request field.
  */
 export async function PATCH(
     req: NextRequest,
@@ -20,6 +21,12 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
     }
 
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     let body
     try {
         body = await req.json();
@@ -27,9 +34,9 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { decision, reviewed_by } = body;
+    const { decision } = body;
 
-    const validationResult = ReviewTaskInstanceSchema.safeParse({ decision, reviewed_by });
+    const validationResult = ReviewTaskInstanceSchema.safeParse({ decision });
 
     if (!validationResult.success) {
         const errors = validationResult.error.issues.map(issue => ({
@@ -43,7 +50,7 @@ export async function PATCH(
         const instance = await TaskInstanceService.reviewInstance({
             instanceId: Number(instanceIdParam),
             decision: validationResult.data.decision,
-            reviewedBy: validationResult.data.reviewed_by,
+            reviewedBy: user.userId,
         });
 
         return NextResponse.json(instance, { status: 200 })

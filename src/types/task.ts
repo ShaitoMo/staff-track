@@ -92,8 +92,6 @@ export const CreateTaskSchema = z.object({
     branch_id: z.number().int().positive(),
     assigned_to: z.number().int().positive().nullable().optional(),
     assigned_role_id: z.number().int().positive().nullable().optional(),
-    // the acting user; a request field only until authentication exists
-    assigned_by: z.number().int().positive(),
     origin: z.enum(['assigned', 'self']).default('assigned'),
     is_recurring: z.boolean().default(false),
     due_date: DateOnlySchema.nullable().optional(),
@@ -156,4 +154,6 @@ export const CreateTaskSchema = z.object({
     }
 });
 
-export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
+/** assigned_by is session-derived, not client-supplied — see the route, which merges it in after
+ * CreateTaskSchema validates everything the client actually sends. */
+export type CreateTaskInput = z.infer<typeof CreateTaskSchema> & { assigned_by: number };

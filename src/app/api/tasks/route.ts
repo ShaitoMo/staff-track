@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     try {
         requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
         requireBranchAccess(user, validationResult.data.branch_id)
-        const task = await TaskService.createTask(validationResult.data);
+        const task = await TaskService.createTask({ ...validationResult.data, assigned_by: user.userId });
         return NextResponse.json(task, { status: 201 })
     } catch (error) {
         if (error instanceof ForbiddenError) {
