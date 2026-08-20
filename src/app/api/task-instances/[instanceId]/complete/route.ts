@@ -8,12 +8,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { PhotoRequiredError } from '@/exceptions/photo-required-error'
 import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 
-/**
- * PATCH /api/task-instances/:instanceId/complete
- *
- * multipart/form-data: `photo` (required file). The completer is the session, not a request field.
- * No timestamp is read from the request either — completed_at comes from the server clock.
- */
+/** PATCH .../complete — multipart `photo` only; completer and completed_at both come from the session/server clock, not the body. */
 export async function PATCH(
     req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]/complete'>

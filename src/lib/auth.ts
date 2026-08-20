@@ -20,11 +20,7 @@ function secret(name: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET'): Uint8Array {
     return new TextEncoder().encode(value)
 }
 
-/**
- * Short-lived and carries the claims routes actually check (role, branchIds) — deliberately
- * separate from the refresh token so a role/branch change is stale for at most ACCESS_TTL, not for
- * as long as the session lasts.
- */
+/** Short-lived, carries role/branchIds — kept separate from the refresh token so a role or branch change is stale for at most ACCESS_TTL. */
 export async function signAccessToken(payload: AccessTokenPayload): Promise<string> {
     return new SignJWT({ ...payload })
         .setProtectedHeader({ alg: 'HS256' })
@@ -33,8 +29,7 @@ export async function signAccessToken(payload: AccessTokenPayload): Promise<stri
         .sign(secret('JWT_ACCESS_SECRET'))
 }
 
-/** Long-lived and carries identity only — signed with its own secret so a leaked access token
- * cannot be replayed as a refresh token. */
+/** Long-lived, identity only — its own secret so a leaked access token can't be replayed as this. */
 export async function signRefreshToken(userId: number): Promise<string> {
     return new SignJWT({ userId })
         .setProtectedHeader({ alg: 'HS256' })
@@ -86,20 +81,12 @@ const baseCookieOptions = {
 export const accessCookieOptions = { ...baseCookieOptions, maxAge: ACCESS_MAX_AGE_SECONDS }
 export const refreshCookieOptions = { ...baseCookieOptions, maxAge: REFRESH_MAX_AGE_SECONDS }
 
-/**
- * Set by src/proxy.ts on every request it lets through, and read back by getCurrentUser. Never
- * trust these off an incoming request directly — proxy.ts is the only thing that may set them,
- * which is why it strips any client-supplied copies before forwarding.
- */
+/** Set only by proxy.ts, which strips client-supplied copies first — never trust these otherwise. */
 export const AUTH_HEADER_USER_ID = 'x-auth-user-id'
 export const AUTH_HEADER_ROLE = 'x-auth-role'
 export const AUTH_HEADER_BRANCH_IDS = 'x-auth-branch-ids'
 
-/**
- * Reads who is making the call off the headers proxy.ts already verified and stamped — no repeat
- * JWT verification, no database hit. A route reachable through proxy.ts always has these set; one
- * that isn't (or a token proxy rejected) reads as anonymous, which callers check for themselves.
- */
+/** Reads identity off headers proxy.ts already verified — no repeat JWT check, no DB hit. */
 export function getCurrentUser(req: NextRequest): AccessTokenPayload | null {
     const userId = req.headers.get(AUTH_HEADER_USER_ID)
     const role = req.headers.get(AUTH_HEADER_ROLE)

@@ -48,13 +48,7 @@ export type UserTaskInstanceFiltersInput = z.infer<typeof UserTaskInstanceFilter
 
 // ---------- Write payloads ----------
 
-/**
- * PATCH /api/task-instances/:id/complete
- *
- * No body fields beyond the multipart `photo` — the acting user is the session (getCurrentUser),
- * not a request field. Note that no timestamp is accepted either: completed_at is taken from the
- * server clock.
- */
+/** PATCH /api/task-instances/:id/complete has no body schema — just the multipart `photo`; the acting user is the session. */
 
 /** PATCH /api/task-instances/:id/review — the acting user is the session, not a request field. */
 export const ReviewTaskInstanceSchema = z.object({

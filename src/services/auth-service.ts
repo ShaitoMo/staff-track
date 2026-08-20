@@ -6,11 +6,7 @@ import { InvalidCredentialsError } from '@/exceptions/invalid-credentials-error'
 import { InvalidRefreshTokenError } from '@/exceptions/invalid-refresh-token-error'
 
 export class AuthService {
-    /**
-     * A wrong phone, a wrong password, and a deactivated account all return the same error —
-     * telling them apart would let a caller enumerate which phone numbers have accounts, or which
-     * accounts are currently disabled.
-     */
+    /** Wrong phone, wrong password, and deactivated all return the same error — no account enumeration. */
     static async login(data: LoginInput): Promise<{ accessToken: string; refreshToken: string; userId: number }> {
         const user = await UserRepository.getUserByPhoneForAuth(data.phone)
 
@@ -32,11 +28,7 @@ export class AuthService {
         return { accessToken, refreshToken, userId: user.userId }
     }
 
-    /**
-     * Mints a new access token from the refresh token's identity plus the user's *current*
-     * role/branch/active state — this is what keeps a role change or deactivation from waiting out
-     * the old access token's TTL.
-     */
+    /** Mints a new access token from the refresh token's identity plus the user's *current* role/branch/active state. */
     static async refresh(rawRefreshToken: string): Promise<string> {
         const refreshPayload = await verifyRefreshToken(rawRefreshToken)
 

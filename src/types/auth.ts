@@ -12,11 +12,7 @@ export interface RefreshTokenPayload {
     userId: number
 }
 
-/**
- * The access token carries what routes actually check permissions against. It goes stale the
- * moment a role, branch link, or active flag changes underneath it — bounded by the access
- * token's short TTL and cleared by the next refresh, not by re-querying on every request.
- */
+/** What routes check permissions against — goes stale on a role/branch/active change, bounded by the short TTL. */
 export interface AccessTokenPayload {
     userId: number
     role: string

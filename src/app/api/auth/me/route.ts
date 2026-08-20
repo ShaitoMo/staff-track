@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 
-/**
- * GET /api/auth/me — the identity/permissions any route guard would read. Reachable only because
- * src/proxy.ts already authenticated the request; the check below is defensive, matching how
- * every other route in this codebase validates its inputs rather than assuming.
- */
+/** GET /api/auth/me — the caller's identity/permissions; the null check below is defensive, proxy.ts already gates this route. */
 export async function GET(req: NextRequest) {
     const user = getCurrentUser(req)
 

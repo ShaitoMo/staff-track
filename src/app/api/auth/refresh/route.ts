@@ -3,11 +3,7 @@ import { AuthService } from '@/services/auth-service'
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions } from '@/lib/auth'
 import { InvalidRefreshTokenError } from '@/exceptions/invalid-refresh-token-error'
 
-/**
- * POST /api/auth/refresh — mints a new (short-lived) access token from the refresh cookie, reading
- * the caller's current role/branches/active state at the same time. This is the request that makes
- * a role change or deactivation take effect, not the access token's own expiry.
- */
+/** POST /api/auth/refresh — mints a new access token from the refresh cookie, re-reading current role/branches/active state. */
 export async function POST(req: NextRequest) {
     const refreshToken = req.cookies.get(REFRESH_COOKIE_NAME)?.value
 

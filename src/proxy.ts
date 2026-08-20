@@ -8,24 +8,13 @@ import {
     verifyAccessToken,
 } from '@/lib/auth'
 
-/**
- * Must stay reachable without a session: you can't log in while already required to be logged in,
- * and logout has to work even with an expired or missing token.
- */
+/** Reachable without a session — login/refresh can't require what they grant, and logout must survive an expired token. */
 const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'])
 
 /**
- * The one place every /api/* request is authenticated. Runs on the Node.js runtime (Proxy's
- * default since Next 16 — see the version-history note in the framework's own proxy docs), so it
- * can use the same jose-based verification as the rest of the app without any Edge-runtime
- * workaround.
- *
- * On success, the caller's identity is stamped onto trusted request headers for route handlers to
- * read via getCurrentUser. Stripping any client-supplied copies of those headers is unconditional —
- * done before the public-path check, not folded into it — because "this path doesn't require a
- * session" and "this path's headers are trustworthy" are different questions. A public route that
- * later starts reading identity (logout logging who left, say) must see 'nobody', not whatever the
- * client forged, without that route having to remember to sanitize anything itself.
+ * Authenticates every /api/* request once, on the Node.js runtime Proxy defaults to since Next 16.
+ * Header stripping runs before the public-path check, not inside it, so a public route that later
+ * reads identity sees 'nobody' rather than forged headers, with no sanitizing of its own required.
  */
 export async function proxy(request: NextRequest) {
     const headers = new Headers(request.headers)

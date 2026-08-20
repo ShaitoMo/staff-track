@@ -4,13 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 
-/**
- * GET /api/task-instances/:instanceId — one instance with all of its media, newest first.
- *
- * Owner: unrestricted. Manager: their own branches. Staff: only an instance directly assigned to
- * them by name — a role-targeted (unclaimed) instance is visible through the list endpoint's
- * role-matching but not by id here, a narrower rule than the list's, kept simple deliberately.
- */
+/** GET /api/task-instances/:instanceId — owner unrestricted, manager their branches, staff only if directly assigned by name (narrower than the list's role-matching). */
 export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]'>

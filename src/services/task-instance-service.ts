@@ -212,15 +212,7 @@ export class TaskInstanceService {
         }
     }
 
-    /**
-     * Review is restricted to an active owner (any branch) or manager (their own branches) —
-     * closing the gap TO-BE-REVIEWED.md §1a and TASK-FEATURE.md §9.1 named: previously any active
-     * user at the branch, regardless of role, could verify or reject a colleague's work.
-     *
-     * This checks the *named* reviewer's role, not the caller's session — `reviewed_by` is still a
-     * request field rather than session-derived (see TO-BE-REVIEWED.md §1b), so this closes "is the
-     * named reviewer a manager", not "is the caller who they claim to be".
-     */
+    /** Review requires an active owner (any branch) or manager (their own) — closes TO-BE-REVIEWED.md §1a. */
     private static async assertMayReview(userId: number, branchId: number): Promise<void> {
         const context = await UserRepository.getAuthContext(userId);
 

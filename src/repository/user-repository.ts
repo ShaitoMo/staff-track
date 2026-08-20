@@ -119,11 +119,7 @@ export class UserRepository {
         }
     }
 
-    /**
-     * Refresh only — the fresh role/branch/active state a new access token is minted from. Kept
-     * separate from getUserByPhoneForAuth (which also carries the password hash) so nothing that
-     * merely refreshes a token ever touches it.
-     */
+    /** Refresh only — separate from getUserByPhoneForAuth so a token refresh never touches the password hash. */
     static async getAuthContext(userId: number): Promise<{
         isActive: boolean
         roleName: string
