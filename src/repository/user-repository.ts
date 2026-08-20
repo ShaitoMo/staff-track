@@ -112,6 +112,68 @@ export class UserRepository {
             throw error
         }
     }
+    /** Login only — the one place the password hash is allowed to leave the database. */
+    static async getUserByPhoneForAuth(phone: string): Promise<{
+        userId: number
+        passwordHash: string
+        isActive: boolean
+        roleName: string
+        branchIds: number[]
+    } | null> {
+        const user = await db.user.findUnique({
+            where: { phone },
+            select: {
+                userId: true,
+                passwordHash: true,
+                isActive: true,
+                role: { select: { name: true } },
+                branchLinks: { select: { branchId: true } },
+            },
+        })
+
+        if (!user) {
+            return null
+        }
+
+        return {
+            userId: user.userId,
+            passwordHash: user.passwordHash,
+            isActive: user.isActive,
+            roleName: user.role.name,
+            branchIds: user.branchLinks.map((link) => link.branchId),
+        }
+    }
+
+    /**
+     * Refresh only — the fresh role/branch/active state a new access token is minted from. Kept
+     * separate from getUserByPhoneForAuth (which also carries the password hash) so nothing that
+     * merely refreshes a token ever touches it.
+     */
+    static async getAuthContext(userId: number): Promise<{
+        isActive: boolean
+        roleName: string
+        branchIds: number[]
+    } | null> {
+        const user = await db.user.findUnique({
+            where: { userId },
+            select: {
+                isActive: true,
+                role: { select: { name: true } },
+                branchLinks: { select: { branchId: true } },
+            },
+        })
+
+        if (!user) {
+            return null
+        }
+
+        return {
+            isActive: user.isActive,
+            roleName: user.role.name,
+            branchIds: user.branchLinks.map((link) => link.branchId),
+        }
+    }
+
     static async updatePassword(userId: number, passwordHash: string): Promise<void> {
         try {
             await db.user.update({
