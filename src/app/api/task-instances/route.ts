@@ -3,6 +3,7 @@ import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { TaskInstanceFiltersSchema } from '@/types/task-instance'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/task-instances?user_id=&date=&branch_id=&status=
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch task instances');
         return NextResponse.json({ error: 'Failed to fetch task instances' }, { status: 500 })
     }
 }

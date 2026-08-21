@@ -8,6 +8,7 @@ import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error'
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -43,7 +44,7 @@ export async function GET(
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch task');
         return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
     }
 }
@@ -120,7 +121,7 @@ export async function PATCH(
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update task');
         return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
     }
 }

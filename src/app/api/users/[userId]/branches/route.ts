@@ -3,6 +3,7 @@ import { UserBranchService } from '@/services/user-branch-service'
 import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -34,7 +35,7 @@ export async function GET(
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch branches');
         return NextResponse.json({ error: 'Failed to fetch branches' }, { status: 500 });
     }
 }

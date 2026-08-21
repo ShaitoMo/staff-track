@@ -4,6 +4,7 @@ import { TaskInstanceService } from '@/services/task-instance-service'
 import { ReviewTaskInstanceSchema } from '@/types/task-instance'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
+import { logger } from '@/lib/logger'
 
 /** PATCH .../review — body is just { decision }; the reviewer is the session, not a request field. */
 export async function PATCH(
@@ -60,7 +61,7 @@ export async function PATCH(
         if (error instanceof InvalidStatusTransitionError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to review task instance');
         return NextResponse.json({ error: 'Failed to review task instance' }, { status: 500 })
     }
 }

@@ -4,6 +4,7 @@ import { UpdateRegisterSchema } from '@/types/register'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -38,7 +39,7 @@ export async function GET(
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch register');
         return NextResponse.json({ error: 'Failed to fetch register' }, { status: 500 });
     }
 }
@@ -83,7 +84,7 @@ export async function PATCH(
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update register');
         return NextResponse.json({ error: 'Failed to update register' }, { status: 500 })
     }
 }

@@ -4,6 +4,7 @@ import { PeriodService } from '@/services/period-service'
 import { CreatePeriodSchema, PeriodFiltersSchema } from '@/types/shift-period'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/periods?branchId=
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch periods');
         return NextResponse.json({ error: 'Failed to fetch periods' }, { status: 500 })
     }
 }
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create period');
         return NextResponse.json({ error: 'Failed to create period' }, { status: 500 })
     }
 }

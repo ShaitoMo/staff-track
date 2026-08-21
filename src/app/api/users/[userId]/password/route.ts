@@ -5,6 +5,7 @@ import { UpdatePasswordSchema } from '@/types/user'
 import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole, requireSharedBranchWithUser } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function PUT(
     req: NextRequest,
@@ -55,7 +56,7 @@ export async function PUT(
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update password');
         return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
     }
 }
