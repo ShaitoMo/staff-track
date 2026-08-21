@@ -42,6 +42,14 @@ export class CoverageRequirementRepository {
         }
     }
 
+    /** Minimal read — used by route guards to resolve a requirement's branch before an edit. */
+    static async getRequirementById(requirementId: number): Promise<{ branchId: number } | null> {
+        return db.coverageRequirement.findUnique({
+            where: { requirementId },
+            select: { branchId: true },
+        })
+    }
+
     static async updateRequirement(
         requirementId: number,
         data: UpdateCoverageRequirementInput,

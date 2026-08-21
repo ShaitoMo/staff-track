@@ -1,4 +1,4 @@
-import { ShiftPeriodRepository } from '@/repository/shift-period-repository'
+import { ShiftPeriodRepository, ShiftPeriodRecord } from '@/repository/shift-period-repository'
 import { BranchRepository } from '@/repository/branch-repository'
 import { CreatePeriodInput, ShiftPeriodView, UpdatePeriodInput } from '@/types/shift-period'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
@@ -8,6 +8,11 @@ export class PeriodService {
     static async getPeriodsByBranch(branchId: number): Promise<ShiftPeriodView[]> {
         await PeriodService.assertBranchExists(branchId)
         return ShiftPeriodRepository.getPeriodsByBranch(branchId)
+    }
+
+    /** Minimal read — used by route guards to resolve a period's branch (null = chain-wide) before an edit. */
+    static async getPeriodById(periodId: number): Promise<ShiftPeriodRecord | null> {
+        return ShiftPeriodRepository.getPeriodById(periodId)
     }
 
     static async createPeriod(data: CreatePeriodInput): Promise<ShiftPeriodView> {

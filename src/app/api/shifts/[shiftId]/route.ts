@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ShiftService } from '@/services/shift-service'
 import { UpdateShiftSchema } from '@/types/shift'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
@@ -10,7 +13,7 @@ import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/shifts/[shiftId]'>
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
@@ -21,10 +24,26 @@ export async function GET(
 
     const shiftId = Number(shiftIdParam);
 
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     const shift = await ShiftService.getShiftById(shiftId);
 
     if (!shift) {
         return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+    }
+
+    try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, shift.branch_id)
+    } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
+        throw error
     }
 
     return NextResponse.json(shift, { status: 200 });
@@ -48,6 +67,18 @@ export async function PATCH(
     }
 
     const shiftId = Number(shiftIdParam);
+
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const existing = await ShiftService.getShiftById(shiftId);
+
+    if (!existing) {
+        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+    }
 
     let body
     try {
@@ -77,9 +108,19 @@ export async function PATCH(
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, existing.branch_id)
+
+        if (validationResult.data.branch_id !== undefined) {
+            requireBranchAccess(user, validationResult.data.branch_id)
+        }
+
         const shift = await ShiftService.updateShift(shiftId, validationResult.data);
         return NextResponse.json(shift, { status: 200 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
@@ -104,7 +145,7 @@ export async function PATCH(
 
 /** DELETE /api/shifts/:shiftId — unschedules a shift. */
 export async function DELETE(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/shifts/[shiftId]'>
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
@@ -113,10 +154,29 @@ export async function DELETE(
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
+    const shiftId = Number(shiftIdParam);
+
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const existing = await ShiftService.getShiftById(shiftId);
+
+    if (!existing) {
+        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+    }
+
     try {
-        await ShiftService.deleteShift(Number(shiftIdParam));
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, existing.branch_id)
+        await ShiftService.deleteShift(shiftId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

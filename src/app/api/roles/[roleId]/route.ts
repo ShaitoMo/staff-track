@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RoleService } from '@/services/role-service'
 import { CreateRoleSchema } from '@/types/role'
+import { getCurrentUser } from '@/lib/auth'
+import { OWNER_ROLE, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 
@@ -37,6 +40,12 @@ export async function PATCH(
 
     const roleId = Number(roleIdParam);
 
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     let body
     try {
         body = await req.json();
@@ -56,9 +65,13 @@ export async function PATCH(
     }
 
     try {
+        requireRole(user, [OWNER_ROLE])
         const role = await RoleService.updateRole(roleId, validationResult.data);
         return NextResponse.json(role, { status: 200 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof RoleNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

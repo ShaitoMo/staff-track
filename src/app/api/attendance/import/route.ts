@@ -2,19 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { AttendanceService } from '@/services/attendance-service'
 import { ImportAttendanceSchema } from '@/types/attendance-import'
 import { InvalidImportFileError } from '@/lib/attendance-import'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
 /**
  * POST /api/attendance/import — a clock-machine export (FR5 v1).
  *
- * multipart/form-data: `file` (the CSV/Excel export), plus `branch_id` and `imported_by`.
+ * multipart/form-data: `file` (the CSV/Excel export) plus `branch_id`. Importer comes from the session.
  *
  * 201 even when rows inside the file failed: the batch was created and the response carries the
  * per-row errors, because a manager fixing three bad lines out of four hundred needs the other
  * 397 imported. Only an unreadable file is a 400.
  */
 export async function POST(req: NextRequest) {
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     let formData: FormData
     try {
         formData = await req.formData();
@@ -27,7 +36,6 @@ export async function POST(req: NextRequest) {
 
     const validationResult = ImportAttendanceSchema.safeParse({
         branch_id: formData.get('branch_id') ?? undefined,
-        imported_by: formData.get('imported_by') ?? undefined,
     });
 
     if (!validationResult.success) {
@@ -46,13 +54,19 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, validationResult.data.branch_id)
+
         const result = await AttendanceService.importAttendance({
             file,
-            filters: validationResult.data,
+            filters: { ...validationResult.data, imported_by: user.userId },
         });
 
         return NextResponse.json(result, { status: 201 })
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof InvalidImportFileError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
