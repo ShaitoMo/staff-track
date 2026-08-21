@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/users/:userId/tasks?status=&due_from=&due_to=
@@ -58,7 +59,7 @@ export async function GET(
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch tasks');
         return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
     }
 }

@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, TaskOrigin, TaskStatus, AttendanceSource } from "@prisma/client";
 import dotenv from "dotenv";
 import { machineTimeToUtc } from "@/lib/machine-time";
+import { logger } from "@/lib/logger";
 
 dotenv.config();
 
@@ -345,7 +346,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error(e);
+    logger.error({ err: e }, 'Seed failed');
     process.exit(1);
   })
   .finally(async () => {

@@ -6,6 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/schedule-vs-actual?branch_id=&user_id=&from=&to=
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof BranchNotFoundError || error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to compare schedule with attendance');
         return NextResponse.json({ error: 'Failed to compare schedule with attendance' }, { status: 500 })
     }
 }

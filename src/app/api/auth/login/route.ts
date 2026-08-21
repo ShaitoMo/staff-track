@@ -4,6 +4,7 @@ import { UserService } from '@/services/user-service'
 import { LoginSchema } from '@/types/auth'
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions, refreshCookieOptions } from '@/lib/auth'
 import { InvalidCredentialsError } from '@/exceptions/invalid-credentials-error'
+import { logger } from '@/lib/logger'
 
 /** POST /api/auth/login — verifies phone + password, sets the access and refresh cookies. */
 export async function POST(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof InvalidCredentialsError) {
             return NextResponse.json({ error: error.message }, { status: 401 })
         }
-        console.error(error)
+        logger.error({ err: error }, 'Failed to log in');
         return NextResponse.json({ error: 'Failed to log in' }, { status: 500 })
     }
 }

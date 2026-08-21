@@ -11,6 +11,7 @@ import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-er
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -138,7 +139,7 @@ export async function PATCH(
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update shift');
         return NextResponse.json({ error: 'Failed to update shift' }, { status: 500 })
     }
 }
@@ -180,7 +181,7 @@ export async function DELETE(
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to delete shift');
         return NextResponse.json({ error: 'Failed to delete shift' }, { status: 500 })
     }
 }

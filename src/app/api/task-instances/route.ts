@@ -4,6 +4,7 @@ import { TaskInstanceFiltersSchema } from '@/types/task-instance'
 import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/task-instances?user_id=&date=&branch_id=&status=
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof ForbiddenError) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch task instances');
         return NextResponse.json({ error: 'Failed to fetch task instances' }, { status: 500 })
     }
 }

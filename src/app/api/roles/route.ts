@@ -5,13 +5,14 @@ import { getCurrentUser } from '@/lib/auth'
 import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
     try {
         const roles = await RoleService.getAllRoles();
         return NextResponse.json(roles, { status: 200 });
     } catch (error) {
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch roles');
         return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
     }
 }
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof DuplicateRoleNameError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create role');
         return NextResponse.json({ error: 'Failed to create role' }, { status: 500 })
     }
 }

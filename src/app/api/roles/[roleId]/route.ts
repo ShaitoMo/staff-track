@@ -6,6 +6,7 @@ import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     _req: NextRequest,
@@ -78,7 +79,7 @@ export async function PATCH(
         if (error instanceof DuplicateRoleNameError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update role');
         return NextResponse.json({ error: 'Failed to update role' }, { status: 500 })
     }
 }

@@ -6,6 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
     const caller = getCurrentUser(req)
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create user');
         return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 }
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof ForbiddenError) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch users');
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
 }

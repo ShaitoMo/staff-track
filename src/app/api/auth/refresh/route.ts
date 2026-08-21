@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { AuthService } from '@/services/auth-service'
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions } from '@/lib/auth'
 import { InvalidRefreshTokenError } from '@/exceptions/invalid-refresh-token-error'
+import { logger } from '@/lib/logger'
 
 /** POST /api/auth/refresh — mints a new access token from the refresh cookie, re-reading current role/branches/active state. */
 export async function POST(req: NextRequest) {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof InvalidRefreshTokenError) {
             return NextResponse.json({ error: error.message }, { status: 401 })
         }
-        console.error(error)
+        logger.error({ err: error }, 'Failed to refresh session');
         return NextResponse.json({ error: 'Failed to refresh session' }, { status: 500 })
     }
 }

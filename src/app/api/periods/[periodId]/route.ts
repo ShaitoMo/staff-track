@@ -7,6 +7,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { PeriodInUseError } from '@/exceptions/period-in-use-error'
+import { logger } from '@/lib/logger'
 
 /** A chain-wide period (branchId null) is owner-only to touch; a branch's own just needs access to it. */
 function assertMayTouchPeriod(user: AccessTokenPayload, branchId: number | null): void {
@@ -72,7 +73,7 @@ export async function PATCH(
         if (error instanceof ShiftPeriodNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update period');
         return NextResponse.json({ error: 'Failed to update period' }, { status: 500 })
     }
 }
@@ -116,7 +117,7 @@ export async function DELETE(
         if (error instanceof PeriodInUseError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to delete period');
         return NextResponse.json({ error: 'Failed to delete period' }, { status: 500 })
     }
 }
