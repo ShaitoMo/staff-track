@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
     const user = getCurrentUser(req)
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create register');
         return NextResponse.json({ error: 'Failed to create register' }, { status: 500 })
     }
 }

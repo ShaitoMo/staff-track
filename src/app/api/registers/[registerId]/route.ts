@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -97,7 +98,7 @@ export async function PATCH(
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update register');
         return NextResponse.json({ error: 'Failed to update register' }, { status: 500 })
     }
 }

@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/branches/:id/coverage?weekStart=
@@ -56,7 +57,7 @@ export async function GET(
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to compute coverage gaps');
         return NextResponse.json({ error: 'Failed to compute coverage gaps' }, { status: 500 })
     }
 }

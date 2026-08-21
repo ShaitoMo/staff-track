@@ -12,6 +12,7 @@ import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
+import { logger } from '@/lib/logger'
 
 //GET /api/shifts?branch_id=&user_id=&register_id=&from=&to=
 
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof ForbiddenError) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch shifts');
         return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 })
     }
 }
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create shift');
         return NextResponse.json({ error: 'Failed to create shift' }, { status: 500 })
     }
 }

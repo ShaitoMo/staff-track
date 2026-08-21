@@ -7,6 +7,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { DuplicateAttendanceError } from '@/exceptions/duplicate-attendance-error'
+import { logger } from '@/lib/logger'
 
 
 export async function GET(req: NextRequest) {
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof ForbiddenError) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch attendance');
         return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 })
     }
 }
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof BranchNotFoundError || error instanceof UserNotAtBranchError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create attendance');
         return NextResponse.json({ error: 'Failed to create attendance' }, { status: 500 })
     }
 }

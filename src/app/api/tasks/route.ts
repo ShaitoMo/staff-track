@@ -9,6 +9,7 @@ import { RoleNotFoundError } from "@/exceptions/role-not-found-error";
 import { UserNotAtBranchError } from "@/exceptions/user-not-at-branch-error";
 import { InvalidTaskAssignmentError } from "@/exceptions/invalid-task-assignment-error";
 import { InvalidRecurrenceError } from "@/exceptions/invalid-recurrence-error";
+import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
     const user = getCurrentUser(req)
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create task');
         return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
     }
 }

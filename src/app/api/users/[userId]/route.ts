@@ -7,6 +7,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -97,7 +98,7 @@ export async function PATCH(
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update user');
         return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
     }
 }

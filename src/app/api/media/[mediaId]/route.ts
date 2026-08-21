@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
+import { logger } from '@/lib/logger'
 
 /** GET /api/media/:mediaId — metadata only; `file_path` isn't a servable URL yet (TO-BE-REVIEWED.md #1f). Same access rule as its parent task instance. */
 export async function GET(
@@ -45,7 +46,7 @@ export async function GET(
         if (error instanceof MediaNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch media');
         return NextResponse.json({ error: 'Failed to fetch media' }, { status: 500 })
     }
 }

@@ -7,6 +7,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error'
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error'
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -111,7 +112,7 @@ export async function PATCH(
         if (error instanceof InvalidTaskAssignmentError || error instanceof InvalidScheduleChangeError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update task');
         return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
     }
 }

@@ -3,6 +3,7 @@ import { TaskInstanceService } from '@/services/task-instance-service'
 import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { logger } from '@/lib/logger'
 
 /** GET /api/task-instances/:instanceId — owner unrestricted, manager their branches, staff only if directly assigned by name (narrower than the list's role-matching). */
 export async function GET(
@@ -46,7 +47,7 @@ export async function GET(
         if (error instanceof ForbiddenError) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch task instance');
         return NextResponse.json({ error: 'Failed to fetch task instance' }, { status: 500 })
     }
 }
