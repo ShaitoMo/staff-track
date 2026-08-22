@@ -65,14 +65,9 @@ interface ColumnMap {
 }
 
 /**
- * Reads the clock machine's export into punches.
- *
- * Columns are located by their header text rather than by position, because the export carries
- * blank spacer columns ('No.') and a trailing 'Total in time' that is a duration, not a punch —
- * matching on 'Clock In n'/'Clock Out n' picks up the pairs and nothing else.
- *
- * A row that cannot be read does not stop the file: it becomes an entry in `errors` and the rest
- * still imports, since one mistyped cell should not cost a manager the whole month.
+ * Reads the clock machine's export into punches. Columns are located by header text, not
+ * position, since the export carries blank spacer columns and a 'Total in time' duration column.
+ * A row that fails to parse becomes an `errors` entry rather than stopping the whole file.
  */
 export function parseAttendanceWorkbook(buffer: Buffer): ParsedSheet {
     let workbook: XLSX.WorkBook;

@@ -146,11 +146,9 @@ export class TaskInstanceRepository {
     }
 
     /**
-     * Inserts one instance per date, ignoring dates that already have one.
-     *
-     * `skipDuplicates` issues ON CONFLICT DO NOTHING against UNIQUE (task_id, due_date), which is
-     * what makes generation idempotent: the top-up job re-inserts the same window every run and
-     * only genuinely new dates take effect. Returns how many rows were new.
+     * Inserts one instance per date, skipping ones that already exist (ON CONFLICT DO NOTHING on
+     * UNIQUE (task_id, due_date)) — what makes the top-up job idempotent across reruns. Returns
+     * how many rows were new.
      */
     static async createInstances(
         taskId: number,
@@ -170,23 +168,13 @@ export class TaskInstanceRepository {
     }
 
     /**
-     * Removes the pending instances of deactivated *recurring* tasks — work that is cancelled.
-     *
-     * Only `pending` rows are eligible, so nothing carrying a photo, a completer or a review
-     * decision can be reached. Returns how many rows were removed.
-     *
-     * This covers the tasks the per-task diff never visits: an inactive task is absent from
-     * `getActiveRecurringTasks`, so the reconcile loop skips it and something has to sweep up
-     * behind it. Everything a *live* rule fails to justify is the diff's job, not this one's.
-     *
-     * Recurring only, and that restriction is load-bearing rather than cautious. Deleting here is
-     * safe precisely because the insert pass regenerates the window on the next run, so a
-     * reactivated recurring task gets its instances back. A one-off has no such pass — its single
-     * instance is authored at task creation and never recreated — so pruning one would strand the
-     * task forever: it would exist with no instance, and workers only ever see instances.
-     * One-off cancellation is handled without deleting anything, by the read filter (hidden while
-     * inactive) and the completion guard (refused while inactive), both of which simply stop
-     * applying if the task is switched back on.
+     * Removes pending instances of deactivated *recurring* tasks — cancelled work the per-task
+     * diff never visits (inactive tasks are absent from getActiveRecurringTasks). Pending-only, so
+     * nothing with a photo, completer or review decision is touched. Recurring-only is load-bearing:
+     * deleting is safe because the insert pass regenerates the window on reactivation, but a
+     * one-off's single instance is never recreated, so deleting it would strand the task with none.
+     * One-off cancellation instead relies on the inactive-gated read filter and completion guard.
+     * Returns how many rows were removed.
      */
     static async deleteCancelledPendingInstances(): Promise<number> {
         const result = await db.taskInstance.deleteMany({
@@ -200,11 +188,9 @@ export class TaskInstanceRepository {
     }
 
     /**
-     * The task's own pending instances from `from` onwards, for the reconcile diff.
-     *
-     * Bounded at `from` deliberately: rows before it are overdue work that was assigned and not
-     * done, and that record is the point of the system. The diff must never be in a position to
-     * delete them, so they are not fetched.
+     * The task's own pending instances from `from` onwards, for the reconcile diff. Bounded there
+     * deliberately: rows before `from` are overdue work-not-done, and the diff must never be able
+     * to delete that record.
      */
     static async getPendingInstancesFrom(
         taskId: number,

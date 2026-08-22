@@ -9,15 +9,10 @@ import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error'
 import { logger } from '@/lib/logger'
 
 /**
- * GET /api/dashboard?branch_id=&from=&to=
- *
- * Attendance, task completion and coverage summary for a date range (FR11). Omitting `branch_id`
- * is the all-branches view and is owner-only, mirroring FR10's "owner sees all branches"; a
- * manager must name one of their own branches. `from`/`to` default to today when omitted.
- *
- * A `branch_id` naming a branch that does not exist is a 400, not a 404, matching
- * schedule-vs-actual: the report is the resource being addressed, the request describing it is
- * what is wrong.
+ * GET /api/dashboard?branch_id=&from=&to= — attendance, task and coverage summary for a range
+ * (FR11). Omitting `branch_id` is the owner-only all-branches view (FR10); a manager must name
+ * their own branch. `from`/`to` default to today. An unknown `branch_id` is a 400, not 404 — the
+ * report is the resource, the request describing it is what's wrong.
  */
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams

@@ -1,16 +1,10 @@
 import pino from 'pino';
 
 /**
- * One logger for the whole app. `pino`/`pino-pretty`/`thread-stream` are all on Next's built-in
- * serverExternalPackages list, so no next.config.ts change is needed to keep them out of the
- * route-handler bundle.
- *
- * Dev fans out to two `pino-pretty` targets, same formatter both times (readable timestamp,
- * `INFO`/`ERROR` instead of the raw level number, stack traces on their own indented lines): one
- * colorized to the console as before, one plain-text to `logs/dev.log` (gitignored) — no ANSI
- * color codes there since that file gets opened in an editor, not a terminal, and escape codes
- * would just show up as garbage. Production writes JSON to stdout only — the host's own log
- * capture is the place for retention, not this repo.
+ * One logger for the whole app (pino/pino-pretty/thread-stream are on Next's
+ * serverExternalPackages list, so no config change is needed). Dev fans out to a colorized console
+ * target and a plain-text `logs/dev.log` (gitignored, no ANSI codes since it's read in an editor).
+ * Production writes JSON to stdout only — the host's log capture handles retention.
  *
  * No redaction is configured, so callers are the only safeguard: never pass a request body,
  * password, or token into a log call, only the error object and identifiers.

@@ -9,13 +9,10 @@ import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 import { logger } from '@/lib/logger'
 
 /**
- * POST /api/attendance/import — a clock-machine export (FR5 v1).
- *
- * multipart/form-data: `file` (the CSV/Excel export) plus `branch_id`. Importer comes from the session.
- *
- * 201 even when rows inside the file failed: the batch was created and the response carries the
- * per-row errors, because a manager fixing three bad lines out of four hundred needs the other
- * 397 imported. Only an unreadable file is a 400.
+ * POST /api/attendance/import — a clock-machine export (FR5 v1). multipart/form-data: `file`
+ * plus `branch_id`; importer comes from the session. 201 even with per-row failures — the batch
+ * still imports and errors ride along in the response, since one bad line shouldn't cost the rest.
+ * Only an unreadable file is a 400.
  */
 export async function POST(req: NextRequest) {
     const user = requireAuthenticated(req);

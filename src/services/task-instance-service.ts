@@ -176,13 +176,9 @@ export class TaskInstanceService {
     }
 
     /**
-     * A task targets either a named person or a whole role.
-     *   - person: only that person may complete it.
-     *   - role:   an active holder of that role who works at the task's branch may complete it.
-     *
-     * A deactivated task accepts no completions at all. The read filter already hides its pending
-     * instances, but hiding is not enforcing: a client holding an id from before the flag flipped
-     * would otherwise still be able to complete cancelled work.
+     * A task targets a named person or a whole role: person → only they may complete it; role →
+     * an active holder at the task's branch may. A deactivated task accepts no completions — the
+     * read filter hides its pending instances, but hiding isn't enforcing against a stale id.
      */
     private static async assertMayComplete(
         instance: InstanceForWrite,
