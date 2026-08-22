@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 }
+/** Owner sees every user; a manager only those assigned to at least one of their own branches. */
 export async function GET(req: NextRequest) {
     const caller = getCurrentUser(req)
 
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
 
     try {
         requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
-        const users = await UserService.getAllUsers();
+        const users = await UserService.getAllUsers(caller.role === OWNER_ROLE ? undefined : caller.branchIds);
         return NextResponse.json(users, { status: 200 });
     } catch (error) {
         if (error instanceof ForbiddenError) {

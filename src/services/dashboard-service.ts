@@ -3,9 +3,11 @@ import { AttendanceRepository } from '@/repository/attendance-repository';
 import { ShiftRepository } from '@/repository/shift-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
 import { compareScheduleWithAttendance } from '@/lib/schedule-vs-actual';
+import { machineDayOf } from '@/lib/machine-time';
 import { DashboardFiltersInput, DashboardResponse } from '@/types/dashboard';
 import { toDateOnlyString } from '@/types/date-only';
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
+import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -19,8 +21,14 @@ export class DashboardService {
             await DashboardService.assertBranchExists(branchId);
         }
 
-        const from = fromInput ?? DashboardService.today();
-        const to = toInput ?? DashboardService.today();
+        const from = fromInput ?? machineDayOf(new Date());
+        const to = toInput ?? machineDayOf(new Date());
+
+        // The schema only compares from/to when both are given, since either can default to
+        // today — a default landing on the wrong side of the other one still needs to be caught.
+        if (to < from) {
+            throw new InvalidDateRangeError();
+        }
 
         const [branches, shifts, punches, instances] = await Promise.all([
             branchId !== undefined ? [] : BranchRepository.getAllBranches(),
@@ -67,11 +75,6 @@ export class DashboardService {
             },
             attendance_coverage: attendanceCoverage,
         };
-    }
-
-    /** Today at UTC midnight, matching how DateOnlySchema parses a calendar day. */
-    private static today(): Date {
-        return new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
     }
 
     private static async assertBranchExists(branchId: number): Promise<void> {
