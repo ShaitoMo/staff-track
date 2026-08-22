@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error'
 import { logger } from '@/lib/logger'
 
 /**
@@ -59,6 +60,9 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 403 })
         }
         if (error instanceof BranchNotFoundError) {
+            return NextResponse.json({ error: error.message }, { status: 400 })
+        }
+        if (error instanceof InvalidDateRangeError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         logger.error({ err: error }, 'Failed to build dashboard');
