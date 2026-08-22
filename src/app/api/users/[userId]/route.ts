@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
 import { UserUpdateSchema } from '@/types/user'
 import { getCurrentUser } from '@/lib/auth'
-import { MANAGER_ROLE, OWNER_ROLE, requireRole, requireSelfOrRole } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole, requireUserUpdateAllowed } from '@/lib/rbac'
 import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
@@ -82,7 +82,7 @@ export async function PATCH(
     }
 
     try {
-        requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
+        requireUserUpdateAllowed(caller, userId, validationResult.data)
         const user = await UserService.updateUser(userId, validationResult.data);
         return NextResponse.json(user, { status: 200 });
     } catch (error) {

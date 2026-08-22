@@ -1,6 +1,8 @@
 import { AccessTokenPayload } from '@/types/auth'
+import { UpdateUserInput } from '@/types/user'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
 import { BranchAccessDeniedError } from '@/exceptions/branch-access-denied-error'
+import { SelfRoleChangeError } from '@/exceptions/forbidden-error'
 
 export const OWNER_ROLE = 'owner'
 export const MANAGER_ROLE = 'manager'
@@ -30,4 +32,26 @@ export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number
     }
 
     requireRole(user, roles)
+}
+
+/**
+ * PATCH /users/:userId carries a mix of self-service fields and privileged ones, so one
+ * requireRole/requireSelfOrRole call can't gate the whole body — each field present is checked
+ * against its own requirement, and the request is refused if any of them fails.
+ */
+export function requireUserUpdateAllowed(user: AccessTokenPayload, targetUserId: number, data: UpdateUserInput): void {
+    if (data.roleId !== undefined) {
+        if (user.userId === targetUserId) {
+            throw new SelfRoleChangeError()
+        }
+        requireRole(user, [OWNER_ROLE])
+    }
+
+    if (data.isActive !== undefined) {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+    }
+
+    if (data.name !== undefined || data.phone !== undefined) {
+        requireSelfOrRole(user, targetUserId, [OWNER_ROLE, MANAGER_ROLE])
+    }
 }
