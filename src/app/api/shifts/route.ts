@@ -64,12 +64,8 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/shifts — schedules a shift.
- *
- * Two refusals are separated from the rest of the 400s because a client acts on them differently:
- * a clashing shift is a 409, since nothing about the request is malformed and the same body may
- * succeed once the other shift moves, and a register at the wrong branch is a 422, since the body
- * is well-formed but names a pair that cannot exist.
+ * POST /api/shifts — schedules a shift. A clashing shift is a 409 (the same body may succeed
+ * later); a register at the wrong branch is a 422 (well-formed, but names a pair that can't exist).
  */
 export async function POST(req: NextRequest) {
     const user = getCurrentUser(req)

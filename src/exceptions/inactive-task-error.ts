@@ -1,11 +1,8 @@
 /**
- * A deactivated task's outstanding work is cancelled, so no new completions are accepted.
- *
- * Not a ForbiddenError: the caller may well be the right person: the task itself is closed,
- * which is a conflict with the resource's state (-> 409), not a permission problem.
- *
- * Review is deliberately *not* guarded this way. An instance already sitting in `completed`
- * when its task was deactivated still needs a path to verified or rejected.
+ * A deactivated task's outstanding work is cancelled — no new completions accepted. Not a
+ * ForbiddenError: the task itself is closed (-> 409 conflict), not a permission problem. Review
+ * is deliberately not guarded this way, since an instance already `completed` still needs a path
+ * to verified/rejected.
  */
 export class InactiveTaskError extends Error {
     constructor(message = 'This task is no longer active') {

@@ -9,14 +9,10 @@ import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { logger } from '@/lib/logger'
 
 /**
- * GET /api/schedule-vs-actual?branch_id=&user_id=&from=&to=
- *
- * One row per scheduled shift in the window, with the punches recorded against it and how far
- * either end slipped (FR6). `from` and `to` are required and bound `shift_date` inclusively;
- * `branch_id` and `user_id` narrow it further.
- *
- * A filter naming a branch or user that does not exist is a 400, not a 404: the report is the
- * resource being addressed and it exists, the request describing it is what is wrong.
+ * GET /api/schedule-vs-actual?branch_id=&user_id=&from=&to= — one row per scheduled shift in the
+ * window, with punches recorded against it and how far either end slipped (FR6). `from`/`to` are
+ * required and bound `shift_date` inclusively. An unknown `branch_id`/`user_id` is a 400, not
+ * 404 — the report is the resource, the request describing it is what's wrong.
  */
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams

@@ -30,15 +30,9 @@ export class TaskService {
     }
 
     /**
-     * Updates a task, then brings its forward instances into line with the new definition.
-     *
-     * Editing a task's schedule is not just a field write: the instances already generated from
-     * the old one are still sitting there. Deactivating a task, or narrowing its rule, leaves rows
-     * nobody should be asked to do, and the daily job would not clear them for up to a day.
-     * Reconciling here makes the change visible at the moment it is made.
-     *
-     * A task's kind is fixed at creation, so `is_recurring` cannot move in either direction —
-     * see InvalidScheduleChangeError for why neither has a coherent answer.
+     * Updates a task, then reconciles its forward instances to the new definition — deactivating
+     * or narrowing a schedule would otherwise leave stale rows until the next daily job run.
+     * `is_recurring` is immutable (see InvalidScheduleChangeError).
      */
     static async updateTask(taskId: number, data: UpdateTaskInput): Promise<Task> {
         const before = await TasksRepository.getTaskById(taskId);
@@ -72,13 +66,8 @@ export class TaskService {
 
     /**
      * Reconciles one recurring task's forward instances against its own definition — the same
-     * insert-then-prune the daily job applies across every task, narrowed to one.
-     *
-     * A task that generates nothing expects no dates, so every forward pending row is surplus and
-     * goes. Deactivation is the way that happens in practice: `is_recurring` is immutable and the
-     * schema will not let a recurring task hold a null rule, so the other two arms of `generates`
-     * are guarding against state that PATCH cannot produce. Deleting is safe for exactly the
-     * reason the job's prune is: a recurring task's instances regenerate from its rule.
+     * insert-then-prune the daily job applies, narrowed to one task. Deleting is safe because a
+     * recurring task's instances always regenerate from its rule.
      */
     private static async syncGeneratedInstances(task: Task, today = new Date()): Promise<void> {
         const from = machineDayOf(today);
@@ -122,20 +111,11 @@ export class TaskService {
     }
 
     /**
-     * Brings the instance table back in line with the tasks as they stand today.
-     *
-     * Per active recurring task: insert the dates its rule lands on across the window, then delete
-     * the forward pending rows the rule does not account for. The second half is what makes a
-     * narrowed rule take effect — 'daily' cut back to 'weekly:mon' leaves Tue–Sun rows that no
-     * insert pass would ever remove. Afterwards, one sweep clears the pending rows of tasks that
-     * were deactivated, which the per-task loop cannot see because they are not in its list.
-     *
-     * Recurring tasks only, which is what makes deleting safe: anything removed here, the insert
-     * pass can put back. One-off instances are authored rather than generated and never touched.
-     *
-     * Every pass is idempotent, so the state converges no matter how often the job runs or how
-     * many days it misses. `updateTask` applies the same reconciliation immediately on a change;
-     * this run is what repairs anything that write missed.
+     * Brings the instance table in line with active recurring tasks: insert+prune per task (a
+     * narrowed rule needs the prune, since no insert pass removes rows on its own), then one sweep
+     * for tasks deactivated since the last run. One-off instances are never touched. Idempotent,
+     * so this repairs whatever a missed run left behind; `updateTask` does the same reconciliation
+     * immediately on a live edit.
      */
     static async reconcileInstances(
         today = new Date(),
