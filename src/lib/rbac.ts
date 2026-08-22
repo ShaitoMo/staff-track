@@ -25,6 +25,17 @@ export function requireBranchAccess(user: AccessTokenPayload, branchId: number):
     }
 }
 
+/** Throws unless the caller shares at least one of these branches. Owner is unrestricted (FR10). For a subject with no branches at all, only an owner may act on them. */
+export function requireAnyBranchAccess(user: AccessTokenPayload, branchIds: number[]): void {
+    if (user.role === OWNER_ROLE) {
+        return
+    }
+
+    if (!branchIds.some((branchId) => user.branchIds.includes(branchId))) {
+        throw new BranchAccessDeniedError()
+    }
+}
+
 /** For users/:userId/* routes: the subject themselves always may; owner/manager may on anyone's behalf. */
 export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number, roles: string[]): void {
     if (user.userId === targetUserId) {
@@ -32,21 +43,6 @@ export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number
     }
 
     requireRole(user, roles)
-}
-
-/**
- * Throws unless the caller shares at least one branch with the target user. Owner is
- * unrestricted (FR10). A target with no branch links (e.g. the owner account itself)
- * can therefore only be acted on by the owner.
- */
-export function requireSharedBranchWithUser(user: AccessTokenPayload, targetBranchIds: number[]): void {
-    if (user.role === OWNER_ROLE) {
-        return
-    }
-
-    if (!targetBranchIds.some((branchId) => user.branchIds.includes(branchId))) {
-        throw new BranchAccessDeniedError()
-    }
 }
 
 /**

@@ -2,12 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
 import { UserBranchService } from '@/services/user-branch-service'
 import { UserUpdateSchema } from '@/types/user'
-import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole, requireSharedBranchWithUser, requireUserUpdateAllowed } from '@/lib/rbac'
+import { AccessTokenPayload } from '@/types/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireAnyBranchAccess, requireSelfOrRole, requireUserUpdateAllowed } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+
+/** For a manager acting on someone else: the target must share at least one of the manager's branches. Owner and self are unrestricted. */
+async function requireCallerCanReachUser(caller: AccessTokenPayload, targetUserId: number): Promise<void> {
+    if (caller.userId === targetUserId || caller.role === OWNER_ROLE) {
+        return
+    }
+
+    const branches = await UserBranchService.getUserBranches({ userId: targetUserId })
+    requireAnyBranchAccess(caller, branches.map((branch) => branch.branchId))
+}
 
 export async function GET(
     req: NextRequest,
@@ -29,6 +40,7 @@ export async function GET(
 
     try {
         requireSelfOrRole(caller, userId, [OWNER_ROLE, MANAGER_ROLE])
+        await requireCallerCanReachUser(caller, userId)
 
         const user = await UserService.getUserById(userId);
 
@@ -80,13 +92,7 @@ export async function PATCH(
 
     try {
         requireUserUpdateAllowed(caller, userId, validationResult.data)
-
-        if (caller.userId !== userId) {
-            const targetBranches = await UserBranchService.getBranchesByUser(userId)
-            requireSharedBranchWithUser(caller, targetBranches.map((branch) => branch.branchId))
-        }
-
-
+        await requireCallerCanReachUser(caller, userId)
         const user = await UserService.updateUser(userId, validationResult.data);
         return NextResponse.json(user, { status: 200 });
     } catch (error) {
