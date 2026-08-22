@@ -41,8 +41,13 @@ export class UserRepository {
             throw error
         }
     }
-    static async getAllUsers(): Promise<SafeUser[]> {
-        const users = await db.user.findMany();
+    /** branchIds scopes to users assigned to at least one of them; omitted, every user comes back. */
+    static async getAllUsers(branchIds?: number[]): Promise<SafeUser[]> {
+        const users = await db.user.findMany({
+            where: branchIds !== undefined
+                ? { branchLinks: { some: { branchId: { in: branchIds } } } }
+                : undefined,
+        });
         return users.map(user => ({
             userId: user.userId,
             name: user.name,
