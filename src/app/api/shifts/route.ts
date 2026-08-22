@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     try {
         requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
         requireBranchAccess(user, validationResult.data.branch_id)
-        const shift = await ShiftService.createShift(validationResult.data);
+        const shift = await ShiftService.createShift({ ...validationResult.data, created_by: user.userId });
         return NextResponse.json(shift, { status: 201 })
     } catch (error) {
         const forbidden = forbiddenResponse(error);
