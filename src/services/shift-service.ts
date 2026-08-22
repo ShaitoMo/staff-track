@@ -55,12 +55,9 @@ export class ShiftService {
     }
 
     /**
-     * Schedules a shift.
-     *
-     * The checks run before the insert because the database either cannot make them at all (the
-     * overlap) or makes them in a shape no client can act on (a foreign-key violation naming a
-     * constraint). Order matters only in that the branch is settled first, since the checks after
-     * it are all relative to it.
+     * Schedules a shift. Checks run before the insert since the DB either can't make them at all
+     * (the overlap) or makes them in a shape no client can act on (a raw FK violation). Branch is
+     * settled first — everything after it is relative to it.
      */
     static async createShift(data: CreateShiftInput): Promise<ShiftView> {
         await ShiftService.assertBranchExists(data.branch_id)
@@ -80,14 +77,10 @@ export class ShiftService {
     }
 
     /**
-     * Edits a shift, re-running the create-path checks against the row as it will stand — not
-     * against the request, which only carries the fields that are moving.
-     *
-     * Each check is skipped when nothing it depends on changed, with one exception worth its own
-     * line: the register is re-checked when the *branch* moves, because a register the request
-     * never mentioned belongs to the branch being left behind. The alternative — quietly nulling
-     * it — would drop a scheduling fact nobody asked to drop, so it is refused instead (422) and
-     * the client sends `register_id` explicitly.
+     * Edits a shift, re-running the create-path checks against the row as it will stand, not the
+     * request. Each check is skipped when nothing it depends on changed, except the register: it's
+     * re-checked when the branch moves, since a register the request didn't mention would
+     * otherwise be silently dropped — refused instead (422), client sends `register_id` explicitly.
      */
     static async updateShift(shiftId: number, data: UpdateShiftInput): Promise<ShiftView> {
         const before = await ShiftRepository.getShiftById(shiftId)
@@ -132,13 +125,10 @@ export class ShiftService {
     }
 
     /**
-     * The span to test for clashes: whichever of the date and the two times the request moved,
-     * over the stored values for the rest.
-     *
-     * A stored shift comes back as a ShiftView, where those three are JSON strings, and the
-     * overlap query compares Dates. Parsing them back through the very schemas that anchored them
-     * on the way in keeps the epoch-day and UTC-midnight conventions in one place — re-deriving
-     * them here is how a comparison ends up a day out.
+     * The span to test for clashes: whichever of date/times the request moved, over stored values
+     * for the rest. Parses ShiftView's string fields back through the same schemas that anchored
+     * them, so the epoch-day/UTC-midnight conventions stay in one place — re-deriving them here is
+     * how a comparison ends up a day out.
      */
     private static mergeSpan(
         before: ShiftView,
@@ -152,13 +142,9 @@ export class ShiftService {
     }
 
     /**
-     * The span to store on the shift: the period's defaults when period_id is given, copied onto
-     * the row rather than read live through the relation — editing a period's defaults later must
-     * not retroactively change what a past shift meant, and FR6 lateness has to be measured against
-     * the time actually scheduled. Otherwise the caller's own start_time/end_time, exactly as before.
-     *
-     * CreateShiftSchema refuses any other shape (period_id together with times, or neither), so by
-     * the time this runs exactly one of the two sources is available.
+     * The span to store: the period's defaults when `period_id` is given, copied onto the row (not
+     * read live) so editing a period later can't retroactively change what a past shift meant.
+     * Otherwise the caller's own times. CreateShiftSchema guarantees exactly one source is present.
      */
     private static async resolveSpan(data: CreateShiftInput): Promise<{ startTime: Date; endTime: Date }> {
         if (data.period_id === undefined) {
@@ -198,12 +184,9 @@ export class ShiftService {
     }
 
     /**
-     * Scheduling someone where they do not work, mirroring the rule TaskService.createTask applies
-     * to a named assignee: user_branches is the one place that says where a person can be given
-     * work, and a shift is work.
-     *
-     * A missing link and a missing user are the same answer here — neither is a user who works at
-     * this branch — so this doubles as the existence check on user_id.
+     * Scheduling someone where they don't work (mirrors TaskService.createTask's assignee rule) —
+     * `user_branches` is the one place that says where work can be given. Doubles as the existence
+     * check on `user_id`: a missing user and a missing link are the same answer here.
      */
     private static async assertUserWorksAtBranch(userId: number, branchId: number): Promise<void> {
         const links = await UserBranchRepository.getUserBranches({ userId, branchId })
@@ -235,14 +218,10 @@ export class ShiftService {
     }
 
     /**
-     * Refuses a second shift over the same hours for the same person. Branch is not part of the
-     * question: a worker who covers two branches still cannot be at both at once, which is the
-     * same reason getShiftsForUser needs no branch filter.
-     *
-     * This reads and then writes in two statements, so two requests racing each other can both
-     * find nothing and both insert. Closing that properly needs a Postgres exclusion constraint on
-     * (user_id, shift_date, timespan), which the schema does not have yet — worth adding before
-     * more than one manager schedules at a time.
+     * Refuses a second shift over the same hours for the same person — branch isn't part of the
+     * question, since a worker can't be at two branches at once. Read-then-write in two statements,
+     * so two racing requests can both insert; closing that needs a Postgres exclusion constraint on
+     * (user_id, shift_date, timespan), which the schema doesn't have yet.
      */
     private static async assertNoDoubleBooking(query: OverlapQuery): Promise<void> {
         const overlapping = await ShiftRepository.getOverlappingShifts(query)

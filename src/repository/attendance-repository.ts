@@ -36,11 +36,8 @@ export class AttendanceRepository {
 
     /**
      * One upload: the batch row and every punch it produced, in a transaction so a half-written
-     * import cannot be left behind.
-     *
-     * `skipDuplicates` leans on @@unique([userId, clockIn]) to make re-uploading the same file a
-     * no-op instead of an error — the rows already recorded are simply not inserted again, and the
-     * count that comes back is what actually landed.
+     * import can't be left behind. `skipDuplicates` leans on @@unique([userId, clockIn]) to make
+     * re-uploading the same file a no-op — the returned count is what actually landed.
      */
     static async importAttendance(input: {
         fileName: string;
