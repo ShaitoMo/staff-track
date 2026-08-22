@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { ScheduleVsActualService } from '@/services/schedule-vs-actual-service'
+import { ScheduleVsActualFiltersSchema } from '@/types/schedule-vs-actual'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { logger } from '@/lib/logger'
+
+/**
+ * GET /api/schedule-vs-actual?branch_id=&user_id=&from=&to= — one row per scheduled shift in the
+ * window, with punches recorded against it and how far either end slipped (FR6). `from`/`to` are
+ * required and bound `shift_date` inclusively. An unknown `branch_id`/`user_id` is a 400, not
+ * 404 — the report is the resource, the request describing it is what's wrong.
+ */
+export async function GET(req: NextRequest) {
+    const searchParams = req.nextUrl.searchParams
+
+    const validationResult = ScheduleVsActualFiltersSchema.safeParse({
+        branch_id: searchParams.get('branch_id') ?? undefined,
+        user_id: searchParams.get('user_id') ?? undefined,
+        from: searchParams.get('from') ?? undefined,
+        to: searchParams.get('to') ?? undefined,
+    })
+
+    if (!validationResult.success) {
+        const errors = validationResult.error.issues.map(issue => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+        }))
+        return NextResponse.json({ error: errors }, { status: 400 })
+    }
+
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+
+        if (validationResult.data.branch_id !== undefined) {
+            requireBranchAccess(user, validationResult.data.branch_id)
+        }
+
+        const rows = await ScheduleVsActualService.getScheduleVsActual(validationResult.data)
+        const visible = user.role === OWNER_ROLE
+            ? rows
+            : rows.filter((row) => user.branchIds.includes(row.branch_id))
+
+        return NextResponse.json(visible, { status: 200 })
+    } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
+        if (error instanceof BranchNotFoundError || error instanceof UserNotFoundError) {
+            return NextResponse.json({ error: error.message }, { status: 400 })
+        }
+        logger.error({ err: error }, 'Failed to compare schedule with attendance');
+        return NextResponse.json({ error: 'Failed to compare schedule with attendance' }, { status: 500 })
+    }
+}

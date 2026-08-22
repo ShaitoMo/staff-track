@@ -1,0 +1,211 @@
+import {
+    TaskInstanceRepository,
+    TaskInstanceFilters,
+} from '@/repository/task-instance-repository';
+import { UserRepository } from '@/repository/user-repository';
+import { UserBranchRepository } from '@/repository/user-branch-repository';
+import { savePhoto } from '@/lib/storage';
+import { assertTransition } from '@/lib/task-status';
+import { MANAGER_ROLE, OWNER_ROLE } from '@/lib/rbac';
+import {
+    TaskInstanceDetailView,
+    TaskInstanceFiltersInput,
+    TaskInstanceListView,
+    UserTaskInstanceFiltersInput,
+} from '@/types/task-instance';
+import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error';
+import { NotAssignedToTaskError, NotBranchManagerError, SelfReviewError } from '@/exceptions/forbidden-error';
+import { InactiveTaskError } from '@/exceptions/inactive-task-error';
+import { UserNotFoundError } from '@/exceptions/user-not-found-error';
+
+type InstanceForWrite = NonNullable<
+    Awaited<ReturnType<typeof TaskInstanceRepository.getInstanceForWrite>>
+>;
+
+export class TaskInstanceService {
+    static async getTaskInstances(filters: TaskInstanceFiltersInput): Promise<TaskInstanceListView[]> {
+        const repositoryFilters: TaskInstanceFilters = {
+            branchId: filters.branch_id,
+            dueDate: filters.date,
+            status: filters.status,
+        };
+
+        if (filters.user_id !== undefined) {
+            const user = await UserRepository.getUserById(filters.user_id);
+
+            // an unknown user is asking about nobody's tasks, not everybody's
+            if (!user) {
+                return [];
+            }
+
+            const branchLinks = await UserBranchRepository.getUserBranches({ userId: user.userId });
+
+            repositoryFilters.assignedToUser = {
+                userId: user.userId,
+                roleId: user.roleId,
+                branchIds: branchLinks.map((link) => link.branchId),
+            };
+        }
+
+        return TaskInstanceRepository.getTaskInstances(repositoryFilters);
+    }
+
+    /**
+     * GET /users/:userId/tasks — one worker's own list (FR: personal + claimable role tasks).
+     *
+     * Unlike getTaskInstances' user_id filter, the user comes from the path here, so an unknown
+     * one is a 404 rather than a quietly empty list.
+     */
+    static async getTaskInstancesForUser(
+        userId: number,
+        filters: UserTaskInstanceFiltersInput,
+    ): Promise<TaskInstanceListView[]> {
+        const user = await UserRepository.getUserById(userId);
+
+        if (!user) {
+            throw new UserNotFoundError();
+        }
+
+        const branchLinks = await UserBranchRepository.getUserBranches({ userId: user.userId });
+
+        return TaskInstanceRepository.getTaskInstances({
+            status: filters.status,
+            dueFrom: filters.due_from,
+            dueTo: filters.due_to,
+            assignedToUser: {
+                userId: user.userId,
+                roleId: user.roleId,
+                branchIds: branchLinks.map((link) => link.branchId),
+            },
+        });
+    }
+
+    static async getTaskInstanceById(instanceId: number): Promise<TaskInstanceDetailView | null> {
+        return TaskInstanceRepository.getTaskInstanceById(instanceId);
+    }
+
+    /**
+     * Completion: permission and status are settled before the photo is written, so a request that
+     * was never going to succeed leaves no orphan file behind. The photo is then saved to storage,
+     * and only the database work runs inside the transaction.
+     */
+    static async completeInstance(params: {
+        instanceId: number;
+        completedBy: number;
+        photo: File;
+    }): Promise<TaskInstanceDetailView> {
+        const { instanceId, completedBy, photo } = params;
+
+        const instance = await TaskInstanceService.loadForWrite(instanceId);
+
+        await TaskInstanceService.assertMayComplete(instance, completedBy);
+        assertTransition(instance.status, 'completed');
+
+        const filePath = await savePhoto(photo, instanceId);
+
+        return TaskInstanceRepository.completeInstance({
+            instanceId,
+            completedBy,
+            filePath,
+            // the server clock is the only accepted source: neither the request body nor the
+            // photo's EXIF data can be trusted to say when the work actually happened
+            completedAt: new Date(),
+        });
+    }
+
+    /**
+     * Review is not gated on the task still being active, deliberately. An instance that was
+     * already `completed` when its task was deactivated must keep its route to verified or
+     * rejected, or the photo sits there forever with nobody able to sign it off.
+     */
+    static async reviewInstance(params: {
+        instanceId: number;
+        decision: 'verified' | 'rejected';
+        reviewedBy: number;
+    }): Promise<TaskInstanceDetailView> {
+        const { instanceId, decision, reviewedBy } = params;
+
+        const instance = await TaskInstanceService.loadForWrite(instanceId);
+
+        await TaskInstanceService.assertMayReview(reviewedBy, instance.task.branchId);
+
+        if (instance.completedBy !== null && instance.completedBy === reviewedBy) {
+            throw new SelfReviewError();
+        }
+
+        assertTransition(instance.status, decision);
+
+        return TaskInstanceRepository.reviewInstance({
+            instanceId,
+            decision,
+            reviewedBy,
+            reviewedAt: new Date(),
+        });
+    }
+
+    /** Reads the instance once and makes 'it exists' true for every check that follows. */
+    private static async loadForWrite(instanceId: number): Promise<InstanceForWrite> {
+        const instance = await TaskInstanceRepository.getInstanceForWrite(instanceId);
+
+        if (!instance) {
+            throw new TaskInstanceNotFoundError();
+        }
+
+        return instance;
+    }
+
+    /**
+     * A task targets a named person or a whole role: person → only they may complete it; role →
+     * an active holder at the task's branch may. A deactivated task accepts no completions — the
+     * read filter hides its pending instances, but hiding isn't enforcing against a stale id.
+     */
+    private static async assertMayComplete(
+        instance: InstanceForWrite,
+        completedBy: number,
+    ): Promise<void> {
+        const { assignedTo, assignedRoleId, branchId, active } = instance.task;
+
+        if (!active) {
+            throw new InactiveTaskError();
+        }
+
+        if (assignedTo !== null) {
+            if (assignedTo !== completedBy) {
+                throw new NotAssignedToTaskError();
+            }
+            return;
+        }
+
+        const user = await UserRepository.getUserById(completedBy);
+
+        if (!user || !user.isActive || user.roleId !== assignedRoleId) {
+            throw new NotAssignedToTaskError();
+        }
+
+        if (!(await TaskInstanceService.worksAtBranch(completedBy, branchId))) {
+            throw new NotAssignedToTaskError('You do not work at the branch this task belongs to');
+        }
+    }
+
+    /** Review requires an active owner (any branch) or manager (their own) — closes TO-BE-REVIEWED.md §1a. */
+    private static async assertMayReview(userId: number, branchId: number): Promise<void> {
+        const context = await UserRepository.getAuthContext(userId);
+
+        if (!context || !context.isActive) {
+            throw new NotBranchManagerError();
+        }
+
+        if (context.roleName !== OWNER_ROLE && context.roleName !== MANAGER_ROLE) {
+            throw new NotBranchManagerError('Only a manager may review a task instance');
+        }
+
+        if (context.roleName !== OWNER_ROLE && !context.branchIds.includes(branchId)) {
+            throw new NotBranchManagerError('You are not attached to the branch this task belongs to');
+        }
+    }
+
+    private static async worksAtBranch(userId: number, branchId: number): Promise<boolean> {
+        const links = await UserBranchRepository.getUserBranches({ userId, branchId });
+        return links.length > 0;
+    }
+}
