@@ -42,8 +42,9 @@ export type UserShiftFiltersInput = z.infer<typeof UserShiftFiltersSchema>;
  * own times: the two sources would silently disagree about which one wins. When `period_id` is
  * absent, `start_time`/`end_time` come from the request exactly as before, and both are required.
  *
- * `created_by` is the manager doing the scheduling; a request field only until authentication
- * exists, matching CreateTaskSchema's `assigned_by`.
+ * `created_by` is the manager doing the scheduling. It is session-derived, not a request field —
+ * the route merges it in after this schema validates the rest, matching CreateTaskSchema's
+ * `assigned_by`.
  *
  * `end_time` must be strictly after `start_time`. A shift is therefore one span inside its own
  * `shift_date`, and an overnight shift is scheduled as two rows on two dates — which is what lets
@@ -57,7 +58,6 @@ export const CreateShiftSchema = z.object({
     shift_date: DateOnlySchema,
     start_time: TimeOnlySchema.optional(),
     end_time: TimeOnlySchema.optional(),
-    created_by: z.number().int().positive(),
 }).superRefine((data, ctx) => {
     const { start_time: startTime, end_time: endTime, period_id: periodId } = data;
 
@@ -98,7 +98,8 @@ export const CreateShiftSchema = z.object({
     }
 });
 
-export type CreateShiftInput = z.infer<typeof CreateShiftSchema>;
+/** created_by is session-derived — the route merges it in after CreateShiftSchema validates the rest. */
+export type CreateShiftInput = z.infer<typeof CreateShiftSchema> & { created_by: number };
 
 // ---------- Editing (PATCH /api/shifts/:shiftId) ----------
 
