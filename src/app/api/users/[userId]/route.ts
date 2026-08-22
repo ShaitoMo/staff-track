@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
 import { UserBranchService } from '@/services/user-branch-service'
 import { UserUpdateSchema } from '@/types/user'
-import { MANAGER_ROLE, OWNER_ROLE, requireRole, requireSelfOrRole, requireSharedBranchWithUser } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole, requireSharedBranchWithUser, requireUserUpdateAllowed } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
@@ -79,14 +79,13 @@ export async function PATCH(
     }
 
     try {
-        requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
+        requireUserUpdateAllowed(caller, userId, validationResult.data)
 
-        if (validationResult.data.roleId !== undefined) {
-            requireRole(caller, [OWNER_ROLE])
+        if (caller.userId !== userId) {
+            const targetBranches = await UserBranchService.getBranchesByUser(userId)
+            requireSharedBranchWithUser(caller, targetBranches.map((branch) => branch.branchId))
         }
 
-        const targetBranches = await UserBranchService.getBranchesByUser(userId)
-        requireSharedBranchWithUser(caller, targetBranches.map((branch) => branch.branchId))
 
         const user = await UserService.updateUser(userId, validationResult.data);
         return NextResponse.json(user, { status: 200 });
