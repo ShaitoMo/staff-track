@@ -7,6 +7,7 @@ import { machineDayOf } from '@/lib/machine-time';
 import { DashboardFiltersInput, DashboardResponse } from '@/types/dashboard';
 import { toDateOnlyString } from '@/types/date-only';
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
+import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -23,6 +24,12 @@ export class DashboardService {
         const today = machineDayOf(new Date());
         const from = fromInput ?? today;
         const to = toInput ?? today;
+
+        // The schema only compares from/to when both are given, since either can default to
+        // today — a default landing on the wrong side of the other one still needs to be caught.
+        if (to < from) {
+            throw new InvalidDateRangeError();
+        }
 
         const [branches, shifts, punches, instances] = await Promise.all([
             branchId !== undefined ? [] : BranchRepository.getAllBranches(),
