@@ -71,17 +71,17 @@ export function requireTaskInstanceAccess(user: AccessTokenPayload, branchId: nu
  */
 export function requireUserUpdateAllowed(user: AccessTokenPayload, targetUserId: number, data: UpdateUserInput): void {
     if (data.roleId !== undefined) {
+        requireRole(user, [OWNER_ROLE])
         if (user.userId === targetUserId) {
             throw new SelfRoleChangeError()
         }
-        requireRole(user, [OWNER_ROLE])
     }
 
     if (data.isActive !== undefined) {
+        requireRole(user, [OWNER_ROLE])
         if (user.userId === targetUserId) {
             throw new SelfStatusChangeError()
         }
-        requireRole(user, [OWNER_ROLE])
     }
 
     if (data.name !== undefined || data.phone !== undefined) {
