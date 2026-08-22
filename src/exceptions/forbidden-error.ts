@@ -40,3 +40,11 @@ export class SelfRoleChangeError extends ForbiddenError {
         this.name = 'SelfRoleChangeError'
     }
 }
+
+/** Changing isActive always requires acting on someone else, even for an owner. */
+export class SelfStatusChangeError extends ForbiddenError {
+    constructor(message = 'You may not change your own active status') {
+        super(message)
+        this.name = 'SelfStatusChangeError'
+    }
+}

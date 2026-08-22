@@ -2,7 +2,7 @@ import { AccessTokenPayload } from '@/types/auth'
 import { UpdateUserInput } from '@/types/user'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
 import { BranchAccessDeniedError } from '@/exceptions/branch-access-denied-error'
-import { ForbiddenError, SelfRoleChangeError } from '@/exceptions/forbidden-error'
+import { ForbiddenError, SelfRoleChangeError, SelfStatusChangeError } from '@/exceptions/forbidden-error'
 
 export const OWNER_ROLE = 'owner'
 export const MANAGER_ROLE = 'manager'
@@ -78,7 +78,10 @@ export function requireUserUpdateAllowed(user: AccessTokenPayload, targetUserId:
     }
 
     if (data.isActive !== undefined) {
-        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        if (user.userId === targetUserId) {
+            throw new SelfStatusChangeError()
+        }
+        requireRole(user, [OWNER_ROLE])
     }
 
     if (data.name !== undefined || data.phone !== undefined) {
