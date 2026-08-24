@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MediaService } from '@/services/media-service'
+import { TaskInstanceService } from '@/services/task-instance-service'
+import { getCurrentUser } from '@/lib/auth'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 
-/**
- * GET /api/task-instances/:instanceId/media — every photo on one occurrence, newest first.
- *
- * A non-existent instance is a 404; an existing one with no photos yet is a 200 with `[]` — the
- * two must not read the same, so the instance is checked before the media is listed.
- */
+/** GET /api/task-instances/:instanceId/media — newest first; 404 vs empty `[]` kept distinct. Same access rule as GET .../:instanceId. */
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]/media'>
 ) {
     const { instanceId: instanceIdParam } = await ctx.params;
@@ -18,10 +17,35 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
     }
 
+    const instanceId = Number(instanceIdParam)
+
+    const user = getCurrentUser(req)
+
+    if (!user) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     try {
-        const media = await MediaService.getMediaForInstance(Number(instanceIdParam));
+        const instance = await TaskInstanceService.getTaskInstanceById(instanceId);
+
+        if (!instance) {
+            return NextResponse.json({ error: 'Task instance not found' }, { status: 404 })
+        }
+
+        if (user.role === OWNER_ROLE) {
+            // no branch check
+        } else if (user.role === MANAGER_ROLE) {
+            requireBranchAccess(user, instance.task.branch_id)
+        } else if (instance.assignee?.user_id !== user.userId) {
+            return NextResponse.json({ error: 'Not permitted' }, { status: 403 })
+        }
+
+        const media = await MediaService.getMediaForInstance(instanceId);
         return NextResponse.json(media, { status: 200 });
     } catch (error) {
+        if (error instanceof ForbiddenError) {
+            return NextResponse.json({ error: error.message }, { status: 403 })
+        }
         if (error instanceof TaskInstanceNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
