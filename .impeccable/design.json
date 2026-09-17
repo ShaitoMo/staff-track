@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-17T00:00:00.000Z",
+  "title": "Design System: StaffTrack",
+  "extensions": {
+    "colorMeta": {
+      "market-blue": {
+        "role": "primary",
+        "displayName": "Market Blue",
+        "canonical": "#1E90FF",
+        "tonalRamp": [
+          "oklch(0.15 0.05 253)",
+          "oklch(0.27 0.10 253)",
+          "oklch(0.38 0.15 253)",
+          "oklch(0.49 0.18 253)",
+          "oklch(0.65 0.19 253)",
+          "oklch(0.72 0.16 253)",
+          "oklch(0.84 0.10 253)",
+          "oklch(0.95 0.04 253)"
+        ]
+      },
+      "ledger-ink": {
+        "role": "neutral",
+        "displayName": "Ledger Ink",
+        "canonical": "#16191B",
+        "tonalRamp": [
+          "oklch(0.15 0.006 220)",
+          "oklch(0.27 0.006 220)",
+          "oklch(0.38 0.006 220)",
+          "oklch(0.49 0.006 220)",
+          "oklch(0.61 0.006 220)",
+          "oklch(0.72 0.006 220)",
+          "oklch(0.84 0.006 220)",
+          "oklch(0.95 0.006 220)"
+        ]
+      },
+      "slate": {
+        "role": "neutral",
+        "displayName": "Slate",
+        "canonical": "#5B6368",
+        "tonalRamp": [
+          "oklch(0.15 0.006 220)",
+          "oklch(0.27 0.006 220)",
+          "oklch(0.38 0.006 220)",
+          "oklch(0.49 0.006 220)",
+          "oklch(0.61 0.006 220)",
+          "oklch(0.72 0.006 220)",
+          "oklch(0.84 0.006 220)",
+          "oklch(0.95 0.006 220)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#F8FAFA",
+        "tonalRamp": [
+          "oklch(0.15 0.006 220)",
+          "oklch(0.27 0.006 220)",
+          "oklch(0.38 0.006 220)",
+          "oklch(0.49 0.006 220)",
+          "oklch(0.61 0.006 220)",
+          "oklch(0.72 0.006 220)",
+          "oklch(0.84 0.006 220)",
+          "oklch(0.95 0.006 220)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "oklch(0.15 0.006 220)",
+          "oklch(0.27 0.006 220)",
+          "oklch(0.38 0.006 220)",
+          "oklch(0.49 0.006 220)",
+          "oklch(0.61 0.006 220)",
+          "oklch(0.72 0.006 220)",
+          "oklch(0.84 0.006 220)",
+          "oklch(0.95 0.006 220)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#E2E5E4",
+        "tonalRamp": [
+          "oklch(0.15 0.006 220)",
+          "oklch(0.27 0.006 220)",
+          "oklch(0.38 0.006 220)",
+          "oklch(0.49 0.006 220)",
+          "oklch(0.61 0.006 220)",
+          "oklch(0.72 0.006 220)",
+          "oklch(0.84 0.006 220)",
+          "oklch(0.95 0.006 220)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Card/page titles, e.g. the login card's \"StaffTrack\" title." },
+      "body": { "displayName": "Body", "purpose": "Default UI text, form labels, descriptions, table cells." },
+      "label": { "displayName": "Label", "purpose": "Table headers, field labels, status chips." },
+      "mono": { "displayName": "Mono", "purpose": "IDs, phone numbers, timestamps, anything meant to align in a column." }
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per view (e.g. login's \"Sign in\").",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Sign in</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: none; border-radius: var(--radius-md, 0.36rem); background: var(--primary, #1E90FF); color: var(--primary-foreground, #FFFFFF); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary, #1E90FF) 80%, transparent); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #1E90FF) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Lower-emphasis actions, e.g. the app shell's \"Log out\".",
+      "html": "<button class=\"ds-btn-outline\" type=\"button\">Log out</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.625rem; border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-md, 0.36rem); background: var(--background, #F8FAFA); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease; } .ds-btn-outline:hover { background: color-mix(in oklch, var(--foreground, #16191B) 5%, var(--background, #F8FAFA)); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #1E90FF) 50%, transparent); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat surface, ring instead of shadow, used for the login form container.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><div class=\"ds-card-title\">StaffTrack</div><div class=\"ds-card-description\">Sign in with your phone number and password.</div></div><div class=\"ds-card-content\">Form content</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0; background: var(--card, #FFFFFF); border-radius: var(--radius-xl, 0.63rem); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground, #16191B) 10%, transparent); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-card-header { display: flex; flex-direction: column; gap: 0.25rem; padding: 0 1rem; } .ds-card-title { font-size: 1.25rem; font-weight: 600; line-height: 1.25; color: var(--card-foreground, #16191B); } .ds-card-description { font-size: 0.875rem; color: var(--muted-foreground, #5B6368); } .ds-card-content { padding: 0 1rem; }"
+    },
+    {
+      "name": "Labeled Input",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "The Field + FieldLabel + Input pattern every form control uses.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-phone\">Phone</label><input class=\"ds-input\" id=\"ds-phone\" type=\"tel\" placeholder=\"555-0100\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; } .ds-field-label { font-size: 0.875rem; font-weight: 500; color: var(--foreground, #16191B); } .ds-input { height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-md, 0.36rem); background: var(--background, #F8FAFA); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.875rem; width: 100%; box-sizing: border-box; } .ds-input:focus-visible { outline: none; border-color: var(--ring, #1E90FF); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #1E90FF) 50%, transparent); } .ds-input::placeholder { color: var(--muted-foreground, #5B6368); }"
+    },
+    {
+      "name": "Destructive Alert",
+      "kind": "custom",
+      "refersTo": "alert-destructive",
+      "description": "Form-level error banner, e.g. the login page's \"Invalid phone or password\".",
+      "html": "<div class=\"ds-alert-destructive\" role=\"alert\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg><div class=\"ds-alert-description\">Invalid phone or password.</div></div>",
+      "css": ".ds-alert-destructive { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.5rem; padding: 0.5rem 0.625rem; border: 1px solid color-mix(in oklch, var(--destructive, #dc4a3f) 30%, transparent); border-radius: var(--radius-md, 0.36rem); background: var(--card, #FFFFFF); color: var(--destructive, #dc4a3f); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-alert-destructive svg { margin-top: 0.125rem; } .ds-alert-description { font-size: 0.875rem; color: color-mix(in oklch, var(--destructive, #dc4a3f) 90%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Back-Office Ledger",
+    "overview": "StaffTrack is the room behind the counter, not the storefront: an owner or manager's working surface for scheduling, task oversight, attendance, and coverage across branches of a market chain. The system is quiet and dense rather than expressive — closer to a well-run ledger or a register terminal than a marketing product. Its job is to make status legible at a glance across many rows (shifts, tasks, staff, branches) and to get a manager in and out of a task fast, not to hold attention.\n\nOne deliberate exception carries the brand: a single confident blue accent, used sparingly for primary actions and interactive state. Everything else is neutral. Staff-facing screens (viewed on a phone, on shift) get the same restraint but larger touch targets and less information density per screen than manager/owner screens.",
+    "keyCharacteristics": [
+      "Restrained: neutral slate ground, one committed accent, no decorative color",
+      "Dense and scannable for manager/owner screens; simplified and touch-first for staff screens",
+      "Flat by default — structure comes from borders and spacing, not shadows",
+      "A workhorse UI typeface, not a display face; nothing here performs personality through type"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Market Blue appears only on the primary action per view and on interactive/focus state. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.", "section": "colors" },
+      { "name": "The No-Display-Face Rule", "body": "Nothing on an Operate screen is set in a font chosen for personality. If a heading wants more presence, that's a weight/size change, never a new typeface.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "A card or table row sitting in its normal place never has a shadow. A shadow means \"this is floating above the page right now\" (a menu, a modal), not \"this is a card.\"", "section": "elevation" }
+    ],
+    "dos": [
+      "Do spend Market Blue on exactly one primary action per view.",
+      "Do default to borders and spacing for structure, not shadows.",
+      "Do keep staff-facing (phone) screens to one primary action and larger touch targets than manager/owner screens.",
+      "Do use Geist Mono for anything meant to align in a column (times, IDs, phone numbers).",
+      "Do wrap every form control in Field + FieldLabel, never a raw div/label."
+    ],
+    "donts": [
+      "Don't introduce a second decorative accent color alongside Market Blue.",
+      "Don't use a display/serif/expressive typeface anywhere in this system — this is an Operate surface, not a marketing one.",
+      "Don't add shadows to resting cards, table rows, or sidebar items.",
+      "Don't reduce information density on manager/owner screens to chase a \"cleaner\" look at the cost of scanability.",
+      "Don't attach a credential/login error to one field when it isn't attributable to it — use a form-level Alert instead."
+    ]
+  }
+}
