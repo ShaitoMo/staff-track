@@ -1,5 +1,7 @@
 import { AlertCircleIcon } from "lucide-react";
+import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { BranchFilter } from "@/components/users/branch-filter";
 import { UserCards } from "@/components/users/user-cards";
@@ -56,7 +58,12 @@ export default async function UsersPage({
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">Users</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-medium">Users</h1>
+                <Link href="/users/new" className={buttonVariants({ size: "sm" })}>
+                    Add user
+                </Link>
+            </div>
             {isOwner && <BranchFilter branches={branches} activeBranchId={branchId} />}
             {rows.length === 0 ? (
                 <Empty>

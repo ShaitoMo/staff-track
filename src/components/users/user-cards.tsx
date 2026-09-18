@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { UserRow } from "@/lib/user-rows";
 
 export function UserCards({ rows }: { rows: UserRow[] }) {
@@ -23,6 +26,12 @@ export function UserCards({ rows }: { rows: UserRow[] }) {
                                 <Badge key={chip} variant="secondary">{chip}</Badge>
                             ))}
                         </div>
+                        <Link
+                            href={`/users/${row.userId}/edit`}
+                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-1 w-fit")}
+                        >
+                            Edit
+                        </Link>
                     </CardContent>
                 </Card>
             ))}

@@ -1,5 +1,8 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { UserRow } from "@/lib/user-rows";
 
 export function UserTable({ rows }: { rows: UserRow[] }) {
@@ -12,6 +15,9 @@ export function UserTable({ rows }: { rows: UserRow[] }) {
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Branches</TableHead>
+                        <TableHead className="text-right">
+                            <span className="sr-only">Actions</span>
+                        </TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -33,6 +39,14 @@ export function UserTable({ rows }: { rows: UserRow[] }) {
                                         <Badge key={chip} variant="secondary">{chip}</Badge>
                                     ))}
                                 </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <Link
+                                    href={`/users/${row.userId}/edit`}
+                                    className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                                >
+                                    Edit
+                                </Link>
                             </TableCell>
                         </TableRow>
                     ))}
