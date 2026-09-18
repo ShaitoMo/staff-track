@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserValidateSchema } from '@/types/user'
 import { UserService } from '@/services/user-service'
-import { MANAGER_ROLE, OWNER_ROLE, requireRole } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 import { requireAuthenticated, forbiddenResponse, zodErrorResponse } from '@/lib/route-utils'
@@ -46,7 +46,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 }
-/** Owner sees every user; a manager only those assigned to at least one of their own branches. */
+/**
+ * Owner sees every user; a manager only those assigned to at least one of their own branches.
+ * An optional `branch_id` narrows to one branch — owner may pass any, a manager only their own.
+ */
 export async function GET(req: NextRequest) {
     const caller = requireAuthenticated(req);
 
@@ -54,9 +57,25 @@ export async function GET(req: NextRequest) {
         return caller;
     }
 
+    const branchIdParam = req.nextUrl.searchParams.get('branch_id')
+
+    if (branchIdParam !== null && !/^\d+$/.test(branchIdParam)) {
+        return NextResponse.json({ error: 'Invalid branch_id' }, { status: 400 })
+    }
+
     try {
         requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
-        const users = await UserService.getAllUsers(caller.role === OWNER_ROLE ? undefined : caller.branchIds);
+
+        let branchIds: number[] | undefined
+        if (branchIdParam !== null) {
+            const branchId = Number(branchIdParam)
+            requireBranchAccess(caller, branchId)
+            branchIds = [branchId]
+        } else {
+            branchIds = caller.role === OWNER_ROLE ? undefined : caller.branchIds
+        }
+
+        const users = await UserService.getAllUsers(branchIds);
         return NextResponse.json(users, { status: 200 });
     } catch (error) {
         const forbidden = forbiddenResponse(error);
