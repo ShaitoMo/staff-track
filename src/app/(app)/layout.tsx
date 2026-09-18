@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/logout-button";
+import { LogoutButton } from "@/components/layout/logout-button";
 import { getSession } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
