@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
 import { UpdatePasswordSchema } from '@/types/user'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 
 export async function PUT(
     req: NextRequest,
@@ -9,11 +10,11 @@ export async function PUT(
 ) {
     const { userId: userIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(userIdParam)) {
+    const userId = parseNumericId(userIdParam);
+
+    if (userId === null) {
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
-
-    const userId = Number(userIdParam);
 
     let body
     try {
@@ -21,16 +22,11 @@ export async function PUT(
     } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
-    const { password } = body;
 
-    const validationResult = UpdatePasswordSchema.safeParse({ password });
+    const validationResult = UpdatePasswordSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return zodErrorResponse(validationResult.error)
     }
 
     try {

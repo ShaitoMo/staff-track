@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { Role, CreateRoleInput } from '@/types/role'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
-export class RolesRepository {
+export class RoleRepository {
     static async getAllRoles(): Promise<Role []> {
         const roles = await prisma.role.findMany({
             select: {

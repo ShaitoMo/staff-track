@@ -3,6 +3,7 @@ import { RoleService } from '@/services/role-service'
 import { CreateRoleSchema } from '@/types/role'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
+import { parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 
 export async function GET(
     _req: NextRequest,
@@ -10,19 +11,24 @@ export async function GET(
 ) {
     const { roleId: roleIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(roleIdParam)) {
+    const roleId = parseNumericId(roleIdParam);
+
+    if (roleId === null) {
         return NextResponse.json({ error: 'Invalid roleId' }, { status: 400 });
     }
 
-    const roleId = Number(roleIdParam);
+    try {
+        const role = await RoleService.getRoleById(roleId);
 
-    const role = await RoleService.getRoleById(roleId);
+        if (!role) {
+            return NextResponse.json({ error: 'Role not found' }, { status: 404 });
+        }
 
-    if (!role) {
-        return NextResponse.json({ error: 'Role not found' }, { status: 404 });
+        return NextResponse.json(role, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch role' }, { status: 500 });
     }
-
-    return NextResponse.json(role, { status: 200 });
 }
 
 export async function PATCH(
@@ -31,11 +37,11 @@ export async function PATCH(
 ) {
     const { roleId: roleIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(roleIdParam)) {
+    const roleId = parseNumericId(roleIdParam);
+
+    if (roleId === null) {
         return NextResponse.json({ error: 'Invalid roleId' }, { status: 400 });
     }
-
-    const roleId = Number(roleIdParam);
 
     let body
     try {
@@ -43,16 +49,11 @@ export async function PATCH(
     } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
-    const { name } = body;
 
-    const validationResult = CreateRoleSchema.safeParse({ name });
+    const validationResult = CreateRoleSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return zodErrorResponse(validationResult.error)
     }
 
     try {

@@ -5,26 +5,27 @@ import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 
+const SAFE_USER_SELECT = {
+    userId: true,
+    name: true,
+    phone: true,
+    roleId: true,
+    isActive: true,
+    createdAt: true,
+} satisfies Prisma.UserSelect
+
 export class UserRepository {
     static async createUser(data: CreateUserInput): Promise<SafeUser> {
         try {
-            const user = await prisma.user.create({
+            return await prisma.user.create({
                 data: {
                     name: data.name,
                     phone: data.phone,
                     passwordHash: data.passwordHash,
                     roleId: data.roleId,
                 },
+                select: SAFE_USER_SELECT,
             })
-
-            return {
-                userId: user.userId,
-                name: user.name,
-                phone: user.phone,
-                roleId: user.roleId,
-                isActive: user.isActive,
-                createdAt: user.createdAt,
-            }
         } catch (error: unknown) {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -42,37 +43,19 @@ export class UserRepository {
         }
     }
     static async getAllUsers(): Promise<SafeUser[]> {
-        const users = await prisma.user.findMany();
-        return users.map(user => ({
-            userId: user.userId,
-            name: user.name,
-            phone: user.phone,
-            roleId: user.roleId,
-            isActive: user.isActive,
-            createdAt: user.createdAt,
-        }));
+        return prisma.user.findMany({
+            select: SAFE_USER_SELECT,
+        });
     }
     static async getUserById(userId: number): Promise<SafeUser | null> {
-        const user = await prisma.user.findUnique({
+        return prisma.user.findUnique({
             where: { userId },
+            select: SAFE_USER_SELECT,
         });
-
-        if (!user) {
-            return null;
-        }
-
-        return {
-            userId: user.userId,
-            name: user.name,
-            phone: user.phone,
-            roleId: user.roleId,
-            isActive: user.isActive,
-            createdAt: user.createdAt,
-        };
     }
     static async updateUser(userId: number, data: UpdateUserInput): Promise<SafeUser> {
         try {
-            const user = await prisma.user.update({
+            return await prisma.user.update({
                 where: { userId },
                 data: {
                     name: data.name,
@@ -80,16 +63,8 @@ export class UserRepository {
                     roleId: data.roleId,
                     isActive: data.isActive,
                 },
+                select: SAFE_USER_SELECT,
             })
-
-            return {
-                userId: user.userId,
-                name: user.name,
-                phone: user.phone,
-                roleId: user.roleId,
-                isActive: user.isActive,
-                createdAt: user.createdAt,
-            }
         } catch (error: unknown) {
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&

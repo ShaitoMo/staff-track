@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { RoleService } from '@/services/role-service'
 import { CreateRoleSchema } from '@/types/role'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
+import { zodErrorResponse } from '@/lib/route-utils'
 
 export async function GET() {
     try {
@@ -20,16 +21,11 @@ export async function POST(req: NextRequest) {
     } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
-    const { name } = body;
 
-    const validationResult = CreateRoleSchema.safeParse({ name });
+    const validationResult = CreateRoleSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return zodErrorResponse(validationResult.error)
     }
 
     try {

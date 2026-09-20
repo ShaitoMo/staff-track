@@ -4,6 +4,7 @@ import { UserUpdateSchema } from '@/types/user'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
+import { parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 
 export async function GET(
     _req: NextRequest,
@@ -11,19 +12,24 @@ export async function GET(
 ) {
     const { userId: userIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(userIdParam)) {
+    const userId = parseNumericId(userIdParam);
+
+    if (userId === null) {
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
 
-    const userId = Number(userIdParam);
+    try {
+        const user = await UserService.getUserById(userId);
 
-    const user = await UserService.getUserById(userId);
+        if (!user) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
 
-    if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        return NextResponse.json(user, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
     }
-
-    return NextResponse.json(user, { status: 200 });
 }
 
 export async function PATCH(
@@ -32,11 +38,11 @@ export async function PATCH(
 ) {
     const { userId: userIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(userIdParam)) {
+    const userId = parseNumericId(userIdParam);
+
+    if (userId === null) {
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
-
-    const userId = Number(userIdParam);
 
     let body
     try {
@@ -44,16 +50,11 @@ export async function PATCH(
     } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
-    const { name, phone, roleId, isActive } = body;
 
-    const validationResult = UserUpdateSchema.safeParse({ name, phone, roleId, isActive });
+    const validationResult = UserUpdateSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return zodErrorResponse(validationResult.error)
     }
 
     try {

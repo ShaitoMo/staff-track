@@ -3,6 +3,7 @@ import { UserValidateSchema } from '@/types/user'
 import { UserService } from '@/services/user-service'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
+import { zodErrorResponse } from '@/lib/route-utils'
 
 export async function POST(req: NextRequest) {
     let body
@@ -11,16 +12,11 @@ export async function POST(req: NextRequest) {
     } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
-    const { name, phone, password, roleId } = body;
 
-    const validationResult = UserValidateSchema.safeParse({ name, phone, password, roleId });
+    const validationResult = UserValidateSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return zodErrorResponse(validationResult.error)
     }
 
     try {
@@ -45,4 +41,4 @@ export async function GET() {
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
-} 
+}
