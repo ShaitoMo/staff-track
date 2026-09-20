@@ -4,15 +4,17 @@ import { CreateRegisterInput, Register, UpdateRegisterInput } from '@/types/regi
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 
+const REGISTER_SELECT = {
+    registerId: true,
+    branchId: true,
+    name: true,
+} satisfies Prisma.RegisterSelect
+
 export class RegisterRepository {
     static async getRegistersByBranch(branchId: number): Promise<Register[]> {
         return db.register.findMany({
             where: { branchId },
-            select: {
-                registerId: true,
-                branchId: true,
-                name: true,
-            },
+            select: REGISTER_SELECT,
         })
     }
     static async createRegister(data: CreateRegisterInput): Promise<Register> {
@@ -22,11 +24,7 @@ export class RegisterRepository {
                     branchId: data.branchId,
                     name: data.name,
                 },
-                select: {
-                    registerId: true,
-                    branchId: true,
-                    name: true,
-                },
+                select: REGISTER_SELECT,
             })
         } catch (error: unknown) {
             if (
@@ -43,11 +41,7 @@ export class RegisterRepository {
             where: {
                 registerId: registerId,
             },
-            select: {
-                registerId: true,
-                branchId: true,
-                name: true,
-            },
+            select: REGISTER_SELECT,
         })
     }
     static async updateRegister(registerId: number, data: UpdateRegisterInput): Promise<Register> {
@@ -59,11 +53,7 @@ export class RegisterRepository {
                 data: {
                     name: data.name,
                 },
-                select: {
-                    registerId: true,
-                    branchId: true,
-                    name: true,
-                },
+                select: REGISTER_SELECT,
             })
         } catch (error: unknown) {
             if (
