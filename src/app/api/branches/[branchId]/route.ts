@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BranchService } from '@/services/branch-service'
-import { CreateBranchSchema } from '@/types/branch'
+import { BranchUpdateSchema } from '@/types/branch'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { parseJsonBody, parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
     _req: NextRequest,
@@ -9,19 +10,24 @@ export async function GET(
 ) {
     const { branchId: branchIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(branchIdParam)) {
+    const branchId = parseNumericId(branchIdParam);
+
+    if (branchId === null) {
         return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
     }
 
-    const branchId = Number(branchIdParam);
+    try {
+        const branch = await BranchService.getBranchById(branchId);
 
-    const branch = await BranchService.getBranchById(branchId);
+        if (!branch) {
+            return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+        }
 
-    if (!branch) {
-        return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+        return NextResponse.json(branch, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch branch' }, { status: 500 });
     }
-
-    return NextResponse.json(branch, { status: 200 });
 }
 
 export async function PATCH(
@@ -30,32 +36,20 @@ export async function PATCH(
 ) {
     const { branchId: branchIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(branchIdParam)) {
+    const branchId = parseNumericId(branchIdParam);
+
+    if (branchId === null) {
         return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
     }
 
-    const branchId = Number(branchIdParam);
+    const parsed = await parseJsonBody(req, BranchUpdateSchema);
 
-    let body
-    try {
-        body = await req.json();
-    } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-    }
-    const { name, location } = body;
-
-    const validationResult = CreateBranchSchema.safeParse({ name, location });
-
-    if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+    if (parsed.error) {
+        return parsed.error;
     }
 
     try {
-        const branch = await BranchService.updateBranch(branchId, validationResult.data);
+        const branch = await BranchService.updateBranch(branchId, parsed.data);
         return NextResponse.json(branch, { status: 200 });
     } catch (error) {
         if (error instanceof BranchNotFoundError) {

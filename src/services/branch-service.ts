@@ -1,5 +1,5 @@
 import { BranchRepository } from '@/repository/branch-repository'
-import { Branch, CreateBranchInput } from '@/types/branch'
+import { Branch, BranchUpdateInput, CreateBranchInput } from '@/types/branch'
 
 export class BranchService {
     static async getAllBranches(): Promise<Branch[]> {
@@ -12,7 +12,7 @@ export class BranchService {
     static async getBranchById(branchId: number): Promise<Branch | null> {
         return BranchRepository.getBranchById(branchId)
     }
-    static async updateBranch(branchId: number, data: CreateBranchInput): Promise<Branch> {
+    static async updateBranch(branchId: number, data: BranchUpdateInput): Promise<Branch> {
         return BranchRepository.updateBranch(branchId, data)
     }
 }

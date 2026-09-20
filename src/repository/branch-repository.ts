@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { Branch, CreateBranchInput } from "@/types/branch";
+import { Branch, BranchUpdateInput, CreateBranchInput } from "@/types/branch";
 import { BranchNotFoundError } from "@/exceptions/branch-not-found-error";
 export class BranchRepository {
     static async getAllBranches(): Promise<Branch[]> {
@@ -59,7 +59,7 @@ export class BranchRepository {
             location: branch.location ?? undefined,
         }
     }
-    static async updateBranch(branchId: number, data: CreateBranchInput): Promise<Branch> {
+    static async updateBranch(branchId: number, data: BranchUpdateInput): Promise<Branch> {
         try {
             const branch = await prisma.branch.update({
                 where: {
@@ -67,7 +67,7 @@ export class BranchRepository {
                 },
                 data: {
                     name: data.name,
-                    location: data.location ?? null,
+                    location: data.location,
                 },
                 select: {
                     branchId: true,
