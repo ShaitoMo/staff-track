@@ -103,4 +103,11 @@ export class UserRepository {
             throw error
         }
     }
+    static async assertExists(userId: number): Promise<void> {
+        const user = await UserRepository.getUserById(userId)
+
+        if (!user) {
+            throw new UserNotFoundError()
+        }
+    }
 }
