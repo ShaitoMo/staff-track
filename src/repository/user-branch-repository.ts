@@ -56,7 +56,8 @@ export class UserBranchRepository {
                 error.code === 'P2002'
             ) {
                 // two unique constraints here: the composite PK, and (branchId, machineEmployeeId)
-                if (JSON.stringify(error.meta?.target ?? '').toLowerCase().includes('machine')) {
+                const target = error.meta?.target
+                if (Array.isArray(target) && target.includes('machine_employee_id')) {
                     throw new DuplicateMachineEmployeeIdError()
                 }
                 throw new DuplicateUserBranchError()

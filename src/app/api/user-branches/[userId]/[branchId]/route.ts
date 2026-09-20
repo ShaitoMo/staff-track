@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserBranchService } from '@/services/user-branch-service'
 import { UserBranchNotFoundError } from '@/exceptions/user-branch-not-found-error'
+import { parseNumericId } from '@/lib/route-utils'
 
 export async function DELETE(
     _req: NextRequest,
@@ -8,16 +9,20 @@ export async function DELETE(
 ) {
     const { userId: userIdParam, branchId: branchIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(userIdParam)) {
+    const userId = parseNumericId(userIdParam);
+
+    if (userId === null) {
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
 
-    if (!/^\d+$/.test(branchIdParam)) {
+    const branchId = parseNumericId(branchIdParam);
+
+    if (branchId === null) {
         return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
     }
 
     try {
-        await UserBranchService.removeUserFromBranch(Number(userIdParam), Number(branchIdParam));
+        await UserBranchService.removeUserFromBranch(userId, branchId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
         if (error instanceof UserBranchNotFoundError) {
