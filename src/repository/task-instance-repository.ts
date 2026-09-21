@@ -64,6 +64,16 @@ export class TaskInstanceRepository {
         return instance ? TaskInstanceRepository.toView(instance) : null;
     }
 
+    /** Whether the instance exists at all — no columns, just presence. */
+    static async instanceExists(instanceId: number): Promise<boolean> {
+        const instance = await db.taskInstance.findUnique({
+            where: { instanceId },
+            select: { instanceId: true },
+        });
+
+        return instance !== null;
+    }
+
     /** Minimal read used by the service to decide permission and status before a write. */
     static async getInstanceForWrite(instanceId: number) {
         return db.taskInstance.findUnique({
