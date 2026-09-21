@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MediaService } from '@/services/media-service'
 import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
+import { getOrNotFound, parseNumericId } from '@/lib/route-utils'
 
 /**
  * GET /api/media/:mediaId — one media record: metadata plus its stored file path.
@@ -14,18 +15,15 @@ export async function GET(
 ) {
     const { mediaId: mediaIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(mediaIdParam)) {
+    const mediaId = parseNumericId(mediaIdParam);
+
+    if (mediaId === null) {
         return NextResponse.json({ error: 'Invalid mediaId' }, { status: 400 });
     }
 
-    try {
-        const media = await MediaService.getMediaById(Number(mediaIdParam));
-        return NextResponse.json(media, { status: 200 });
-    } catch (error) {
-        if (error instanceof MediaNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
-        }
-        console.error(error);
-        return NextResponse.json({ error: 'Failed to fetch media' }, { status: 500 })
-    }
+    return getOrNotFound(
+        () => MediaService.getMediaById(mediaId),
+        MediaNotFoundError,
+        'Failed to fetch media',
+    );
 }

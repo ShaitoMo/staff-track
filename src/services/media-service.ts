@@ -10,13 +10,11 @@ export class MediaService {
      *
      * The instance is checked first so a bad id reads as 404 rather than an empty list — an
      * instance with no photos yet and an instance that does not exist look identical otherwise.
-     * `getInstanceForWrite` is a minimal select already used purely as an existence check
-     * elsewhere (`TaskInstanceService.loadForWrite`); reused here rather than adding a second one.
      */
     static async getMediaForInstance(instanceId: number): Promise<MediaRecordView[]> {
-        const instance = await TaskInstanceRepository.getInstanceForWrite(instanceId)
+        const exists = await TaskInstanceRepository.instanceExists(instanceId)
 
-        if (!instance) {
+        if (!exists) {
             throw new TaskInstanceNotFoundError()
         }
 
