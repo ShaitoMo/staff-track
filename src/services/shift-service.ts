@@ -37,7 +37,6 @@ export class ShiftService {
         return ShiftRepository.getShifts(repositoryFilters)
     }
 
-
     static async getShiftsForUser(
         userId: number,
         filters: UserShiftFiltersInput,

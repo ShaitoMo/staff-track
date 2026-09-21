@@ -30,6 +30,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "src/repository/shift-repository.ts"  ],
+  ],
   "exclude": ["node_modules"]
 }

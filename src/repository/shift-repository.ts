@@ -62,20 +62,24 @@ export class ShiftRepository {
      * Branch is deliberately not a filter — see ShiftService.assertNoDoubleBooking.
      */
     static async getOverlappingShifts(query: OverlapQuery): Promise<ShiftView[]> {
-        const { userId, shiftDate, startTime, endTime, excludeShiftId } = query;
-
         const shifts = await db.shift.findMany({
-            where: {
-                userId,
-                shiftDate,
-                startTime: { lt: endTime },
-                endTime: { gt: startTime },
-                shiftId: excludeShiftId === undefined ? undefined : { not: excludeShiftId },
-            },
+            where: ShiftRepository.buildOverlapWhere(query),
             orderBy: [{ startTime: 'asc' }, { shiftId: 'asc' }],
         });
 
         return shifts.map(ShiftRepository.toView);
+    }
+
+    private static buildOverlapWhere(query: OverlapQuery): Prisma.ShiftWhereInput {
+        const { userId, shiftDate, startTime, endTime, excludeShiftId } = query;
+
+        return {
+            userId,
+            shiftDate,
+            startTime: { lt: endTime },
+            endTime: { gt: startTime },
+            shiftId: excludeShiftId === undefined ? undefined : { not: excludeShiftId },
+        };
     }
 
     static async createShift(data: CreateShiftInput): Promise<ShiftView> {

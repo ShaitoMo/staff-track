@@ -8,6 +8,7 @@ import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-er
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
+import { parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
     _req: NextRequest,
@@ -15,19 +16,24 @@ export async function GET(
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(shiftIdParam)) {
+    const shiftId = parseNumericId(shiftIdParam);
+
+    if (shiftId === null) {
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
-    const shiftId = Number(shiftIdParam);
+    try {
+        const shift = await ShiftService.getShiftById(shiftId);
 
-    const shift = await ShiftService.getShiftById(shiftId);
+        if (!shift) {
+            return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+        }
 
-    if (!shift) {
-        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+        return NextResponse.json(shift, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch shift' }, { status: 500 });
     }
-
-    return NextResponse.json(shift, { status: 200 });
 }
 
 /**
@@ -43,11 +49,11 @@ export async function PATCH(
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(shiftIdParam)) {
+    const shiftId = parseNumericId(shiftIdParam);
+
+    if (shiftId === null) {
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
-
-    const shiftId = Number(shiftIdParam);
 
     let body
     try {
@@ -109,12 +115,14 @@ export async function DELETE(
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(shiftIdParam)) {
+    const shiftId = parseNumericId(shiftIdParam);
+
+    if (shiftId === null) {
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
     try {
-        await ShiftService.deleteShift(Number(shiftIdParam));
+        await ShiftService.deleteShift(shiftId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
         if (error instanceof ShiftNotFoundError) {

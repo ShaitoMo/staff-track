@@ -1,4 +1,4 @@
-import {z} from 'zod';
+import { z } from 'zod';
 import { DateOnlySchema } from '@/types/date-only';
 import { TimeOnlySchema } from '@/types/time-only';
 
