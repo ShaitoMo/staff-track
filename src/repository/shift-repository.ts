@@ -1,6 +1,7 @@
 import { Prisma, Shift as ShiftRow } from "@prisma/client";
 import { db } from "@/lib/db";
 import { toDateOnlyString } from "@/types/date-only";
+import { toTimeOnlyString } from "@/types/time-only";
 import { CreateShiftInput, ShiftView, UpdateShiftInput } from "@/types/shift";
 import { UserNotFoundError } from "@/exceptions/user-not-found-error";
 import { ShiftNotFoundError } from "@/exceptions/shift-not-found-error";
@@ -169,16 +170,11 @@ export class ShiftRepository {
             register_id: shift.registerId,
             period_id: shift.periodId,
             shift_date: toDateOnlyString(shift.shiftDate),
-            start_time: ShiftRepository.toTimeOnlyString(shift.startTime),
-            end_time: ShiftRepository.toTimeOnlyString(shift.endTime),
+            start_time: toTimeOnlyString(shift.startTime),
+            end_time: toTimeOnlyString(shift.endTime),
             created_by: shift.createdBy,
             created_at: shift.createdAt,
             updated_at: shift.updatedAt,
         };
-    }
-
-    /** Formats a `time` column to 'HH:MM'. */
-    private static toTimeOnlyString(time: Date): string {
-        return time.toISOString().slice(11, 16);
     }
 }

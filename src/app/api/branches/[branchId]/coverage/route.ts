@@ -40,7 +40,7 @@ export async function GET(
         return NextResponse.json(rows, { status: 200 })
     } catch (error) {
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return NextResponse.json({ error: error.message }, { status: 400 })
         }
         console.error(error);
         return NextResponse.json({ error: 'Failed to compute coverage gaps' }, { status: 500 })

@@ -1,6 +1,7 @@
 import { Prisma, CoverageRequirement as CoverageRequirementRow, Role as RoleRow, ShiftPeriod as ShiftPeriodRow } from '@prisma/client'
 import { db } from '@/lib/db'
 import { CoverageRequirementView, CreateCoverageRequirementInput, UpdateCoverageRequirementInput } from '@/types/coverage-requirement'
+import { toTimeOnlyString } from '@/types/time-only'
 import { CoverageRequirementNotFoundError } from '@/exceptions/coverage-requirement-not-found-error'
 import { DuplicateCoverageRequirementError } from '@/exceptions/duplicate-coverage-requirement-error'
 
@@ -86,14 +87,10 @@ export class CoverageRequirementRepository {
                 periodId: requirement.period.periodId,
                 branchId: requirement.period.branchId,
                 name: requirement.period.name,
-                defaultStart: CoverageRequirementRepository.toTimeOnlyString(requirement.period.defaultStart),
-                defaultEnd: CoverageRequirementRepository.toTimeOnlyString(requirement.period.defaultEnd),
+                defaultStart: toTimeOnlyString(requirement.period.defaultStart),
+                defaultEnd: toTimeOnlyString(requirement.period.defaultEnd),
                 sortOrder: requirement.period.sortOrder,
             },
         }
-    }
-
-    private static toTimeOnlyString(time: Date): string {
-        return time.toISOString().slice(11, 16)
     }
 }

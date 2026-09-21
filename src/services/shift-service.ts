@@ -1,5 +1,5 @@
 import { ShiftRepository, ShiftFilters, OverlapQuery } from '@/repository/shift-repository'
-import { ShiftPeriodRepository, ShiftPeriodRecord } from '@/repository/shift-period-repository'
+import { ShiftPeriodRepository } from '@/repository/shift-period-repository'
 import { UserRepository } from '@/repository/user-repository'
 import { BranchRepository } from '@/repository/branch-repository'
 import { RegisterRepository } from '@/repository/register-repository'
@@ -15,13 +15,10 @@ import { DateOnlySchema } from '@/types/date-only'
 import { TimeOnlySchema } from '@/types/time-only'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
-import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
-import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
-import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 
 export class ShiftService {
     static async getShiftById(shiftId: number): Promise<ShiftView | null> {
@@ -62,7 +59,7 @@ export class ShiftService {
      * it are all relative to it.
      */
     static async createShift(data: CreateShiftInput): Promise<ShiftView> {
-        await ShiftService.assertBranchExists(data.branch_id)
+        await BranchRepository.assertExists(data.branch_id)
         await ShiftService.assertUserWorksAtBranch(data.user_id, data.branch_id)
         await ShiftService.assertRegisterAtBranch(data.register_id, data.branch_id)
 
@@ -100,7 +97,7 @@ export class ShiftService {
         const registerId = data.register_id !== undefined ? data.register_id : before.register_id
 
         if (data.branch_id !== undefined) {
-            await ShiftService.assertBranchExists(branchId)
+            await BranchRepository.assertExists(branchId)
         }
 
         // Either side of this pair can be the one that moved, and a worker who is fine at their
@@ -164,36 +161,9 @@ export class ShiftService {
             return { startTime: data.start_time as Date, endTime: data.end_time as Date }
         }
 
-        const period = await ShiftService.assertPeriodAtBranch(data.period_id, data.branch_id)
+        const period = await ShiftPeriodRepository.assertAtBranch(data.period_id, data.branch_id)
 
         return { startTime: period.defaultStart, endTime: period.defaultEnd }
-    }
-
-    /**
-     * A period that exists but is scoped to another branch cannot supply this shift's hours — a
-     * NULL branch_id on the period is the chain-wide default and matches every branch, matching
-     * ShiftPeriod's own schema comment.
-     */
-    private static async assertPeriodAtBranch(periodId: number, branchId: number): Promise<ShiftPeriodRecord> {
-        const period = await ShiftPeriodRepository.getPeriodById(periodId)
-
-        if (!period) {
-            throw new ShiftPeriodNotFoundError()
-        }
-
-        if (period.branchId !== null && period.branchId !== branchId) {
-            throw new ShiftPeriodNotAtBranchError()
-        }
-
-        return period
-    }
-
-    private static async assertBranchExists(branchId: number): Promise<void> {
-        const branch = await BranchRepository.getBranchById(branchId)
-
-        if (!branch) {
-            throw new BranchNotFoundError()
-        }
     }
 
     /**

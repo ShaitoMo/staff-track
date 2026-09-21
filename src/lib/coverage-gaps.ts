@@ -40,12 +40,24 @@ export function resolveCoverageGaps(
     return rows
 }
 
+/**
+ * Distinct workers per (date, period, role), not shift rows — the same person scheduled twice in
+ * one slot (a data-entry mistake, or a split shift) is one person covering it, not two.
+ */
 function countScheduled(scheduled: ScheduledShiftRoleRow[]): Map<string, number> {
-    const counts = new Map<string, number>()
+    const workersByKey = new Map<string, Set<number>>()
 
     for (const shift of scheduled) {
         const shiftKey = key(toDateOnlyString(shift.shiftDate), shift.periodId, shift.roleId)
-        counts.set(shiftKey, (counts.get(shiftKey) ?? 0) + 1)
+        const workers = workersByKey.get(shiftKey) ?? new Set<number>()
+        workers.add(shift.userId)
+        workersByKey.set(shiftKey, workers)
+    }
+
+    const counts = new Map<string, number>()
+
+    for (const [shiftKey, workers] of workersByKey) {
+        counts.set(shiftKey, workers.size)
     }
 
     return counts

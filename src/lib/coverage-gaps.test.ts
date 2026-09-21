@@ -18,6 +18,7 @@ function scheduledShift(overrides: Partial<ScheduledShiftRoleRow> = {}): Schedul
         shiftDate: new Date(`${MONDAY}T00:00:00.000Z`),
         periodId: 1,
         roleId: 1,
+        userId: 1,
         ...overrides,
     };
 }
@@ -32,14 +33,24 @@ describe('resolveCoverageGaps', () => {
         ]);
     });
 
-    it('counts scheduled shifts matching the date, role, and period', () => {
+    it('counts distinct workers matching the date, role, and period', () => {
         const rows = resolveCoverageGaps(
             [MONDAY],
             [requirement({ requiredCount: 3 })],
-            [scheduledShift(), scheduledShift()],
+            [scheduledShift({ userId: 1 }), scheduledShift({ userId: 2 })],
         );
 
         expect(rows[0].scheduledCount).toBe(2);
+    });
+
+    it('counts the same worker scheduled twice in one slot as one person, not two', () => {
+        const rows = resolveCoverageGaps(
+            [MONDAY],
+            [requirement({ requiredCount: 3 })],
+            [scheduledShift({ userId: 1 }), scheduledShift({ userId: 1 })],
+        );
+
+        expect(rows[0].scheduledCount).toBe(1);
     });
 
     it('keeps an explicit requiredCount of 0 as a row, not an absence', () => {
@@ -54,7 +65,11 @@ describe('resolveCoverageGaps', () => {
         const rows = resolveCoverageGaps(
             [MONDAY],
             [requirement({ roleId: 1, periodId: 1 }), requirement({ roleId: 2, periodId: 1 })],
-            [scheduledShift({ roleId: 1 }), scheduledShift({ roleId: 2 }), scheduledShift({ roleId: 2 })],
+            [
+                scheduledShift({ roleId: 1, userId: 1 }),
+                scheduledShift({ roleId: 2, userId: 1 }),
+                scheduledShift({ roleId: 2, userId: 2 }),
+            ],
         );
 
         const byRole = new Map(rows.map((row) => [row.roleId, row.scheduledCount]));

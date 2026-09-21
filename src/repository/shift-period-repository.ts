@@ -1,8 +1,10 @@
 import { Prisma, ShiftPeriod as ShiftPeriodRow } from '@prisma/client'
 import { db } from '@/lib/db'
 import { CreatePeriodInput, ShiftPeriodView, UpdatePeriodInput } from '@/types/shift-period'
+import { toTimeOnlyString } from '@/types/time-only'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
+import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 import { PeriodInUseError } from '@/exceptions/period-in-use-error'
 
 /** A period whose own `defaultStart`/`defaultEnd` are still Dates — for callers (ShiftService) that
@@ -30,6 +32,25 @@ export class ShiftPeriodRepository {
             where: { periodId },
             select: { periodId: true, branchId: true, defaultStart: true, defaultEnd: true },
         })
+    }
+
+    /**
+     * A period that exists but is scoped to another branch cannot supply hours for a shift or
+     * requirement at this one — a NULL branchId on the period is the chain-wide default and
+     * matches every branch.
+     */
+    static async assertAtBranch(periodId: number, branchId: number): Promise<ShiftPeriodRecord> {
+        const period = await ShiftPeriodRepository.getPeriodById(periodId)
+
+        if (!period) {
+            throw new ShiftPeriodNotFoundError()
+        }
+
+        if (period.branchId !== null && period.branchId !== branchId) {
+            throw new ShiftPeriodNotAtBranchError()
+        }
+
+        return period
     }
 
     static async createPeriod(data: CreatePeriodInput): Promise<ShiftPeriodView> {
@@ -96,14 +117,9 @@ export class ShiftPeriodRepository {
             periodId: period.periodId,
             branchId: period.branchId,
             name: period.name,
-            defaultStart: ShiftPeriodRepository.toTimeOnlyString(period.defaultStart),
-            defaultEnd: ShiftPeriodRepository.toTimeOnlyString(period.defaultEnd),
+            defaultStart: toTimeOnlyString(period.defaultStart),
+            defaultEnd: toTimeOnlyString(period.defaultEnd),
             sortOrder: period.sortOrder,
         }
-    }
-
-    /** Formats a `time` column to 'HH:MM' — mirrors ShiftRepository's own formatter. */
-    private static toTimeOnlyString(time: Date): string {
-        return time.toISOString().slice(11, 16)
     }
 }
