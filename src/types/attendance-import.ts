@@ -24,7 +24,10 @@ export interface ImportAttendanceResult {
     /** punches read out of the file, before anything was matched or written */
     punches_read: number;
     records_created: number;
-    /** already recorded — the re-upload case, refused by the (user_id, clock_in) constraint */
+    /**
+     * Already recorded, refused by the (user_id, clock_in) constraint — whether because the row
+     * was previously imported, or repeated within this same file.
+     */
     records_skipped: number;
     errors: ImportRowError[];
 }

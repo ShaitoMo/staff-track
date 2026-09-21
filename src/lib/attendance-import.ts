@@ -6,12 +6,36 @@ export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 /** The machine exports at most five in/out pairs per employee per day. */
 const MAX_PAIRS = 5;
 
+const ALLOWED_IMPORT_EXTENSIONS = ['.csv', '.xls', '.xlsx'];
+
+const ALLOWED_IMPORT_MIME_TYPES = new Set([
+    'text/csv',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
 /** The file itself is unusable — as opposed to a row inside it, which is reported per row. */
 export class InvalidImportFileError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'InvalidImportFileError';
     }
+}
+
+/**
+ * Rejects anything that is not a CSV or Excel export by name or declared type, before it is
+ * handed to the spreadsheet parser.
+ */
+export function assertImportableFile(file: File): void {
+    const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (ALLOWED_IMPORT_EXTENSIONS.includes(extension) || ALLOWED_IMPORT_MIME_TYPES.has(file.type)) {
+        return;
+    }
+
+    throw new InvalidImportFileError(
+        `Unsupported file '${file.name}'. Expected a CSV or Excel export (.csv, .xls, .xlsx)`,
+    );
 }
 
 export interface ParsedPunch {
@@ -51,7 +75,13 @@ interface ColumnMap {
  * still imports, since one mistyped cell should not cost a manager the whole month.
  */
 export function parseAttendanceWorkbook(buffer: Buffer): ParsedSheet {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    let workbook: XLSX.WorkBook;
+    try {
+        workbook = XLSX.read(buffer, { type: 'buffer' });
+    } catch {
+        throw new InvalidImportFileError('The file could not be read as a spreadsheet');
+    }
+
     const sheetName = workbook.SheetNames[0];
 
     if (!sheetName) {

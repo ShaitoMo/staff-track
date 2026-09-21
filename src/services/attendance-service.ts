@@ -14,6 +14,7 @@ import {
     ImportRowError,
     MAX_IMPORT_BYTES,
     InvalidImportFileError,
+    assertImportableFile,
     parseAttendanceWorkbook,
 } from '@/lib/attendance-import'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
@@ -23,13 +24,12 @@ import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export class AttendanceService {
-
     static async getAttendance(filters: AttendanceFiltersInput): Promise<AttendanceView[]> {
         const repositoryFilters: AttendanceFilters = {
             userId: filters.user_id,
             branchId: filters.branch_id,
             from: filters.from,
-            to: filters.to === undefined ? undefined : new Date(filters.to.getTime() + MS_PER_DAY),
+            to: new Date(filters.to.getTime() + MS_PER_DAY),
         }
 
         return AttendanceRepository.getAttendance(repositoryFilters)
@@ -72,6 +72,8 @@ export class AttendanceService {
         await AttendanceService.assertBranchExists(branchId);
         await AttendanceService.assertImporterExists(importedBy);
 
+        assertImportableFile(file);
+
         if (file.size === 0) {
             throw new InvalidImportFileError('The uploaded file is empty');
         }
@@ -88,7 +90,6 @@ export class AttendanceService {
 
         const usersByMachineId = await AttendanceService.machineIdsAtBranch(branchId);
         const resolved: ImportedPunch[] = [];
-        const seen = new Set<string>();
 
         for (const punch of punches) {
             const userId = usersByMachineId.get(punch.machineEmployeeId);
@@ -101,14 +102,9 @@ export class AttendanceService {
                 continue;
             }
 
-            // the same punch twice inside one file is the file's problem, not the database's
-            const key = `${userId}@${punch.clockIn.getTime()}`;
-
-            if (seen.has(key)) {
-                continue;
-            }
-
-            seen.add(key);
+            // a punch already recorded — whether repeated within this file or from a previous
+            // import — shares @@unique([userId, clockIn]) with every other row here, so the
+            // insert below is what actually decides duplicate vs. new; nothing is resolved twice
             resolved.push({
                 userId,
                 branchId,
@@ -137,7 +133,6 @@ export class AttendanceService {
         return ImportBatchRepository.getImportBatches()
     }
 
-
     private static async machineIdsAtBranch(branchId: number): Promise<Map<string, number>> {
         const links = await UserBranchRepository.getUserBranches({ branchId });
 
@@ -148,7 +143,6 @@ export class AttendanceService {
         );
     }
 
-    
     private static byRow(errors: ImportRowError[]): ImportRowError[] {
         return [...errors].sort((left, right) => left.row - right.row);
     }

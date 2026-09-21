@@ -1,4 +1,4 @@
-import {z} from 'zod';
+import { z } from 'zod';
 import { DateOnlySchema } from './date-only';
 import { TimestampSchema } from './timestamp';
 
@@ -6,7 +6,6 @@ export const CreateAttendanceSchema = z.object({
     user_id: z.number().int().positive(),
     branch_id: z.number().int().positive(),
     clock_in: TimestampSchema,
-   
     clock_out: TimestampSchema.nullable().optional(),
 }).superRefine((data, ctx) => {
     const { clock_in: clockIn, clock_out: clockOut } = data;
@@ -27,13 +26,33 @@ export const CreateAttendanceSchema = z.object({
 
 export type CreateAttendanceInput = z.infer<typeof CreateAttendanceSchema>;
 
-
-
+/**
+ * Query parameters for GET /api/attendance.
+ *
+ * `from` and `to` are required, for the reason ScheduleVsActualFiltersSchema gives: this is a
+ * report, always asked about a period, and an unbounded call would return every punch ever
+ * recorded. They bound `clock_in` inclusively.
+ */
 export const AttendanceFiltersSchema = z.object({
     user_id: z.coerce.number().int().positive().optional(),
     branch_id: z.coerce.number().int().positive().optional(),
-    from: DateOnlySchema.optional(),
-    to: DateOnlySchema.optional(),
+    from: DateOnlySchema,
+    to: DateOnlySchema,
+}).superRefine((data, ctx) => {
+    const { from, to } = data;
+
+    // a date that failed the format check never reaches here as a Date
+    if (!(from instanceof Date) || !(to instanceof Date)) {
+        return;
+    }
+
+    if (to < from) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['to'],
+            message: 'to must be on or after from',
+        });
+    }
 });
 
 export type AttendanceFiltersInput = z.infer<typeof AttendanceFiltersSchema>;
