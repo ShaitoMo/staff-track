@@ -1,6 +1,7 @@
 import { Prisma, Shift as ShiftRow } from "@prisma/client";
 import { db } from "@/lib/db";
 import { toDateOnlyString } from "@/types/date-only";
+import { toTimeOnlyString } from "@/types/time-only";
 import { CreateShiftInput, ShiftView, UpdateShiftInput } from "@/types/shift";
 import { UserNotFoundError } from "@/exceptions/user-not-found-error";
 import { ShiftNotFoundError } from "@/exceptions/shift-not-found-error";
@@ -82,16 +83,25 @@ export class ShiftRepository {
         };
     }
 
-    static async createShift(data: CreateShiftInput): Promise<ShiftView> {
+    /**
+     * `span` carries the start/end actually being stored — CreateShiftInput's own start_time/
+     * end_time are optional (a period can supply them instead), and ShiftService.createShift has
+     * already resolved which pair wins by the time this is called.
+     */
+    static async createShift(
+        data: CreateShiftInput,
+        span: { startTime: Date; endTime: Date },
+    ): Promise<ShiftView> {
         try {
             const shift = await db.shift.create({
                 data: {
                     userId: data.user_id,
                     branchId: data.branch_id,
                     registerId: data.register_id ?? null,
+                    periodId: data.period_id ?? null,
                     shiftDate: data.shift_date,
-                    startTime: data.start_time,
-                    endTime: data.end_time,
+                    startTime: span.startTime,
+                    endTime: span.endTime,
                     createdBy: data.created_by,
                 },
             });
@@ -158,17 +168,13 @@ export class ShiftRepository {
             user_id: shift.userId,
             branch_id: shift.branchId,
             register_id: shift.registerId,
+            period_id: shift.periodId,
             shift_date: toDateOnlyString(shift.shiftDate),
-            start_time: ShiftRepository.toTimeOnlyString(shift.startTime),
-            end_time: ShiftRepository.toTimeOnlyString(shift.endTime),
+            start_time: toTimeOnlyString(shift.startTime),
+            end_time: toTimeOnlyString(shift.endTime),
             created_by: shift.createdBy,
             created_at: shift.createdAt,
             updated_at: shift.updatedAt,
         };
-    }
-
-    /** Formats a `time` column to 'HH:MM'. */
-    private static toTimeOnlyString(time: Date): string {
-        return time.toISOString().slice(11, 16);
     }
 }

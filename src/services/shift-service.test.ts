@@ -61,6 +61,7 @@ describe('mergeSpan — the span re-checked on an edit', () => {
         user_id: 7,
         branch_id: 1,
         register_id: null,
+        period_id: null,
         shift_date: '2026-08-13',
         start_time: '09:00',
         end_time: '17:00',
