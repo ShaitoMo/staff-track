@@ -1,4 +1,4 @@
-import { TaskStatus } from '@prisma/client'
+import { TaskStatus } from '@/types/task-instance'
 
 export class InvalidStatusTransitionError extends Error {
     constructor(
