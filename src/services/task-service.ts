@@ -2,7 +2,7 @@ import { TasksRepository } from '../repository/tasks-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
 import { BranchRepository } from '@/repository/branch-repository';
-import { RolesRepository } from '@/repository/role-repository';
+import { RoleRepository } from '@/repository/role-repository';
 import {
     addDays,
     getDates,
@@ -16,6 +16,7 @@ import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error';
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error';
+import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error';
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error';
 
 export class TaskService {
@@ -51,6 +52,10 @@ export class TaskService {
         // Restating the current value is not a change and is allowed.
         if (data.is_recurring !== undefined && data.is_recurring !== before.is_recurring) {
             throw new InvalidScheduleChangeError();
+        }
+
+        if (data.assigned_to !== undefined || data.assigned_role_id !== undefined) {
+            await TaskService.assertAssignmentIsValid(before, data);
         }
 
         const after = await TasksRepository.updateTask(taskId, data);
@@ -202,6 +207,43 @@ export class TaskService {
         return getDates(data.recurrence as string, from, addDays(from, WINDOW_DAYS));
     }
 
+    /**
+     * Re-checks createTask's assignment rules against the *effective* result of a PATCH: a field
+     * left out of the request keeps the task's current value, so the check runs against the
+     * merged state rather than the raw patch.
+     */
+    private static async assertAssignmentIsValid(before: Task, data: UpdateTaskInput): Promise<void> {
+        const assignedTo = data.assigned_to !== undefined ? data.assigned_to : before.assigned_to;
+        const assignedRoleId =
+            data.assigned_role_id !== undefined ? data.assigned_role_id : before.assigned_role_id;
+
+        const hasAssignee = assignedTo !== null;
+        const hasRole = assignedRoleId !== null;
+
+        if (hasAssignee === hasRole) {
+            throw new InvalidTaskAssignmentError();
+        }
+
+        if (hasAssignee) {
+            const links = await UserBranchRepository.getUserBranches({
+                userId: assignedTo as number,
+                branchId: before.branch_id,
+            });
+
+            if (links.length === 0) {
+                throw new UserNotAtBranchError();
+            }
+
+            return;
+        }
+
+        const role = await RoleRepository.getRoleById(assignedRoleId as number);
+
+        if (!role) {
+            throw new RoleNotFoundError();
+        }
+    }
+
     private static async assertBranchExists(branchId: number): Promise<void> {
         const branch = await BranchRepository.getBranchById(branchId);
 
@@ -228,7 +270,7 @@ export class TaskService {
             return;
         }
 
-        const role = await RolesRepository.getRoleById(data.assigned_role_id as number);
+        const role = await RoleRepository.getRoleById(data.assigned_role_id as number);
 
         if (!role) {
             throw new RoleNotFoundError();

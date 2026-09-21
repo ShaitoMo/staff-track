@@ -161,4 +161,10 @@ describe('CreateTaskSchema — the same invariant at creation', () => {
             accepts(CreateTaskSchema.safeParse({ ...base, due_date: '2026-09-01' })),
         ).toBe(true);
     });
+
+    it('rejects an empty rule before it reaches the parser', () => {
+        expect(
+            accepts(CreateTaskSchema.safeParse({ ...base, is_recurring: true, recurrence: '' })),
+        ).toBe(false);
+    });
 });

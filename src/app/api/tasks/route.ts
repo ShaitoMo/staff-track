@@ -8,8 +8,13 @@ import { InvalidTaskAssignmentError } from "@/exceptions/invalid-task-assignment
 import { InvalidRecurrenceError } from "@/exceptions/invalid-recurrence-error";
 
 export async function GET() {
-    const tasks = await TaskService.getAllTasks();
-    return NextResponse.json(tasks);
+    try {
+        const tasks = await TaskService.getAllTasks();
+        return NextResponse.json(tasks, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
+    }
 }
 
 /**

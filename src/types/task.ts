@@ -110,7 +110,7 @@ export const CreateTaskSchema = z.object({
     origin: z.enum(['assigned', 'self']).default('assigned'),
     is_recurring: z.boolean().default(false),
     due_date: DateOnlySchema.nullable().optional(),
-    recurrence: z.string().nullable().optional(),
+    recurrence: z.string().min(1).nullable().optional(),
 }).superRefine((data, ctx) => {
     const hasAssignee = data.assigned_to !== null && data.assigned_to !== undefined;
     const hasRole = data.assigned_role_id !== null && data.assigned_role_id !== undefined;

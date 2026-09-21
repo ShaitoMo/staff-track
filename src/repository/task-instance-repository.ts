@@ -218,7 +218,6 @@ export class TaskInstanceRepository {
 
         return result.count;
     }
-//a helper that builds the where clause for the list query, including the assignedToUser filter
     private static buildWhere(filters: TaskInstanceFilters): Prisma.TaskInstanceWhereInput {
         const { branchId, dueDate, status, assignedToUser } = filters;
 
@@ -248,7 +247,6 @@ export class TaskInstanceRepository {
             ],
         };
     }
-//a helper that converts the instance with joins to the detail view, including media and task details
     private static toView(instance: InstanceWithJoins): TaskInstanceDetailView {
         return {
             instance_id: instance.instanceId,

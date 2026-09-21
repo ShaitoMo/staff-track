@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TaskService } from '@/services/task-service'
 import { UpdateTaskSchema } from '@/types/task'
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error'
+import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
+import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error'
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error'
 
@@ -17,13 +19,18 @@ export async function GET(
 
     const taskId = Number(taskIdParam);
 
-    const task = await TaskService.getTaskById(taskId);
+    try {
+        const task = await TaskService.getTaskById(taskId);
 
-    if (!task) {
-        return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+        if (!task) {
+            return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(task, { status: 200 });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
     }
-
-    return NextResponse.json(task, { status: 200 });
 }
 
 export async function PATCH(
@@ -72,7 +79,12 @@ export async function PATCH(
         if (error instanceof TaskNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        if (error instanceof InvalidTaskAssignmentError || error instanceof InvalidScheduleChangeError) {
+        if (
+            error instanceof InvalidTaskAssignmentError ||
+            error instanceof InvalidScheduleChangeError ||
+            error instanceof RoleNotFoundError ||
+            error instanceof UserNotAtBranchError
+        ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         console.error(error);

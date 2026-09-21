@@ -9,13 +9,24 @@ jest.mock('@/repository/task-instance-repository', () => ({
         deletePendingInstancesByIds: jest.fn(),
     },
 }));
+jest.mock('@/repository/user-branch-repository', () => ({
+    UserBranchRepository: { getUserBranches: jest.fn() },
+}));
+jest.mock('@/repository/role-repository', () => ({
+    RoleRepository: { getRoleById: jest.fn() },
+}));
 
 import { TaskService } from '@/services/task-service';
 import { TasksRepository } from '@/repository/tasks-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
+import { UserBranchRepository } from '@/repository/user-branch-repository';
+import { RoleRepository } from '@/repository/role-repository';
 import { Task, UpdateTaskInput } from '@/types/task';
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error';
+import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error';
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error';
+import { RoleNotFoundError } from '@/exceptions/role-not-found-error';
+import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 
 const getTaskById = TasksRepository.getTaskById as jest.MockedFunction<
     typeof TasksRepository.getTaskById
@@ -30,15 +41,22 @@ const getPendingInstancesFrom =
     TaskInstanceRepository.getPendingInstancesFrom as jest.MockedFunction<
         typeof TaskInstanceRepository.getPendingInstancesFrom
     >;
+const getUserBranches = UserBranchRepository.getUserBranches as jest.MockedFunction<
+    typeof UserBranchRepository.getUserBranches
+>;
+const getRoleById = RoleRepository.getRoleById as jest.MockedFunction<
+    typeof RoleRepository.getRoleById
+>;
 
 const TASK_ID = 10;
+const BRANCH_ID = 1;
 
 function task(overrides: Partial<Task> = {}): Task {
     return {
         task_id: TASK_ID,
         title: 'Check the fridge',
         description: null,
-        branch_id: 1,
+        branch_id: BRANCH_ID,
         assigned_to: 2,
         assigned_role_id: null,
         assigned_by: 3,
@@ -159,6 +177,67 @@ describe('updateTask — rule edits on a recurring task still go through', () =>
 
         expect(createInstances).not.toHaveBeenCalled();
         expect(getPendingInstancesFrom).not.toHaveBeenCalled();
+    });
+});
+
+describe('updateTask — re-checks the assignment rules createTask enforces', () => {
+    it('leaves assignment alone, and untouched, when the patch does not mention it', async () => {
+        await patch(task({ assigned_to: 2, assigned_role_id: null }), { title: 'Wipe the counters' });
+
+        expect(getUserBranches).not.toHaveBeenCalled();
+        expect(getRoleById).not.toHaveBeenCalled();
+    });
+
+    it('rejects a patch that would leave both assigned_to and assigned_role_id set', async () => {
+        await expect(
+            patch(task({ assigned_to: 2, assigned_role_id: null }), { assigned_role_id: 5 }),
+        ).rejects.toThrow(InvalidTaskAssignmentError);
+    });
+
+    it('rejects a patch that would leave neither assigned_to nor assigned_role_id set', async () => {
+        await expect(
+            patch(task({ assigned_to: 2, assigned_role_id: null }), { assigned_to: null }),
+        ).rejects.toThrow(InvalidTaskAssignmentError);
+    });
+
+    it('rejects reassigning to someone who does not work at the branch', async () => {
+        getUserBranches.mockResolvedValue([]);
+
+        await expect(
+            patch(task({ assigned_to: 2, assigned_role_id: null }), { assigned_to: 9 }),
+        ).rejects.toThrow(UserNotAtBranchError);
+
+        expect(getUserBranches).toHaveBeenCalledWith({ userId: 9, branchId: BRANCH_ID });
+    });
+
+    it('accepts reassigning to someone who works at the branch', async () => {
+        getUserBranches.mockResolvedValue([{ userId: 9, branchId: BRANCH_ID }]);
+
+        await expect(
+            patch(task({ assigned_to: 2, assigned_role_id: null }), { assigned_to: 9 }),
+        ).resolves.toBeDefined();
+    });
+
+    it('rejects retargeting to a role that does not exist', async () => {
+        getRoleById.mockResolvedValue(null);
+
+        await expect(
+            patch(task({ assigned_to: 2, assigned_role_id: null }), {
+                assigned_to: null,
+                assigned_role_id: 99,
+            }),
+        ).rejects.toThrow(RoleNotFoundError);
+    });
+
+    it('accepts retargeting to a role that exists', async () => {
+        getRoleById.mockResolvedValue({ roleId: 99, name: 'cashier' });
+
+        await expect(
+            patch(task({ assigned_to: 2, assigned_role_id: null }), {
+                assigned_to: null,
+                assigned_role_id: 99,
+            }),
+        ).resolves.toBeDefined();
     });
 });
 

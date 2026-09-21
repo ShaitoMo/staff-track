@@ -10,13 +10,17 @@ jest.mock('@/repository/user-branch-repository', () => ({
 jest.mock('@/repository/task-instance-repository', () => ({
     TaskInstanceRepository: { getInstanceForWrite: jest.fn(), reviewInstance: jest.fn() },
 }));
+jest.mock('@/repository/role-repository', () => ({
+    RoleRepository: { getRoleById: jest.fn() },
+}));
 
 import { TaskInstanceService } from '@/services/task-instance-service';
 import { UserRepository } from '@/repository/user-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
+import { RoleRepository } from '@/repository/role-repository';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
-import { ForbiddenError, NotAssignedToTaskError } from '@/exceptions/forbidden-error';
+import { ForbiddenError, NotAssignedToTaskError, NotBranchManagerError } from '@/exceptions/forbidden-error';
 
 const getUserById = UserRepository.getUserById as jest.MockedFunction<
     typeof UserRepository.getUserById
@@ -27,10 +31,14 @@ const getUserBranches = UserBranchRepository.getUserBranches as jest.MockedFunct
 const getInstanceForWrite = TaskInstanceRepository.getInstanceForWrite as jest.MockedFunction<
     typeof TaskInstanceRepository.getInstanceForWrite
 >;
+const getRoleById = RoleRepository.getRoleById as jest.MockedFunction<
+    typeof RoleRepository.getRoleById
+>;
 
 const ASSIGNEE = 7;
 const OTHER_USER = 8;
 const ROLE = 2;
+const MANAGER_ROLE = 1;
 const BRANCH = 3;
 
 /** Mirrors the `getInstanceForWrite` projection: exactly what the permission rules get to see. */
@@ -71,6 +79,10 @@ const assertMayComplete = (
     forWrite: ReturnType<typeof instance>,
     completedBy: number,
 ): Promise<void> => TaskInstanceService['assertMayComplete'](forWrite, completedBy);
+
+/** `assertMayReview` is private; element access reaches it without widening the service API. */
+const assertMayReview = (userId: number, branchId: number): Promise<void> =>
+    TaskInstanceService['assertMayReview'](userId, branchId);
 
 beforeEach(() => {
     jest.resetAllMocks();
@@ -189,6 +201,40 @@ describe('assertMayComplete — task targets a role', () => {
     });
 });
 
+describe('assertMayReview — restricted to managers', () => {
+    it('admits an active manager attached to the branch', async () => {
+        getUserById.mockResolvedValue(user({ roleId: MANAGER_ROLE }));
+        getRoleById.mockResolvedValue({ roleId: MANAGER_ROLE, name: 'manager' });
+        getUserBranches.mockResolvedValue(atBranch);
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).resolves.toBeUndefined();
+    });
+
+    it('refuses a non-manager, even one attached to the branch', async () => {
+        getUserById.mockResolvedValue(user({ roleId: ROLE }));
+        getRoleById.mockResolvedValue({ roleId: ROLE, name: 'cashier' });
+        getUserBranches.mockResolvedValue(atBranch);
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
+
+    it('refuses a manager not attached to the branch', async () => {
+        getUserById.mockResolvedValue(user({ roleId: MANAGER_ROLE }));
+        getRoleById.mockResolvedValue({ roleId: MANAGER_ROLE, name: 'manager' });
+        getUserBranches.mockResolvedValue([]);
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
+
+    it('refuses a deactivated user without consulting their role', async () => {
+        getUserById.mockResolvedValue(user({ isActive: false }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+
+        expect(getRoleById).not.toHaveBeenCalled();
+    });
+});
+
 describe('review is deliberately not gated on the task being active', () => {
     it('lets a completed instance of a deactivated task still be verified', async () => {
         // otherwise work photographed before the task was closed would strand in `completed`,
@@ -198,7 +244,8 @@ describe('review is deliberately not gated on the task being active', () => {
             status: TaskStatus.completed,
             completedBy: OTHER_USER,
         });
-        getUserById.mockResolvedValue(user());
+        getUserById.mockResolvedValue(user({ roleId: MANAGER_ROLE }));
+        getRoleById.mockResolvedValue({ roleId: MANAGER_ROLE, name: 'manager' });
         getUserBranches.mockResolvedValue(atBranch);
 
         await TaskInstanceService.reviewInstance({

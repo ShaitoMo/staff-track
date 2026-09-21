@@ -5,7 +5,8 @@ import {
 } from '@/repository/task-instance-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
-import { savePhoto } from '@/lib/storage';
+import { RoleRepository } from '@/repository/role-repository';
+import { deletePhoto, savePhoto } from '@/lib/storage';
 import { assertTransition } from '@/lib/task-status';
 import {
     TaskInstanceDetailView,
@@ -54,8 +55,8 @@ export class TaskInstanceService {
 
     /**
      * Completion: permission and status are settled before the photo is written, so a request that
-     * was never going to succeed leaves no orphan file behind. The photo is then saved to storage,
-     * and only the database work runs inside the transaction.
+     * was never going to succeed leaves no orphan file behind. The photo is then saved to storage;
+     * if the database write that follows fails, the file is deleted rather than left orphaned.
      */
     static async completeInstance(params: {
         instanceId: number;
@@ -71,14 +72,20 @@ export class TaskInstanceService {
 
         const filePath = await savePhoto(photo, instanceId);
 
-        return TaskInstanceRepository.completeInstance({
-            instanceId,
-            completedBy,
-            filePath,
-            // the server clock is the only accepted source: neither the request body nor the
-            // photo's EXIF data can be trusted to say when the work actually happened
-            completedAt: new Date(),
-        });
+        try {
+            return await TaskInstanceRepository.completeInstance({
+                instanceId,
+                completedBy,
+                filePath,
+                // the server clock is the only accepted source: neither the request body nor the
+                // photo's EXIF data can be trusted to say when the work actually happened
+                completedAt: new Date(),
+            });
+        } catch (error) {
+            // the write already happened; if the DB update fails, don't leave it behind unreferenced
+            await deletePhoto(filePath);
+            throw error;
+        }
     }
 
     /**
@@ -159,17 +166,17 @@ export class TaskInstanceService {
         }
     }
 
-    /**
-     * Review is restricted to active users attached to the task's own branch.
-     *
-     * NOTE: the brief also requires the reviewer to be a *manager*. That half of the check is
-     * deliberately absent until role-based permissions exist — as it stands, any active user at
-     * the branch (other than the completer) can verify or reject. See TO-BE-REVIEWED.md.
-     */
+    /** Review is restricted to active managers attached to the task's own branch. */
     private static async assertMayReview(userId: number, branchId: number): Promise<void> {
         const user = await UserRepository.getUserById(userId);
 
         if (!user || !user.isActive) {
+            throw new NotBranchManagerError();
+        }
+
+        const role = await RoleRepository.getRoleById(user.roleId);
+
+        if (!role || role.name !== 'manager') {
             throw new NotBranchManagerError();
         }
 
