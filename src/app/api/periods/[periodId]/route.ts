@@ -73,7 +73,7 @@ export async function PATCH(
         if (error instanceof ShiftPeriodNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to update period');
+        logger.error({ err: error }, 'Failed to update period')
         return NextResponse.json({ error: 'Failed to update period' }, { status: 500 })
     }
 }
@@ -118,7 +118,7 @@ export async function DELETE(
         if (error instanceof PeriodInUseError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
-        logger.error({ err: error }, 'Failed to delete period');
+        logger.error({ err: error }, 'Failed to delete period')
         return NextResponse.json({ error: 'Failed to delete period' }, { status: 500 })
     }
 }

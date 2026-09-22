@@ -79,7 +79,7 @@ export async function PATCH(
         if (error instanceof DuplicateRoleNameError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to update role');
+        logger.error({ err: error }, 'Failed to update role')
         return NextResponse.json({ error: 'Failed to update role' }, { status: 500 })
     }
 }

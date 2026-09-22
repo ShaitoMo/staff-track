@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to build dashboard');
+        logger.error({ err: error }, 'Failed to build dashboard')
         return NextResponse.json({ error: 'Failed to build dashboard' }, { status: 500 })
     }
 }

@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        logger.error({ err: error }, 'Failed to fetch shifts');
+        logger.error({ err: error }, 'Failed to fetch shifts')
         return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 })
     }
 }
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to create shift');
+        logger.error({ err: error }, 'Failed to create shift')
         return NextResponse.json({ error: 'Failed to create shift' }, { status: 500 })
     }
 }

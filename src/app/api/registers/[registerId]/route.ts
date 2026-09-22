@@ -84,7 +84,7 @@ export async function PATCH(
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to update register');
+        logger.error({ err: error }, 'Failed to update register')
         return NextResponse.json({ error: 'Failed to update register' }, { status: 500 })
     }
 }

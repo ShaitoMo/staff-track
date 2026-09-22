@@ -42,7 +42,7 @@ export async function DELETE(
         if (error instanceof UserBranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to remove user from branch');
+        logger.error({ err: error }, 'Failed to remove user from branch')
         return NextResponse.json({ error: 'Failed to remove user from branch' }, { status: 500 })
     }
 }

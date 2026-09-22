@@ -64,7 +64,7 @@ export async function PATCH(
         if (error instanceof InvalidPhotoError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to complete task instance');
+        logger.error({ err: error }, 'Failed to complete task instance')
         return NextResponse.json({ error: 'Failed to complete task instance' }, { status: 500 })
     }
 }

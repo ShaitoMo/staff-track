@@ -61,7 +61,7 @@ export async function PATCH(
         if (error instanceof CoverageRequirementNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to update coverage requirement');
+        logger.error({ err: error }, 'Failed to update coverage requirement')
         return NextResponse.json({ error: 'Failed to update coverage requirement' }, { status: 500 })
     }
 }
@@ -104,7 +104,7 @@ export async function DELETE(
         if (error instanceof CoverageRequirementNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to delete coverage requirement');
+        logger.error({ err: error }, 'Failed to delete coverage requirement')
         return NextResponse.json({ error: 'Failed to delete coverage requirement' }, { status: 500 })
     }
 }

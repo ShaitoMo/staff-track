@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
             recordFailedLogin(phone)
             return NextResponse.json({ error: error.message }, { status: 401 })
         }
-        logger.error({ err: error }, 'Failed to log in');
+        logger.error({ err: error }, 'Failed to log in')
         return NextResponse.json({ error: 'Failed to log in' }, { status: 500 })
     }
 }

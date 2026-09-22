@@ -121,7 +121,7 @@ export async function PATCH(
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to update task');
+        logger.error({ err: error }, 'Failed to update task')
         return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
     }
 }

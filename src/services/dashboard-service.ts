@@ -19,8 +19,9 @@ export class DashboardService {
             await DashboardService.assertBranchExists(branchId);
         }
 
-        const from = fromInput ?? DashboardService.today();
-        const to = toInput ?? DashboardService.today();
+        const today = DashboardService.today();
+        const from = fromInput ?? today;
+        const to = toInput ?? today;
 
         const [branches, shifts, punches, instances] = await Promise.all([
             branchId !== undefined ? [] : BranchRepository.getAllBranches(),
@@ -56,6 +57,9 @@ export class DashboardService {
             range: { from: toDateOnlyString(from), to: toDateOnlyString(to) },
             attendance: {
                 no_shows: rows.filter((row) => row.flag === 'no_show').length,
+                // Each row carries a single flag (schedule-vs-actual's flagFor checks late before
+                // early leave), so a shift that is both late and left early is only ever counted
+                // here, never in early_departures.
                 late_arrivals: rows.filter((row) => row.flag === 'late').length,
                 early_departures: rows.filter((row) => row.flag === 'left_early').length,
             },

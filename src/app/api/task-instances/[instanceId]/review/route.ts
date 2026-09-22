@@ -61,7 +61,7 @@ export async function PATCH(
         if (error instanceof InvalidStatusTransitionError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
-        logger.error({ err: error }, 'Failed to review task instance');
+        logger.error({ err: error }, 'Failed to review task instance')
         return NextResponse.json({ error: 'Failed to review task instance' }, { status: 500 })
     }
 }

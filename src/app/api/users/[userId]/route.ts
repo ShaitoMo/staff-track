@@ -104,7 +104,7 @@ export async function PATCH(
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to update user');
+        logger.error({ err: error }, 'Failed to update user')
         return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
     }
 }

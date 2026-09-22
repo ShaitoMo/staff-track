@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to create register');
+        logger.error({ err: error }, 'Failed to create register')
         return NextResponse.json({ error: 'Failed to create register' }, { status: 500 })
     }
 }

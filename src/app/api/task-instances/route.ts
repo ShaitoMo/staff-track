@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        logger.error({ err: error }, 'Failed to fetch task instances');
+        logger.error({ err: error }, 'Failed to fetch task instances')
         return NextResponse.json({ error: 'Failed to fetch task instances' }, { status: 500 })
     }
 }

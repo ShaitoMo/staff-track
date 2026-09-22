@@ -141,7 +141,7 @@ export async function PATCH(
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to update shift');
+        logger.error({ err: error }, 'Failed to update shift')
         return NextResponse.json({ error: 'Failed to update shift' }, { status: 500 })
     }
 }
@@ -184,7 +184,7 @@ export async function DELETE(
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to delete shift');
+        logger.error({ err: error }, 'Failed to delete shift')
         return NextResponse.json({ error: 'Failed to delete shift' }, { status: 500 })
     }
 }

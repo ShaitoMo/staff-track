@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof DuplicateRoleNameError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to create role');
+        logger.error({ err: error }, 'Failed to create role')
         return NextResponse.json({ error: 'Failed to create role' }, { status: 500 })
     }
 }

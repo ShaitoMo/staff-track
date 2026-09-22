@@ -57,7 +57,7 @@ export async function GET(
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to compute coverage gaps');
+        logger.error({ err: error }, 'Failed to compute coverage gaps')
         return NextResponse.json({ error: 'Failed to compute coverage gaps' }, { status: 500 })
     }
 }

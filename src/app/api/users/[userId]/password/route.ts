@@ -56,7 +56,7 @@ export async function PUT(
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to update password');
+        logger.error({ err: error }, 'Failed to update password')
         return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
     }
 }

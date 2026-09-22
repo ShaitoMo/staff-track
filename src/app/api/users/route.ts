@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to create user');
+        logger.error({ err: error }, 'Failed to create user')
         return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 }

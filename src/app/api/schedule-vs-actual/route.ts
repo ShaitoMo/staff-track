@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof BranchNotFoundError || error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to compare schedule with attendance');
+        logger.error({ err: error }, 'Failed to compare schedule with attendance')
         return NextResponse.json({ error: 'Failed to compare schedule with attendance' }, { status: 500 })
     }
 }

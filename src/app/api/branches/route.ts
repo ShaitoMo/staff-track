@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        logger.error({ err: error }, 'Failed to create branch');
+        logger.error({ err: error }, 'Failed to create branch')
         return NextResponse.json({ error: 'Failed to create branch' }, { status: 500 })
     }
 }

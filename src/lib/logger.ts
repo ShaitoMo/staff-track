@@ -11,6 +11,9 @@ import pino from 'pino';
  * color codes there since that file gets opened in an editor, not a terminal, and escape codes
  * would just show up as garbage. Production writes JSON to stdout only — the host's own log
  * capture is the place for retention, not this repo.
+ *
+ * No redaction is configured, so callers are the only safeguard: never pass a request body,
+ * password, or token into a log call, only the error object and identifiers.
  */
 export const logger = pino({
     level: process.env.LOG_LEVEL ?? 'info',

@@ -42,7 +42,7 @@ export async function GET(
         if (error instanceof MediaNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to fetch media');
+        logger.error({ err: error }, 'Failed to fetch media')
         return NextResponse.json({ error: 'Failed to fetch media' }, { status: 500 })
     }
 }

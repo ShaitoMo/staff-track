@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to fetch coverage requirements');
+        logger.error({ err: error }, 'Failed to fetch coverage requirements')
         return NextResponse.json({ error: 'Failed to fetch coverage requirements' }, { status: 500 })
     }
 }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to create coverage requirement');
+        logger.error({ err: error }, 'Failed to create coverage requirement')
         return NextResponse.json({ error: 'Failed to create coverage requirement' }, { status: 500 })
     }
 }

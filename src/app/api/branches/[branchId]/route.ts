@@ -83,7 +83,7 @@ export async function PATCH(
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        logger.error({ err: error }, 'Failed to update branch');
+        logger.error({ err: error }, 'Failed to update branch')
         return NextResponse.json({ error: 'Failed to update branch' }, { status: 500 })
     }
 }

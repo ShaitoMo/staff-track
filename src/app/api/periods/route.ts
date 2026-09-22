@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to fetch periods');
+        logger.error({ err: error }, 'Failed to fetch periods')
         return NextResponse.json({ error: 'Failed to fetch periods' }, { status: 500 })
     }
 }
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        logger.error({ err: error }, 'Failed to create period');
+        logger.error({ err: error }, 'Failed to create period')
         return NextResponse.json({ error: 'Failed to create period' }, { status: 500 })
     }
 }

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof InvalidRefreshTokenError) {
             return NextResponse.json({ error: error.message }, { status: 401 })
         }
-        logger.error({ err: error }, 'Failed to refresh session');
+        logger.error({ err: error }, 'Failed to refresh session')
         return NextResponse.json({ error: 'Failed to refresh session' }, { status: 500 })
     }
 }

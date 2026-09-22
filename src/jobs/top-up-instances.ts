@@ -23,14 +23,14 @@ async function main() {
     const { tasks, created, deleted } = await TaskService.reconcileInstances(startedAt);
 
     logger.info(
-        { tasksChecked: tasks, instancesCreated: created, instancesDeleted: deleted },
-        '[top-up] run complete',
+        { job: 'top-up-instances', tasksChecked: tasks, instancesCreated: created, instancesDeleted: deleted },
+        'Run complete',
     );
 }
 
 main()
     .catch((error) => {
-        logger.error({ err: error }, '[top-up] failed');
+        logger.error({ job: 'top-up-instances', err: error }, 'Run failed');
         process.exit(1);
     })
     .finally(async () => {
