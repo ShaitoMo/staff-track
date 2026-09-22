@@ -1,10 +1,7 @@
 /**
- * The clock-in machines report wall-clock readings with no zone: '7/1/2026', '3:00:00 PM'. The
- * column they land in is `timestamptz`, so each reading has to be resolved to the instant it
- * actually happened, which needs the zone the machine stands in.
- *
- * One constant for the whole business today. If branches ever span zones this becomes a column on
- * `branches` and a parameter here — nothing else changes.
+ * The clock-in machines report wall-clock readings with no zone ('7/1/2026', '3:00:00 PM'), but
+ * the column is `timestamptz` — resolving one needs the zone the machine stands in. One constant
+ * for now; if branches ever span zones this becomes a column on `branches` instead.
  */
 export const MACHINE_TIME_ZONE = 'Asia/Beirut';
 
@@ -39,17 +36,10 @@ function offsetAt(instant: number): number {
 }
 
 /**
- * The calendar day an instant falls on **in Beirut**, as UTC midnight.
- *
- * The anchor matches the one every other date in the codebase uses: Postgres `date` columns come
- * back from Prisma at UTC midnight, so a day meant for comparison against `due_date` has to be
- * anchored the same way. This is `toUtcDate` from `lib/recurrence.ts` with the zone applied first,
- * and it returns the identical shape — only the answer differs, and only near midnight.
- *
- * What it fixes is *which* day it is. `toUtcDate(new Date())` answers with the UTC calendar day,
- * and Beirut runs two to three hours ahead of it — so every night between local midnight and
- * 02:00 or 03:00, 'today' came back as yesterday. Anything generating or pruning a window from
- * that answer was working a day behind the branch it serves.
+ * The calendar day an instant falls on **in Beirut**, as UTC midnight — same anchor as `toUtcDate`
+ * in `lib/recurrence.ts` (Postgres `date` columns come back at UTC midnight), with the zone
+ * applied first. Fixes *which* day it is: `toUtcDate(new Date())` answers with the UTC day, and
+ * Beirut runs 2-3 hours ahead, so 'today' came back as yesterday between local and UTC midnight.
  */
 export function machineDayOf(instant: Date): Date {
     const wallClock = new Date(instant.getTime() + offsetAt(instant.getTime()));
@@ -62,15 +52,10 @@ export function machineDayOf(instant: Date): Date {
 }
 
 /**
- * A machine reading to the instant it happened.
- *
- * Beirut is +02:00 in winter and +03:00 in summer, so the offset cannot be a constant: it depends
- * on the very instant being computed. The naive guess is corrected once, which is enough — only a
- * reading inside a DST shift lands under a different offset than the guess assumed.
- *
- * The hour that DST skips does not exist on the clock; a reading inside it is resolved to the
- * instant the clock jumped to, rather than rejected, because a machine can only ever report a time
- * that its own clock displayed.
+ * A machine reading to the instant it happened. Beirut's offset is +02:00/+03:00 by season, so a
+ * naive guess is corrected once against itself — enough to handle a reading inside a DST shift.
+ * The hour DST skips doesn't exist on the clock; a reading inside it resolves to the instant the
+ * clock jumped to, rather than being rejected, since a machine can only report what its clock showed.
  */
 export function machineTimeToUtc(
     year: number,

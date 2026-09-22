@@ -2,13 +2,8 @@ import { TaskStatus } from '@/types/task-instance';
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error';
 
 /**
- * The only legal status moves. Every write that changes an instance's status checks this map,
- * so 'what may follow what' is stated once instead of being re-derived at each call site.
- *
- *   pending   -> completed
- *   completed -> verified | rejected
- *
- * verified and rejected are terminal.
+ * The only legal status moves — every write checks this map, so 'what may follow what' is
+ * stated once. pending -> completed -> verified|rejected; verified/rejected are terminal.
  */
 export const STATUS_TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
     pending: ['completed'],

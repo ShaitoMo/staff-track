@@ -69,19 +69,11 @@ export function getDates(rule: string, from: Date, to: Date): Date[] {
 }
 
 /**
- * Which of the given pending instances the rule no longer accounts for.
- *
- * `validDates` is what the task's current rule lands on across the window; `pending` is the rows
- * that actually exist from the window's start onwards. Anything present but not expected is
- * surplus — left behind by a rule that was narrowed, switched off, or replaced.
- *
- * Pure: no clock, no database, no notion of what a task is. Feed it dates and rows, get ids back.
- *
- * Dates are compared at UTC midnight, so a row whose `dueDate` carries a time component still
- * matches the rule's bare date for the same calendar day.
- *
- * The caller must not pass `validDates: []` for a rule it failed to expand — an unparseable rule
- * means 'unknown', not 'nothing', and every forward row would be reported as surplus.
+ * Which of the given pending instances the rule no longer accounts for. `validDates` is what the
+ * rule currently expands to; `pending` is what actually exists. Anything present but not expected
+ * is surplus. Pure — no clock, no database. Compared at UTC midnight, so a `dueDate` with a time
+ * component still matches. Caller must not pass `validDates: []` for a rule that failed to parse —
+ * that means 'unknown', not 'nothing'.
  */
 export function surplusInstanceIds(
     validDates: readonly Date[],

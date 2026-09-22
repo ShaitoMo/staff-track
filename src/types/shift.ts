@@ -30,24 +30,11 @@ export type UserShiftFiltersInput = z.infer<typeof UserShiftFiltersSchema>;
 // ---------- Creation (POST /api/shifts) ----------
 
 /**
- * POST /api/shifts.
- *
- * `register_id` is optional and nullable — a shift only names a register when it is a cashier's
- * (the column is NULL otherwise), and the register must belong to `branch_id`, which the service
- * checks because only it can read the register.
- *
- * `period_id` is optional. When given, `start_time`/`end_time` are inherited from that period's
- * defaults — the service copies them onto the row (see ShiftService.createShift) rather than
- * reading them through the relation later, so a request naming `period_id` must not also send its
- * own times: the two sources would silently disagree about which one wins. When `period_id` is
- * absent, `start_time`/`end_time` come from the request exactly as before, and both are required.
- *
- * `created_by` is the manager doing the scheduling; a request field only until authentication
- * exists, matching CreateTaskSchema's `assigned_by`.
- *
- * `end_time` must be strictly after `start_time`. A shift is therefore one span inside its own
- * `shift_date`, and an overnight shift is scheduled as two rows on two dates — which is what lets
- * the double-booking check stay a plain interval comparison within a single day.
+ * POST /api/shifts. `register_id` must belong to `branch_id` (service-checked). `period_id`, if
+ * given, supplies `start_time`/`end_time` from its defaults — omit your own, they'd silently
+ * conflict; without `period_id`, both times are required. `created_by` is session-derived, not
+ * client-supplied. `end_time` must be strictly after `start_time`, so an overnight shift is two
+ * rows on two dates, keeping the overlap check a same-day interval compare.
  */
 export const CreateShiftSchema = z.object({
     user_id: z.number().int().positive(),
@@ -57,7 +44,6 @@ export const CreateShiftSchema = z.object({
     shift_date: DateOnlySchema,
     start_time: TimeOnlySchema.optional(),
     end_time: TimeOnlySchema.optional(),
-    created_by: z.number().int().positive(),
 }).superRefine((data, ctx) => {
     const { start_time: startTime, end_time: endTime, period_id: periodId } = data;
 
@@ -98,27 +84,17 @@ export const CreateShiftSchema = z.object({
     }
 });
 
-export type CreateShiftInput = z.infer<typeof CreateShiftSchema>;
+/** created_by is session-derived — the route merges it in after CreateShiftSchema validates the rest. */
+export type CreateShiftInput = z.infer<typeof CreateShiftSchema> & { created_by: number };
 
 // ---------- Editing (PATCH /api/shifts/:shiftId) ----------
 
 /**
- * PATCH /api/shifts/:shiftId.
- *
- * An absent field means 'leave it alone', so `register_id: null` is the only way to clear a
- * register — and the only field where null and absent differ.
- *
- * `user_id` is editable — handing a shift to a colleague keeps the slot and its history rather
- * than replacing it — and it re-asks both questions that name a worker: whether the new one works
- * at the shift's branch, and whether they are already booked over these hours.
- *
- * `created_by` is not editable: it records who scheduled the shift, not who last touched it.
- *
- * `start_time` and `end_time` must be sent together, for the reason UpdateTaskSchema pairs
- * `is_recurring` with `recurrence`: sent alone, neither describes the resulting span — the other
- * half lives in the database — so ordering could not be judged here and would have to be
- * discovered after a read. Sent as a pair, the span is fully described by the request and a
- * backwards one is refused with a 400 naming the field.
+ * PATCH /api/shifts/:shiftId. Absent means 'leave it alone' — `register_id: null` is the only way
+ * to clear one. `user_id` is editable (re-checks branch membership and overlap for the new worker).
+ * `created_by` is not editable — it records who scheduled, not who last touched. `start_time`/
+ * `end_time` must be sent together, since either alone can't be validated against the half still
+ * in the database.
  */
 export const UpdateShiftSchema = z.object({
     user_id: z.number().int().positive().optional(),

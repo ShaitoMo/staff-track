@@ -1,7 +1,9 @@
 import { AccessTokenPayload } from '@/types/auth'
+import { UpdateUserInput } from '@/types/user'
+import { UserBranchService } from '@/services/user-branch-service'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
 import { BranchAccessDeniedError } from '@/exceptions/branch-access-denied-error'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { ForbiddenError, SelfRoleChangeError, SelfStatusChangeError } from '@/exceptions/forbidden-error'
 
 export const OWNER_ROLE = 'owner'
 export const MANAGER_ROLE = 'manager'
@@ -24,6 +26,17 @@ export function requireBranchAccess(user: AccessTokenPayload, branchId: number):
     }
 }
 
+/** Throws unless the caller shares at least one of these branches. Owner is unrestricted (FR10). For a subject with no branches at all, only an owner may act on them. */
+export function requireAnyBranchAccess(user: AccessTokenPayload, branchIds: number[]): void {
+    if (user.role === OWNER_ROLE) {
+        return
+    }
+
+    if (!branchIds.some((branchId) => user.branchIds.includes(branchId))) {
+        throw new BranchAccessDeniedError()
+    }
+}
+
 /** For users/:userId/* routes: the subject themselves always may; owner/manager may on anyone's behalf. */
 export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number, roles: string[]): void {
     if (user.userId === targetUserId) {
@@ -33,19 +46,14 @@ export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number
     requireRole(user, roles)
 }
 
-/**
- * Throws unless the caller shares at least one branch with the target user. Owner is
- * unrestricted (FR10). A target with no branch links (e.g. the owner account itself)
- * can therefore only be acted on by the owner.
- */
-export function requireSharedBranchWithUser(user: AccessTokenPayload, targetBranchIds: number[]): void {
-    if (user.role === OWNER_ROLE) {
+/** For a manager acting on someone else: the target must share at least one of the manager's branches. Owner and self are unrestricted. */
+export async function requireCallerCanReachUser(caller: AccessTokenPayload, targetUserId: number): Promise<void> {
+    if (caller.userId === targetUserId || caller.role === OWNER_ROLE) {
         return
     }
 
-    if (!targetBranchIds.some((branchId) => user.branchIds.includes(branchId))) {
-        throw new BranchAccessDeniedError()
-    }
+    const branches = await UserBranchService.getUserBranches({ userId: targetUserId })
+    requireAnyBranchAccess(caller, branches.map((branch) => branch.branchId))
 }
 
 /**
@@ -64,5 +72,30 @@ export function requireTaskInstanceAccess(user: AccessTokenPayload, branchId: nu
 
     if (assigneeUserId !== user.userId) {
         throw new ForbiddenError()
+    }
+}
+
+/**
+ * PATCH /users/:userId carries a mix of self-service fields and privileged ones, so one
+ * requireRole/requireSelfOrRole call can't gate the whole body — each field present is checked
+ * against its own requirement, and the request is refused if any of them fails.
+ */
+export function requireUserUpdateAllowed(user: AccessTokenPayload, targetUserId: number, data: UpdateUserInput): void {
+    if (data.roleId !== undefined) {
+        requireRole(user, [OWNER_ROLE])
+        if (user.userId === targetUserId) {
+            throw new SelfRoleChangeError()
+        }
+    }
+
+    if (data.isActive !== undefined) {
+        requireRole(user, [OWNER_ROLE])
+        if (user.userId === targetUserId) {
+            throw new SelfStatusChangeError()
+        }
+    }
+
+    if (data.name !== undefined || data.phone !== undefined) {
+        requireSelfOrRole(user, targetUserId, [OWNER_ROLE, MANAGER_ROLE])
     }
 }

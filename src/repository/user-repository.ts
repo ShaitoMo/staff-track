@@ -42,8 +42,12 @@ export class UserRepository {
             throw error
         }
     }
-    static async getAllUsers(): Promise<SafeUser[]> {
+    /** branchIds scopes to users assigned to at least one of them; omitted, every user comes back. */
+    static async getAllUsers(branchIds?: number[]): Promise<SafeUser[]> {
         return db.user.findMany({
+            where: branchIds !== undefined
+                ? { branchLinks: { some: { branchId: { in: branchIds } } } }
+                : undefined,
             select: SAFE_USER_SELECT,
         });
     }
