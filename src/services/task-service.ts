@@ -12,7 +12,6 @@ import {
 } from '@/lib/recurrence';
 import { machineDayOf } from '@/lib/machine-time';
 import { CreateTaskInput, Task, UpdateTaskInput } from '../types/task';
-import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { logger } from '@/lib/logger';
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error';
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
@@ -107,7 +106,7 @@ export class TaskService {
      * rule lands on in [today, today + WINDOW_DAYS]. The daily job extends the window from there.
      */
     static async createTask(data: CreateTaskInput): Promise<Task> {
-        await TaskService.assertBranchExists(data.branch_id);
+        await BranchRepository.assertExists(data.branch_id);
         await TaskService.assertTargetIsValid(data);
 
         const dueDates = TaskService.instanceDatesFor(data);
@@ -224,14 +223,6 @@ export class TaskService {
 
         if (!role) {
             throw new RoleNotFoundError();
-        }
-    }
-
-    private static async assertBranchExists(branchId: number): Promise<void> {
-        const branch = await BranchRepository.getBranchById(branchId);
-
-        if (!branch) {
-            throw new BranchNotFoundError();
         }
     }
 

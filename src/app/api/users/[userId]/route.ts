@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
-import { UserBranchService } from '@/services/user-branch-service'
 import { UserUpdateSchema } from '@/types/user'
-import { AccessTokenPayload } from '@/types/auth'
-import { MANAGER_ROLE, OWNER_ROLE, requireAnyBranchAccess, requireSelfOrRole, requireUserUpdateAllowed } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireCallerCanReachUser, requireSelfOrRole, requireUserUpdateAllowed } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
-
-/** For a manager acting on someone else: the target must share at least one of the manager's branches. Owner and self are unrestricted. */
-async function requireCallerCanReachUser(caller: AccessTokenPayload, targetUserId: number): Promise<void> {
-    if (caller.userId === targetUserId || caller.role === OWNER_ROLE) {
-        return
-    }
-
-    const branches = await UserBranchService.getUserBranches({ userId: targetUserId })
-    requireAnyBranchAccess(caller, branches.map((branch) => branch.branchId))
-}
 
 export async function GET(
     req: NextRequest,
@@ -40,13 +28,14 @@ export async function GET(
 
     try {
         requireSelfOrRole(caller, userId, [OWNER_ROLE, MANAGER_ROLE])
-        await requireCallerCanReachUser(caller, userId)
 
         const user = await UserService.getUserById(userId);
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
+
+        await requireCallerCanReachUser(caller, userId)
 
         return NextResponse.json(user, { status: 200 });
     } catch (error) {
@@ -92,7 +81,15 @@ export async function PATCH(
 
     try {
         requireUserUpdateAllowed(caller, userId, validationResult.data)
+
+        const existing = await UserService.getUserById(userId);
+
+        if (!existing) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
         await requireCallerCanReachUser(caller, userId)
+
         const user = await UserService.updateUser(userId, validationResult.data);
         return NextResponse.json(user, { status: 200 });
     } catch (error) {
@@ -104,7 +101,7 @@ export async function PATCH(
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
         if (error instanceof DuplicatePhoneError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })

@@ -6,7 +6,6 @@ import { compareScheduleWithAttendance } from '@/lib/schedule-vs-actual';
 import { machineDayOf } from '@/lib/machine-time';
 import { DashboardFiltersInput, DashboardResponse } from '@/types/dashboard';
 import { toDateOnlyString } from '@/types/date-only';
-import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -18,7 +17,7 @@ export class DashboardService {
         const { branch_id: branchId, from: fromInput, to: toInput } = filters;
 
         if (branchId !== undefined) {
-            await DashboardService.assertBranchExists(branchId);
+            await BranchRepository.assertExists(branchId);
         }
 
         const today = machineDayOf(new Date());
@@ -79,13 +78,5 @@ export class DashboardService {
             },
             attendance_coverage: attendanceCoverage,
         };
-    }
-
-    private static async assertBranchExists(branchId: number): Promise<void> {
-        const branch = await BranchRepository.getBranchById(branchId);
-
-        if (!branch) {
-            throw new BranchNotFoundError();
-        }
     }
 }

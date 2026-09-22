@@ -86,10 +86,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         if (error instanceof DuplicateUserBranchError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof DuplicateMachineEmployeeIdError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: error.message }, { status: 409 })
         }
         logger.error({ err: error }, 'Failed to assign user to branch')
         return NextResponse.json({ error: 'Failed to assign user to branch' }, { status: 500 })

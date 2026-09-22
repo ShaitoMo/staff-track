@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof DuplicatePhoneError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })

@@ -17,7 +17,6 @@ import {
     assertImportableFile,
     parseAttendanceWorkbook,
 } from '@/lib/attendance-import'
-import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 
@@ -40,7 +39,7 @@ export class AttendanceService {
      * ShiftService.createShift gives: a foreign-key violation names a constraint, not a field.
      */
     static async createAttendance(data: CreateAttendanceInput): Promise<AttendanceView> {
-        await AttendanceService.assertBranchExists(data.branch_id)
+        await BranchRepository.assertExists(data.branch_id)
 
         // a missing link and a missing user are the same answer, so this covers user_id too
         const links = await UserBranchRepository.getUserBranches({
@@ -69,7 +68,7 @@ export class AttendanceService {
         const { file, filters } = params;
         const { branch_id: branchId, imported_by: importedBy } = filters;
 
-        await AttendanceService.assertBranchExists(branchId);
+        await BranchRepository.assertExists(branchId);
         await AttendanceService.assertImporterExists(importedBy);
 
         assertImportableFile(file);
@@ -145,14 +144,6 @@ export class AttendanceService {
 
     private static byRow(errors: ImportRowError[]): ImportRowError[] {
         return [...errors].sort((left, right) => left.row - right.row);
-    }
-
-    private static async assertBranchExists(branchId: number): Promise<void> {
-        const branch = await BranchRepository.getBranchById(branchId);
-
-        if (!branch) {
-            throw new BranchNotFoundError();
-        }
     }
 
     private static async assertImporterExists(userId: number): Promise<void> {

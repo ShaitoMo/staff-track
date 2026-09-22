@@ -1,5 +1,6 @@
 import { AccessTokenPayload } from '@/types/auth'
 import { UpdateUserInput } from '@/types/user'
+import { UserBranchService } from '@/services/user-branch-service'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
 import { BranchAccessDeniedError } from '@/exceptions/branch-access-denied-error'
 import { ForbiddenError, SelfRoleChangeError, SelfStatusChangeError } from '@/exceptions/forbidden-error'
@@ -43,6 +44,16 @@ export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number
     }
 
     requireRole(user, roles)
+}
+
+/** For a manager acting on someone else: the target must share at least one of the manager's branches. Owner and self are unrestricted. */
+export async function requireCallerCanReachUser(caller: AccessTokenPayload, targetUserId: number): Promise<void> {
+    if (caller.userId === targetUserId || caller.role === OWNER_ROLE) {
+        return
+    }
+
+    const branches = await UserBranchService.getUserBranches({ userId: targetUserId })
+    requireAnyBranchAccess(caller, branches.map((branch) => branch.branchId))
 }
 
 /**
