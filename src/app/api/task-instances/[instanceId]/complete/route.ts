@@ -6,6 +6,7 @@ import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { PhotoRequiredError } from '@/exceptions/photo-required-error'
 import { InactiveTaskError } from '@/exceptions/inactive-task-error'
+import { logger } from '@/lib/logger'
 
 /** PATCH .../complete — multipart `photo` only; completer and completed_at both come from the session/server clock, not the body. */
 export async function PATCH(
@@ -63,7 +64,7 @@ export async function PATCH(
         if (error instanceof InvalidPhotoError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to complete task instance')
         return NextResponse.json({ error: 'Failed to complete task instance' }, { status: 500 })
     }
 }

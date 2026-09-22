@@ -5,6 +5,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 import { requireAuthenticated, forbiddenResponse, zodErrorResponse } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
     const caller = requireAuthenticated(req);
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create user')
         return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 }
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch users');
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
 }
