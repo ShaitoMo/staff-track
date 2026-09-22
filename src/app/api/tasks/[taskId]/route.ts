@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskService } from '@/services/task-service'
 import { UpdateTaskSchema } from '@/types/task'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
@@ -22,10 +21,10 @@ export async function GET(
 
     const taskId = Number(taskIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -40,8 +39,9 @@ export async function GET(
 
         return NextResponse.json(task, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
@@ -60,10 +60,10 @@ export async function PATCH(
 
     const taskId = Number(taskIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await TaskService.getTaskById(taskId);
@@ -105,8 +105,9 @@ export async function PATCH(
         const task = await TaskService.updateTask(taskId, validationResult.data);
         return NextResponse.json(task, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof TaskNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

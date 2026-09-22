@@ -2,7 +2,7 @@ import { TaskStatus } from '@prisma/client';
 
 jest.mock('@/lib/db', () => ({ db: {} }));
 jest.mock('@/repository/user-repository', () => ({
-    UserRepository: { getUserById: jest.fn() },
+    UserRepository: { getUserById: jest.fn(), getAuthContext: jest.fn() },
 }));
 jest.mock('@/repository/user-branch-repository', () => ({
     UserBranchRepository: { getUserBranches: jest.fn() },
@@ -14,21 +14,20 @@ jest.mock('@/repository/task-instance-repository', () => ({
         getTaskInstances: jest.fn(),
     },
 }));
-jest.mock('@/repository/role-repository', () => ({
-    RoleRepository: { getRoleById: jest.fn() },
-}));
 
 import { TaskInstanceService } from '@/services/task-instance-service';
 import { UserRepository } from '@/repository/user-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
-import { RoleRepository } from '@/repository/role-repository';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
 import { ForbiddenError, NotAssignedToTaskError, NotBranchManagerError } from '@/exceptions/forbidden-error';
 import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 
 const getUserById = UserRepository.getUserById as jest.MockedFunction<
     typeof UserRepository.getUserById
+>;
+const getAuthContext = UserRepository.getAuthContext as jest.MockedFunction<
+    typeof UserRepository.getAuthContext
 >;
 const getUserBranches = UserBranchRepository.getUserBranches as jest.MockedFunction<
     typeof UserBranchRepository.getUserBranches
@@ -39,14 +38,10 @@ const getInstanceForWrite = TaskInstanceRepository.getInstanceForWrite as jest.M
 const getTaskInstances = TaskInstanceRepository.getTaskInstances as jest.MockedFunction<
     typeof TaskInstanceRepository.getTaskInstances
 >;
-const getRoleById = RoleRepository.getRoleById as jest.MockedFunction<
-    typeof RoleRepository.getRoleById
->;
 
 const ASSIGNEE = 7;
 const OTHER_USER = 8;
 const ROLE = 2;
-const MANAGER_ROLE = 1;
 const BRANCH = 3;
 
 /** Mirrors the `getInstanceForWrite` projection: exactly what the permission rules get to see. */
@@ -209,37 +204,49 @@ describe('assertMayComplete — task targets a role', () => {
     });
 });
 
-describe('assertMayReview — restricted to managers', () => {
+function authContext(overrides: { isActive?: boolean; roleName?: string; branchIds?: number[] } = {}) {
+    return {
+        isActive: overrides.isActive ?? true,
+        roleName: overrides.roleName ?? 'manager',
+        branchIds: overrides.branchIds ?? [BRANCH],
+    };
+}
+
+describe('assertMayReview — restricted to owners and managers', () => {
     it('admits an active manager attached to the branch', async () => {
-        getUserById.mockResolvedValue(user({ roleId: MANAGER_ROLE }));
-        getRoleById.mockResolvedValue({ roleId: MANAGER_ROLE, name: 'manager' });
-        getUserBranches.mockResolvedValue(atBranch);
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'manager', branchIds: [BRANCH] }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).resolves.toBeUndefined();
+    });
+
+    it('admits an active owner regardless of branch', async () => {
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'owner', branchIds: [] }));
 
         await expect(assertMayReview(ASSIGNEE, BRANCH)).resolves.toBeUndefined();
     });
 
     it('refuses a non-manager, even one attached to the branch', async () => {
-        getUserById.mockResolvedValue(user({ roleId: ROLE }));
-        getRoleById.mockResolvedValue({ roleId: ROLE, name: 'cashier' });
-        getUserBranches.mockResolvedValue(atBranch);
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'cashier', branchIds: [BRANCH] }));
 
         await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
     });
 
     it('refuses a manager not attached to the branch', async () => {
-        getUserById.mockResolvedValue(user({ roleId: MANAGER_ROLE }));
-        getRoleById.mockResolvedValue({ roleId: MANAGER_ROLE, name: 'manager' });
-        getUserBranches.mockResolvedValue([]);
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'manager', branchIds: [] }));
 
         await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
     });
 
-    it('refuses a deactivated user without consulting their role', async () => {
-        getUserById.mockResolvedValue(user({ isActive: false }));
+    it('refuses a deactivated user', async () => {
+        getAuthContext.mockResolvedValue(authContext({ isActive: false }));
 
         await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
 
-        expect(getRoleById).not.toHaveBeenCalled();
+    it('refuses an unknown user', async () => {
+        getAuthContext.mockResolvedValue(null);
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
     });
 });
 
@@ -252,9 +259,7 @@ describe('review is deliberately not gated on the task being active', () => {
             status: TaskStatus.completed,
             completedBy: OTHER_USER,
         });
-        getUserById.mockResolvedValue(user({ roleId: MANAGER_ROLE }));
-        getRoleById.mockResolvedValue({ roleId: MANAGER_ROLE, name: 'manager' });
-        getUserBranches.mockResolvedValue(atBranch);
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'manager', branchIds: [BRANCH] }));
 
         await TaskInstanceService.reviewInstance({
             instanceId: 1,

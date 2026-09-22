@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ShiftService } from '@/services/shift-service'
 import { UpdateShiftSchema } from '@/types/shift'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
@@ -11,7 +9,7 @@ import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-er
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
-import { parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
     req: NextRequest,
@@ -25,10 +23,10 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -43,8 +41,9 @@ export async function GET(
 
         return NextResponse.json(shift, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch shift' }, { status: 500 });
@@ -70,10 +69,10 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await ShiftService.getShiftById(shiftId);
@@ -120,8 +119,9 @@ export async function PATCH(
         const shift = await ShiftService.updateShift(shiftId, validationResult.data);
         return NextResponse.json(shift, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
@@ -158,10 +158,10 @@ export async function DELETE(
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await ShiftService.getShiftById(shiftId);
@@ -176,8 +176,9 @@ export async function DELETE(
         await ShiftService.deleteShift(shiftId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

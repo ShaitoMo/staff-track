@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { TaskInstanceFiltersSchema } from '@/types/task-instance'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 
 /**
  * GET /api/task-instances?user_id=&date=&branch_id=&status=
@@ -27,10 +26,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const isElevated = user.role === OWNER_ROLE || user.role === MANAGER_ROLE
@@ -51,8 +50,9 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json(visible, { status: 200 })
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch task instances' }, { status: 500 })

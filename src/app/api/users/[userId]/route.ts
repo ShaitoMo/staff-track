@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
+import { UserBranchService } from '@/services/user-branch-service'
 import { UserUpdateSchema } from '@/types/user'
-import { getCurrentUser } from '@/lib/auth'
-import { MANAGER_ROLE, OWNER_ROLE, requireRole, requireSelfOrRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { MANAGER_ROLE, OWNER_ROLE, requireRole, requireSelfOrRole, requireSharedBranchWithUser } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
-import { parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 
 export async function GET(
     req: NextRequest,
@@ -21,10 +20,10 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
 
-    const caller = getCurrentUser(req)
+    const caller = requireAuthenticated(req);
 
-    if (!caller) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (caller instanceof NextResponse) {
+        return caller;
     }
 
     try {
@@ -38,8 +37,9 @@ export async function GET(
 
         return NextResponse.json(user, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
@@ -58,10 +58,10 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
     }
 
-    const caller = getCurrentUser(req)
+    const caller = requireAuthenticated(req);
 
-    if (!caller) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (caller instanceof NextResponse) {
+        return caller;
     }
 
     let body
@@ -79,11 +79,20 @@ export async function PATCH(
 
     try {
         requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
+
+        if (validationResult.data.roleId !== undefined) {
+            requireRole(caller, [OWNER_ROLE])
+        }
+
+        const targetBranches = await UserBranchService.getBranchesByUser(userId)
+        requireSharedBranchWithUser(caller, targetBranches.map((branch) => branch.branchId))
+
         const user = await UserService.updateUser(userId, validationResult.data);
         return NextResponse.json(user, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

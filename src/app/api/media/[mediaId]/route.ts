@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MediaService } from '@/services/media-service'
 import { TaskInstanceService } from '@/services/task-instance-service'
-import { getCurrentUser } from '@/lib/auth'
-import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { requireTaskInstanceAccess } from '@/lib/rbac'
 import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
-import { parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 
 /** GET /api/media/:mediaId — metadata only; `file_path` isn't a servable URL yet (TO-BE-REVIEWED.md #1f). Same access rule as its parent task instance. */
 export async function GET(
@@ -20,10 +18,10 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid mediaId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -31,19 +29,14 @@ export async function GET(
         const instance = await TaskInstanceService.getTaskInstanceById(media.task_instance_id);
 
         if (instance) {
-            if (user.role === OWNER_ROLE) {
-                // no branch check
-            } else if (user.role === MANAGER_ROLE) {
-                requireBranchAccess(user, instance.task.branch_id)
-            } else if (instance.assignee?.user_id !== user.userId) {
-                return NextResponse.json({ error: 'Not permitted' }, { status: 403 })
-            }
+            requireTaskInstanceAccess(user, instance.task.branch_id, instance.assignee?.user_id)
         }
 
         return NextResponse.json(media, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof MediaNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

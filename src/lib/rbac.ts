@@ -1,6 +1,7 @@
 import { AccessTokenPayload } from '@/types/auth'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
 import { BranchAccessDeniedError } from '@/exceptions/branch-access-denied-error'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 
 export const OWNER_ROLE = 'owner'
 export const MANAGER_ROLE = 'manager'
@@ -30,4 +31,38 @@ export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number
     }
 
     requireRole(user, roles)
+}
+
+/**
+ * Throws unless the caller shares at least one branch with the target user. Owner is
+ * unrestricted (FR10). A target with no branch links (e.g. the owner account itself)
+ * can therefore only be acted on by the owner.
+ */
+export function requireSharedBranchWithUser(user: AccessTokenPayload, targetBranchIds: number[]): void {
+    if (user.role === OWNER_ROLE) {
+        return
+    }
+
+    if (!targetBranchIds.some((branchId) => user.branchIds.includes(branchId))) {
+        throw new BranchAccessDeniedError()
+    }
+}
+
+/**
+ * Throws unless the caller may access a task instance at `branchId`: owner (any branch), a
+ * manager of that branch, or the instance's own assignee.
+ */
+export function requireTaskInstanceAccess(user: AccessTokenPayload, branchId: number, assigneeUserId?: number | null): void {
+    if (user.role === OWNER_ROLE) {
+        return
+    }
+
+    if (user.role === MANAGER_ROLE) {
+        requireBranchAccess(user, branchId)
+        return
+    }
+
+    if (assigneeUserId !== user.userId) {
+        throw new ForbiddenError()
+    }
 }

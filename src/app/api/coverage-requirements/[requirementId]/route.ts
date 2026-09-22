@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { CoverageRequirementService } from '@/services/coverage-requirement-service'
 import { UpdateCoverageRequirementSchema } from '@/types/coverage-requirement'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { CoverageRequirementNotFoundError } from '@/exceptions/coverage-requirement-not-found-error'
 
 /** PATCH /api/coverage-requirements/:id — requiredCount is the only editable field. */
@@ -19,10 +18,10 @@ export async function PATCH(
 
     const requirementId = Number(requirementIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await CoverageRequirementService.getRequirementById(requirementId);
@@ -54,8 +53,9 @@ export async function PATCH(
         const requirement = await CoverageRequirementService.updateRequirement(requirementId, validationResult.data);
         return NextResponse.json(requirement, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof CoverageRequirementNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
@@ -78,10 +78,10 @@ export async function DELETE(
 
     const requirementId = Number(requirementIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await CoverageRequirementService.getRequirementById(requirementId);
@@ -96,8 +96,9 @@ export async function DELETE(
         await CoverageRequirementService.deleteRequirement(requirementId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof CoverageRequirementNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RegisterService } from '@/services/register-service'
 import { UpdateRegisterSchema } from '@/types/register'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
-import { parseJsonBody, parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
     req: NextRequest,
@@ -19,10 +17,10 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid registerId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -33,8 +31,9 @@ export async function GET(
 
         return NextResponse.json(register, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
@@ -56,10 +55,10 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid registerId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const parsed = await parseJsonBody(req, UpdateRegisterSchema);
@@ -77,8 +76,9 @@ export async function PATCH(
         const register = await RegisterService.updateRegister(registerId, parsed.data);
         return NextResponse.json(register, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

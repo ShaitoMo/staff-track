@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
-import { getCurrentUser } from '@/lib/auth'
 import { InvalidPhotoError } from '@/lib/storage'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { PhotoRequiredError } from '@/exceptions/photo-required-error'
 import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 
@@ -19,10 +18,10 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     let formData: FormData
@@ -54,8 +53,9 @@ export async function PATCH(
         if (error instanceof TaskInstanceNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof InvalidStatusTransitionError || error instanceof InactiveTaskError) {
             return NextResponse.json({ error: error.message }, { status: 409 })

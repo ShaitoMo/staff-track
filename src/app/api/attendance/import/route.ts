@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { AttendanceService } from '@/services/attendance-service';
 import { ImportAttendanceSchema } from '@/types/attendance-import';
 import { InvalidImportFileError } from '@/lib/attendance-import';
-import { getCurrentUser } from '@/lib/auth';
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac';
-import { ForbiddenError } from '@/exceptions/forbidden-error';
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 
@@ -18,10 +17,10 @@ import { UserNotFoundError } from '@/exceptions/user-not-found-error';
  * 397 imported. Only an unreadable file is a 400.
  */
 export async function POST(req: NextRequest) {
-    const user = getCurrentUser(req);
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     let formData: FormData;
@@ -64,8 +63,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(result, { status: 201 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof InvalidImportFileError) {
             return NextResponse.json({ error: error.message }, { status: 400 });

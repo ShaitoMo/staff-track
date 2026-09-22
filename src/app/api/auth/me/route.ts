@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { requireAuthenticated } from '@/lib/route-utils'
 
 /** GET /api/auth/me — the caller's identity/permissions; the null check below is defensive, proxy.ts already gates this route. */
 export async function GET(req: NextRequest) {
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     return NextResponse.json(user, { status: 200 })

@@ -4,6 +4,7 @@ import { UserService } from '@/services/user-service'
 import { LoginSchema } from '@/types/auth'
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions, refreshCookieOptions } from '@/lib/auth'
 import { InvalidCredentialsError } from '@/exceptions/invalid-credentials-error'
+import { clearLoginAttempts, isLoginLocked, recordFailedLogin } from '@/lib/login-rate-limit'
 
 /** POST /api/auth/login — verifies phone + password, sets the access and refresh cookies. */
 export async function POST(req: NextRequest) {
@@ -24,8 +25,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
+    const { phone } = validationResult.data
+
+    if (isLoginLocked(phone)) {
+        return NextResponse.json({ error: 'Too many failed login attempts. Try again later.' }, { status: 429 })
+    }
+
     try {
         const { accessToken, refreshToken, userId } = await AuthService.login(validationResult.data)
+        clearLoginAttempts(phone)
         const user = await UserService.getUserById(userId)
 
         const res = NextResponse.json(user, { status: 200 })
@@ -34,6 +42,7 @@ export async function POST(req: NextRequest) {
         return res
     } catch (error) {
         if (error instanceof InvalidCredentialsError) {
+            recordFailedLogin(phone)
             return NextResponse.json({ error: error.message }, { status: 401 })
         }
         console.error(error)

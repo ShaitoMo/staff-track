@@ -10,14 +10,32 @@ const ACCESS_MAX_AGE_SECONDS = 15 * 60
 const REFRESH_TTL = '7d'
 const REFRESH_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
-function secret(name: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET'): Uint8Array {
+const MIN_SECRET_LENGTH = 32
+
+function requireSecret(name: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET'): string {
     const value = process.env[name]
 
-    if (!value) {
-        throw new Error(`${name} is not set`)
+    if (!value || value.length < MIN_SECRET_LENGTH) {
+        throw new Error(`${name} must be set to a random value of at least ${MIN_SECRET_LENGTH} characters`)
     }
 
-    return new TextEncoder().encode(value)
+    return value
+}
+
+/**
+ * Runs once at module load so a missing or weak secret fails loudly at process startup —
+ * verifyAccessToken/verifyRefreshToken swallow all errors, so without this a bad secret would
+ * otherwise surface as silent per-request 401s indistinguishable from normal session expiry.
+ */
+const ACCESS_SECRET = requireSecret('JWT_ACCESS_SECRET')
+const REFRESH_SECRET = requireSecret('JWT_REFRESH_SECRET')
+
+if (ACCESS_SECRET === REFRESH_SECRET) {
+    throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different')
+}
+
+function secret(name: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET'): Uint8Array {
+    return new TextEncoder().encode(name === 'JWT_ACCESS_SECRET' ? ACCESS_SECRET : REFRESH_SECRET)
 }
 
 /** Short-lived, carries role/branchIds — kept separate from the refresh token so a role or branch change is stale for at most ACCESS_TTL. */

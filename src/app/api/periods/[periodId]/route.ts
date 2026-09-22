@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { PeriodService } from '@/services/period-service'
 import { UpdatePeriodSchema } from '@/types/shift-period'
 import { AccessTokenPayload } from '@/types/auth'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { PeriodInUseError } from '@/exceptions/period-in-use-error'
 
@@ -32,10 +31,10 @@ export async function PATCH(
 
     const periodId = Number(periodIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await PeriodService.getPeriodById(periodId);
@@ -66,8 +65,9 @@ export async function PATCH(
         const period = await PeriodService.updatePeriod(periodId, validationResult.data);
         return NextResponse.json(period, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof ShiftPeriodNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
@@ -90,10 +90,10 @@ export async function DELETE(
 
     const periodId = Number(periodIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const existing = await PeriodService.getPeriodById(periodId);
@@ -107,8 +107,9 @@ export async function DELETE(
         await PeriodService.deletePeriod(periodId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof ShiftPeriodNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

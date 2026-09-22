@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { PeriodService } from '@/services/period-service'
 import { CreatePeriodSchema, PeriodFiltersSchema } from '@/types/shift-period'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 
 /**
@@ -27,10 +26,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -39,8 +38,9 @@ export async function GET(req: NextRequest) {
         const periods = await PeriodService.getPeriodsByBranch(validationResult.data.branchId)
         return NextResponse.json(periods, { status: 200 })
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
@@ -52,10 +52,10 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/periods — branchId is optional; null or omitted means a chain-wide period. */
 export async function POST(req: NextRequest) {
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     let body
@@ -87,8 +87,9 @@ export async function POST(req: NextRequest) {
         const period = await PeriodService.createPeriod(validationResult.data);
         return NextResponse.json(period, { status: 201 })
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MediaService } from '@/services/media-service'
 import { TaskInstanceService } from '@/services/task-instance-service'
-import { getCurrentUser } from '@/lib/auth'
-import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
+import { requireTaskInstanceAccess } from '@/lib/rbac'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
-import { parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 
 /** GET /api/task-instances/:instanceId/media — newest first; 404 vs empty `[]` kept distinct. Same access rule as GET .../:instanceId, which already carries this array — this is for a caller that wants only the photos. */
 export async function GET(
@@ -20,10 +18,10 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -33,19 +31,14 @@ export async function GET(
             return NextResponse.json({ error: 'Task instance not found' }, { status: 404 })
         }
 
-        if (user.role === OWNER_ROLE) {
-            // no branch check
-        } else if (user.role === MANAGER_ROLE) {
-            requireBranchAccess(user, instance.task.branch_id)
-        } else if (instance.assignee?.user_id !== user.userId) {
-            return NextResponse.json({ error: 'Not permitted' }, { status: 403 })
-        }
+        requireTaskInstanceAccess(user, instance.task.branch_id, instance.assignee?.user_id)
 
         const media = await MediaService.getMediaForInstance(instanceId);
         return NextResponse.json(media, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof TaskInstanceNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

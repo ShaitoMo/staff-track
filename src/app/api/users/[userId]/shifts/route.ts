@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { ShiftService } from '@/services/shift-service'
 import { UserShiftFiltersSchema } from '@/types/shift'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
 /**
@@ -23,10 +22,10 @@ export async function GET(
 
     const userId = Number(userIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const searchParams = req.nextUrl.searchParams
@@ -49,8 +48,9 @@ export async function GET(
         const shifts = await ShiftService.getShiftsForUser(userId, validationResult.data);
         return NextResponse.json(shifts, { status: 200 });
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })

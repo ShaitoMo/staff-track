@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { CoverageGapsService } from '@/services/coverage-gaps-service'
 import { CoverageGapsFiltersSchema } from '@/types/coverage-gap'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 
 /**
@@ -25,10 +24,10 @@ export async function GET(
 
     const branchId = Number(branchIdParam);
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     const searchParams = req.nextUrl.searchParams
@@ -50,8 +49,9 @@ export async function GET(
         const rows = await CoverageGapsService.getCoverageGaps(branchId, validationResult.data.weekStart)
         return NextResponse.json(rows, { status: 200 })
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })

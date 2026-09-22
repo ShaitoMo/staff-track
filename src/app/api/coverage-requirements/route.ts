@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { CoverageRequirementService } from '@/services/coverage-requirement-service'
 import { CoverageRequirementFiltersSchema, CreateCoverageRequirementSchema } from '@/types/coverage-requirement'
-import { getCurrentUser } from '@/lib/auth'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
-import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
@@ -31,10 +30,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -43,8 +42,9 @@ export async function GET(req: NextRequest) {
         const requirements = await CoverageRequirementService.getRequirementsByBranch(validationResult.data.branchId)
         return NextResponse.json(requirements, { status: 200 })
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
@@ -61,10 +61,10 @@ export async function GET(req: NextRequest) {
  * edit as a PATCH against the existing row instead.
  */
 export async function POST(req: NextRequest) {
-    const user = getCurrentUser(req)
+    const user = requireAuthenticated(req);
 
-    if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     let body
@@ -90,8 +90,9 @@ export async function POST(req: NextRequest) {
         const requirement = await CoverageRequirementService.createRequirement(validationResult.data);
         return NextResponse.json(requirement, { status: 201 })
     } catch (error) {
-        if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
         }
         if (error instanceof DuplicateCoverageRequirementError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
