@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { ApiError, login } from "@/lib/api-client";
 
 export function LoginForm() {
     const router = useRouter();
@@ -23,20 +24,11 @@ export function LoginForm() {
         setPending(true);
 
         try {
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone, password }),
-            });
-
-            if (!res.ok) {
-                const body = await res.json().catch(() => null);
-                setError(typeof body?.error === "string" ? body.error : "Invalid phone or password.");
-                return;
-            }
-
+            await login({ phone, password });
             router.push("/");
             router.refresh();
+        } catch (error) {
+            setError(error instanceof ApiError && error.message ? error.message : "Invalid phone or password.");
         } finally {
             setPending(false);
         }
