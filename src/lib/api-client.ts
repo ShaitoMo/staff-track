@@ -6,6 +6,15 @@ export class ApiError extends Error {
     }
 }
 
+/** Throws an ApiError carrying the response's `error` message, or `fallback` when the body has none. */
+export async function throwApiError(res: Response, fallback: string): Promise<never> {
+    const body: unknown = await res.json().catch(() => null);
+    const message = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
+        ? body.error
+        : fallback;
+    throw new ApiError(message, res.status);
+}
+
 async function request(path: string, init: RequestInit & { json?: unknown } = {}): Promise<Response> {
     const { json, ...rest } = init;
     const res = await fetch(path, {
@@ -15,11 +24,7 @@ async function request(path: string, init: RequestInit & { json?: unknown } = {}
     });
 
     if (!res.ok) {
-        const body: unknown = await res.json().catch(() => null);
-        const message = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
-            ? body.error
-            : res.statusText;
-        throw new ApiError(message, res.status);
+        await throwApiError(res, res.statusText);
     }
     return res;
 }
