@@ -1,6 +1,5 @@
-import { AlertCircleIcon } from "lucide-react";
 import Link from "next/link";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AccessMessage } from "@/components/layout/access-message";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { BranchFilter } from "@/components/users/branch-filter";
@@ -41,15 +40,7 @@ export default async function UsersPage({
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return (
-                <div>
-                    <h1 className="text-xl font-medium">Users</h1>
-                    <Alert variant="destructive" className="mt-4">
-                        <AlertCircleIcon />
-                        <AlertDescription>You don&apos;t have access to view the users list.</AlertDescription>
-                    </Alert>
-                </div>
-            );
+            return <AccessMessage title="Users" message="You don't have access to view the users list." />;
         }
         throw error;
     }

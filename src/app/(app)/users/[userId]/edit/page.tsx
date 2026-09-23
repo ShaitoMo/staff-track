@@ -1,5 +1,4 @@
-import { AlertCircleIcon } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AccessMessage } from "@/components/layout/access-message";
 import { UserForm } from "@/components/users/user-form";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
@@ -10,18 +9,6 @@ import { Role } from "@/types/role";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
 
-function AccessMessage({ message }: { message: string }) {
-    return (
-        <div>
-            <h1 className="text-xl font-medium">Edit user</h1>
-            <Alert variant="destructive" className="mt-4">
-                <AlertCircleIcon />
-                <AlertDescription>{message}</AlertDescription>
-            </Alert>
-        </div>
-    );
-}
-
 export default async function EditUserPage({
     params,
 }: {
@@ -30,7 +17,7 @@ export default async function EditUserPage({
     const { userId: userIdParam } = await params;
 
     if (!/^\d+$/.test(userIdParam)) {
-        return <AccessMessage message="Invalid user." />;
+        return <AccessMessage title="Edit user" message="Invalid user." />;
     }
     const userId = Number(userIdParam);
 
@@ -50,10 +37,10 @@ export default async function EditUserPage({
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage message="You don't have access to edit this user." />;
+            return <AccessMessage title="Edit user" message="You don't have access to edit this user." />;
         }
         if (error instanceof ApiError && error.status === 404) {
-            return <AccessMessage message="User not found." />;
+            return <AccessMessage title="Edit user" message="User not found." />;
         }
         throw error;
     }

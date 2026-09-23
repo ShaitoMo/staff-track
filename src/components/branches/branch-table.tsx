@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 
-export function BranchTable({ branches }: { branches: Branch[] }) {
+export function BranchTable({ branches, canEdit }: { branches: Branch[]; canEdit: boolean }) {
     return (
         <div className="rounded-lg border border-border">
             <Table>
@@ -12,9 +12,11 @@ export function BranchTable({ branches }: { branches: Branch[] }) {
                     <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Location</TableHead>
-                        <TableHead className="text-right">
-                            <span className="sr-only">Actions</span>
-                        </TableHead>
+                        {canEdit && (
+                            <TableHead className="text-right">
+                                <span className="sr-only">Actions</span>
+                            </TableHead>
+                        )}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -22,14 +24,16 @@ export function BranchTable({ branches }: { branches: Branch[] }) {
                         <TableRow key={branch.branchId}>
                             <TableCell className="font-medium">{branch.name}</TableCell>
                             <TableCell className="text-muted-foreground">{branch.location ?? "—"}</TableCell>
-                            <TableCell className="text-right">
-                                <Link
-                                    href={`/branches/${branch.branchId}/edit`}
-                                    className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-                                >
-                                    Edit
-                                </Link>
-                            </TableCell>
+                            {canEdit && (
+                                <TableCell className="text-right">
+                                    <Link
+                                        href={`/branches/${branch.branchId}/edit`}
+                                        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                                    >
+                                        Edit
+                                    </Link>
+                                </TableCell>
+                            )}
                         </TableRow>
                     ))}
                 </TableBody>
