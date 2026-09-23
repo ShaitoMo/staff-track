@@ -66,9 +66,13 @@ validate the request with a Zod schema (`src/types/*`) → `getCurrentUser(req)`
 an RBAC check from `src/lib/rbac.ts` (`requireRole`, `requireBranchAccess`, `requireSelfOrRole`) →
 call into `src/services/*` → `src/repository/*` (all Prisma access lives here) → map thrown
 `src/exceptions/*` classes to an HTTP status in the route's own `catch`. **Auth/RBAC checks live in the
-route handlers, not the services** — a service has no awareness of the caller, so nothing (frontend
-Server Components included) should import a service directly; always go through `/api/*` over HTTP so
-the permission check actually runs.
+route handlers, not the services** — a service has no awareness of the caller, so the invariant is that
+**no caller reaches a service without an RBAC check first**. `/api/*` is the default path and the only
+one that exists today: Server Components read through it over HTTP and Client Components mutate through
+it. A Server Action or Server Component may call a service directly only if it does the same steps a
+route does — read identity via `src/lib/session.ts`, run the `src/lib/rbac.ts` check, then call the
+service — and never a bare service import. Do this deliberately, not incidentally: an unchecked service
+call is a permission bypass.
 
 **Auth (`src/proxy.ts`, `src/lib/auth.ts`, `src/lib/session.ts`):** `src/proxy.ts` (Next 16's renamed
 `middleware.ts`, Node runtime) is the single gate for every request — API and page routes alike. It
@@ -86,6 +90,17 @@ depth even though `src/proxy.ts` already redirects unauthenticated page requests
 from shadcn/ui (`components.json`, `src/components/ui/*`); visual tokens, type scale, and component
 conventions are recorded in `DESIGN.md` (`.impeccable/design.json` is its machine-readable sidecar) —
 read it before touching any UI.
+
+**Calling the API from the UI:** UI code does not call `fetch` inline; it goes through one of two helpers,
+both ending in `/api/*` and both throwing `ApiError` (built by the shared `throwApiError`).
+- **Reads in Server Components** use `fetchApi<T>(path)` from `src/lib/api-server.ts`, which builds the
+  absolute URL and forwards the session cookie (needs `next/headers`, so server-only). Independent reads
+  go in a `Promise.all`.
+- **Mutations and interactions in Client Components** use the plain functions in `src/lib/api-client.ts`
+  (`login()`, `logout()`, ...). Relative URLs, the browser attaches the cookie. This file must stay free of
+  server-only imports.
+- Hooks (SWR/TanStack Query) are not used; add them for a screen only if it needs client-side refetching,
+  polling, or optimistic updates, wrapping these same functions. Form field state (`useState`) is unrelated.
 
 **Shared contracts (`src/types/*`):** one file per domain, each a Zod schema plus its inferred type.
 Wire format is snake_case (`branch_id`, `assigned_to`, ...) everywhere except `user.ts`, which is

@@ -15,7 +15,7 @@ export async function throwApiError(res: Response, fallback: string): Promise<ne
     throw new ApiError(message, res.status);
 }
 
-async function request(path: string, init: RequestInit & { json?: unknown } = {}): Promise<Response> {
+export async function request(path: string, init: RequestInit & { json?: unknown } = {}): Promise<Response> {
     const { json, ...rest } = init;
     const res = await fetch(path, {
         ...rest,
@@ -24,7 +24,7 @@ async function request(path: string, init: RequestInit & { json?: unknown } = {}
     });
 
     if (!res.ok) {
-        await throwApiError(res, res.statusText);
+        await throwApiError(res, `Request to ${path} failed (${res.status})`);
     }
     return res;
 }
