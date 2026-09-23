@@ -56,3 +56,6 @@ next-env.d.ts
 /AUTH-RBAC-FEATURE.md
 /TASK-FEATURE.md
 /TO-BE-REVIEWED.md
+
+# Playwright MCP session output (snapshots, console logs, screenshots)
+/.playwright-mcp/
