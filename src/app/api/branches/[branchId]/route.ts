@@ -70,8 +70,7 @@ export async function PATCH(
     }
 
     try {
-        requireRole(user, [OWNER_ROLE, MANAGER_ROLE]);
-        requireBranchAccess(user, branchId);
+        requireRole(user, [OWNER_ROLE]);
 
         const branch = await BranchService.updateBranch(branchId, parsed.data);
         return NextResponse.json(branch, { status: 200 });

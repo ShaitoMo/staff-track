@@ -1,6 +1,5 @@
-import { AlertCircleIcon } from "lucide-react";
 import Link from "next/link";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AccessMessage } from "@/components/layout/access-message";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { BranchTable } from "@/components/branches/branch-table";
@@ -20,15 +19,7 @@ export default async function BranchesPage() {
         branches = await fetchApi<Branch[]>("/api/branches");
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return (
-                <div>
-                    <h1 className="text-xl font-medium">Branches</h1>
-                    <Alert variant="destructive" className="mt-4">
-                        <AlertCircleIcon />
-                        <AlertDescription>You don&apos;t have access to view branches.</AlertDescription>
-                    </Alert>
-                </div>
-            );
+            return <AccessMessage title="Branches" message="You don't have access to view branches." />;
         }
         throw error;
     }
@@ -51,7 +42,7 @@ export default async function BranchesPage() {
                     </EmptyHeader>
                 </Empty>
             ) : (
-                <BranchTable branches={branches} />
+                <BranchTable branches={branches} canEdit={isOwner} />
             )}
         </div>
     );

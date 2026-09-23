@@ -1,5 +1,4 @@
-import { AlertCircleIcon } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AccessMessage } from "@/components/layout/access-message";
 import { UserForm } from "@/components/users/user-form";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
@@ -18,15 +17,7 @@ export default async function NewUserPage() {
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return (
-                <div>
-                    <h1 className="text-xl font-medium">New user</h1>
-                    <Alert variant="destructive" className="mt-4">
-                        <AlertCircleIcon />
-                        <AlertDescription>You don&apos;t have access to create users.</AlertDescription>
-                    </Alert>
-                </div>
-            );
+            return <AccessMessage title="New user" message="You don't have access to create users." />;
         }
         throw error;
     }
