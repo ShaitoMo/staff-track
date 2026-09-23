@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { ApiError } from "@/lib/api-client";
+import { throwApiError } from "@/lib/api-client";
 
 /** Resolves the current request's own origin, so a Server Component can call its own API routes. */
 async function getOrigin(): Promise<string> {
@@ -19,9 +19,7 @@ export async function fetchApi<T>(path: string): Promise<T> {
     });
 
     if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const message = typeof body?.error === "string" ? body.error : `Request to ${path} failed (${res.status})`;
-        throw new ApiError(message, res.status);
+        await throwApiError(res, `Request to ${path} failed (${res.status})`);
     }
 
     return res.json();
