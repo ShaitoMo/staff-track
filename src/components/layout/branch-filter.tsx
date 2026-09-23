@@ -4,16 +4,18 @@ import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 
 export function BranchFilter({
+    basePath,
     branches,
     activeBranchId,
 }: {
+    basePath: string;
     branches: Branch[];
     activeBranchId?: number;
 }) {
     return (
         <div className="flex flex-wrap gap-2">
             <Link
-                href="/users"
+                href={basePath}
                 className={cn(buttonVariants({ variant: activeBranchId === undefined ? "default" : "outline", size: "sm" }))}
             >
                 All branches
@@ -21,7 +23,7 @@ export function BranchFilter({
             {branches.map((branch) => (
                 <Link
                     key={branch.branchId}
-                    href={`/users?branch=${branch.branchId}`}
+                    href={`${basePath}?branch=${branch.branchId}`}
                     className={cn(buttonVariants({ variant: activeBranchId === branch.branchId ? "default" : "outline", size: "sm" }))}
                 >
                     {branch.name}
