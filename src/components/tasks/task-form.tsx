@@ -76,14 +76,33 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     const wasOneOff = isEdit && initialValues?.schedule === "one_off";
     const scheduleOptions = isEdit ? SCHEDULES.filter((option) => option.value !== "one_off") : SCHEDULES;
 
+    /**
+     * Re-checks every field against the freshest values and replaces `errors` wholesale. Only
+     * matters once a failed submit has shown errors at all — before that, staying silent is
+     * correct (don't scold a field the user hasn't tried yet).
+     */
+    function revalidate(next: Partial<{
+        title: string; description: string; branchId: number | null; assigneeKind: AssigneeKind;
+        assignedTo: number | null; roleId: number | null; schedule: Schedule; dueDate: string; weekdays: Weekday[];
+    }>) {
+        if (Object.keys(errors).length === 0) return;
+
+        const input = { title, description, branchId, assigneeKind, assignedTo, roleId, schedule, dueDate, weekdays, ...next };
+        setErrors(isEdit ? validateTaskUpdate(initialValues!, { ...input, active }) : validateTaskForm(input));
+    }
+
     function handleBranchChange(value: string | null) {
         if (value === null) return;
-        setBranchId(Number(value));
+        const nextBranchId = Number(value);
+        setBranchId(nextBranchId);
         setAssignedTo(null);
+        revalidate({ branchId: nextBranchId, assignedTo: null });
     }
 
     function toggleWeekday(day: Weekday, checked: boolean) {
-        setWeekdays((current) => (checked ? [...current, day] : current.filter((d) => d !== day)));
+        const next = checked ? [...weekdays, day] : weekdays.filter((d) => d !== day);
+        setWeekdays(next);
+        revalidate({ weekdays: next });
     }
 
     async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -118,7 +137,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     }
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="flex max-w-lg flex-col gap-6">
+        <form onSubmit={handleSubmit} noValidate className="flex max-w-3xl flex-col gap-6">
             <FieldGroup>
                 {submitError ? (
                     <Alert variant="destructive">
@@ -127,169 +146,209 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                     </Alert>
                 ) : null}
 
-                <Field data-invalid={!!errors.title || undefined}>
-                    <FieldLabel htmlFor="title">Title</FieldLabel>
-                    <Input id="title" value={title} disabled={pending} onChange={(e) => setTitle(e.target.value)} />
-                    <FieldError>{errors.title}</FieldError>
-                </Field>
+                <FieldSet>
+                    <FieldLegend>Details</FieldLegend>
 
-                <Field>
-                    <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
-                    <Input id="description" value={description} disabled={pending} onChange={(e) => setDescription(e.target.value)} />
-                </Field>
+                    <Field data-invalid={!!errors.title || undefined}>
+                        <FieldLabel htmlFor="title">Title</FieldLabel>
+                        <Input
+                            id="title"
+                            value={title}
+                            disabled={pending}
+                            onChange={(e) => { setTitle(e.target.value); revalidate({ title: e.target.value }); }}
+                        />
+                        <FieldError>{errors.title}</FieldError>
+                    </Field>
 
-                <Field data-invalid={!!errors.branchId || undefined}>
-                    <FieldLabel htmlFor="branch">Branch</FieldLabel>
-                    <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending || isEdit}>
-                        <SelectTrigger id="branch" className="w-full">
-                            <SelectValue placeholder="Select a branch">
-                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {branches.map((branch) => (
-                                <SelectItem key={branch.branchId} value={String(branch.branchId)}>
-                                    {branch.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <FieldError>{errors.branchId}</FieldError>
-                </Field>
+                    <Field>
+                        <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
+                        <Input id="description" value={description} disabled={pending} onChange={(e) => setDescription(e.target.value)} />
+                    </Field>
+                </FieldSet>
 
-                <Field>
-                    <FieldLabel htmlFor="assignee-kind">Assign to</FieldLabel>
-                    <Select value={assigneeKind} onValueChange={(value) => setAssigneeKind(value as AssigneeKind)} disabled={pending}>
-                        <SelectTrigger id="assignee-kind" className="w-full">
-                            <SelectValue>
-                                {(value: string) => ASSIGNEE_KINDS.find((kind) => kind.value === value)?.label}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {ASSIGNEE_KINDS.map((kind) => (
-                                <SelectItem key={kind.value} value={kind.value}>
-                                    {kind.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </Field>
+                <div className="grid gap-6 md:grid-cols-2">
+                    <FieldSet>
+                        <FieldLegend>Assignment</FieldLegend>
 
-                <Field data-invalid={!!errors.assignee || undefined}>
-                    {assigneeKind === "person" ? (
-                        <>
-                            <FieldLabel htmlFor="assigned-to">Person</FieldLabel>
-                            <Select
-                                value={assignedTo !== null ? String(assignedTo) : ""}
-                                onValueChange={(value) => setAssignedTo(Number(value))}
-                                disabled={pending || branchId === null}
-                            >
-                                <SelectTrigger id="assigned-to" className="w-full">
-                                    <SelectValue placeholder={branchId === null ? "Choose a branch first" : "Select a person"}>
-                                        {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? (branchId === null ? "Choose a branch first" : "Select a person")}
+                        <Field data-invalid={!!errors.branchId || undefined}>
+                            <FieldLabel htmlFor="branch">Branch</FieldLabel>
+                            <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending || isEdit}>
+                                <SelectTrigger id="branch" className="w-full">
+                                    <SelectValue placeholder="Select a branch">
+                                        {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {people.map((person) => (
-                                        <SelectItem key={person.userId} value={String(person.userId)}>
-                                            {person.name}
+                                    {branches.map((branch) => (
+                                        <SelectItem key={branch.branchId} value={String(branch.branchId)}>
+                                            {branch.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </>
-                    ) : (
-                        <>
-                            <FieldLabel htmlFor="role">Role</FieldLabel>
+                            <FieldError>{errors.branchId}</FieldError>
+                        </Field>
+
+                        <Field>
+                            <FieldLabel htmlFor="assignee-kind">Assign to</FieldLabel>
                             <Select
-                                value={roleId !== null ? String(roleId) : ""}
-                                onValueChange={(value) => setRoleId(Number(value))}
+                                value={assigneeKind}
+                                onValueChange={(value) => { const next = value as AssigneeKind; setAssigneeKind(next); revalidate({ assigneeKind: next }); }}
                                 disabled={pending}
                             >
-                                <SelectTrigger id="role" className="w-full">
-                                    <SelectValue placeholder="Select a role">
-                                        {(value: string) => roles.find((role) => String(role.roleId) === value)?.name ?? "Select a role"}
+                                <SelectTrigger id="assignee-kind" className="w-full">
+                                    <SelectValue>
+                                        {(value: string) => ASSIGNEE_KINDS.find((kind) => kind.value === value)?.label}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {roles.map((role) => (
-                                        <SelectItem key={role.roleId} value={String(role.roleId)}>
-                                            {role.name}
+                                    {ASSIGNEE_KINDS.map((kind) => (
+                                        <SelectItem key={kind.value} value={kind.value}>
+                                            {kind.label}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </>
-                    )}
-                    <FieldError>{errors.assignee}</FieldError>
-                </Field>
+                        </Field>
 
-                {wasOneOff ? (
-                    <Field>
-                        <FieldLabel>Repeats</FieldLabel>
-                        <p className="text-sm text-muted-foreground">Once. A one-off task&apos;s date can&apos;t be changed.</p>
-                    </Field>
-                ) : (
-                    <Field>
-                        <FieldLabel htmlFor="schedule">Repeats</FieldLabel>
-                        <Select value={schedule} onValueChange={(value) => setSchedule(value as Schedule)} disabled={pending}>
-                            <SelectTrigger id="schedule" className="w-full">
-                                <SelectValue>
-                                    {(value: string) => SCHEDULES.find((option) => option.value === value)?.label}
-                                </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {scheduleOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
-                )}
-
-                {!isEdit && schedule === "one_off" ? (
-                    <Field data-invalid={!!errors.dueDate || undefined}>
-                        <FieldLabel htmlFor="due-date">Due date</FieldLabel>
-                        <Input id="due-date" type="date" value={dueDate} disabled={pending} onChange={(e) => setDueDate(e.target.value)} />
-                        <FieldError>{errors.dueDate}</FieldError>
-                    </Field>
-                ) : null}
-
-                {schedule === "weekly" ? (
-                    <FieldSet data-invalid={!!errors.weekdays || undefined}>
-                        <FieldLegend variant="label">Weekdays</FieldLegend>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2">
-                            {WEEKDAYS.map((day) => (
-                                <Field key={day} orientation="horizontal" className="w-auto">
-                                    <Checkbox
-                                        id={`weekday-${day}`}
-                                        checked={weekdays.includes(day)}
+                        <Field data-invalid={!!errors.assignee || undefined}>
+                            {assigneeKind === "person" ? (
+                                <>
+                                    <FieldLabel htmlFor="assigned-to">Person</FieldLabel>
+                                    <Select
+                                        value={assignedTo !== null ? String(assignedTo) : ""}
+                                        onValueChange={(value) => { const next = Number(value); setAssignedTo(next); revalidate({ assignedTo: next }); }}
+                                        disabled={pending || branchId === null}
+                                    >
+                                        <SelectTrigger id="assigned-to" className="w-full">
+                                            <SelectValue placeholder={branchId === null ? "Choose a branch first" : "Select a person"}>
+                                                {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? (branchId === null ? "Choose a branch first" : "Select a person")}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {people.length === 0 && branchId !== null ? (
+                                                <div className="px-2 py-1.5 text-sm text-muted-foreground">No active staff at this branch</div>
+                                            ) : (
+                                                people.map((person) => (
+                                                    <SelectItem key={person.userId} value={String(person.userId)}>
+                                                        {person.name}
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            ) : (
+                                <>
+                                    <FieldLabel htmlFor="role">Role</FieldLabel>
+                                    <Select
+                                        value={roleId !== null ? String(roleId) : ""}
+                                        onValueChange={(value) => { const next = Number(value); setRoleId(next); revalidate({ roleId: next }); }}
                                         disabled={pending}
-                                        onCheckedChange={(checked) => toggleWeekday(day, checked === true)}
-                                    />
-                                    <FieldLabel htmlFor={`weekday-${day}`} className="font-normal">
-                                        {WEEKDAY_LABELS[day]}
-                                    </FieldLabel>
-                                </Field>
-                            ))}
-                        </div>
-                        <FieldError>{errors.weekdays}</FieldError>
+                                    >
+                                        <SelectTrigger id="role" className="w-full">
+                                            <SelectValue placeholder="Select a role">
+                                                {(value: string) => {
+                                                    const name = roles.find((role) => String(role.roleId) === value)?.name;
+                                                    return name !== undefined ? <span className="capitalize">{name}</span> : "Select a role";
+                                                }}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {roles.map((role) => (
+                                                <SelectItem key={role.roleId} value={String(role.roleId)} className="capitalize">
+                                                    {role.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            )}
+                            <FieldError>{errors.assignee}</FieldError>
+                        </Field>
                     </FieldSet>
-                ) : null}
 
-                {isEdit ? (
-                    <Field orientation="horizontal">
-                        <Checkbox
-                            id="active"
-                            checked={active}
-                            disabled={pending}
-                            onCheckedChange={(checked) => setActive(checked === true)}
-                        />
-                        <FieldLabel htmlFor="active" className="font-normal">Active</FieldLabel>
-                    </Field>
-                ) : null}
+                    <FieldSet>
+                        <FieldLegend>Schedule</FieldLegend>
+
+                        {wasOneOff ? (
+                            <Field>
+                                <FieldLabel>Repeats</FieldLabel>
+                                <p className="text-sm text-muted-foreground">Once. A one-off task&apos;s date can&apos;t be changed.</p>
+                            </Field>
+                        ) : (
+                            <Field>
+                                <FieldLabel htmlFor="schedule">Repeats</FieldLabel>
+                                <Select
+                                    value={schedule}
+                                    onValueChange={(value) => { const next = value as Schedule; setSchedule(next); revalidate({ schedule: next }); }}
+                                    disabled={pending}
+                                >
+                                    <SelectTrigger id="schedule" className="w-full">
+                                        <SelectValue>
+                                            {(value: string) => SCHEDULES.find((option) => option.value === value)?.label}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {scheduleOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                        )}
+
+                        {!isEdit && schedule === "one_off" ? (
+                            <Field data-invalid={!!errors.dueDate || undefined}>
+                                <FieldLabel htmlFor="due-date">Due date</FieldLabel>
+                                <Input
+                                    id="due-date"
+                                    type="date"
+                                    value={dueDate}
+                                    disabled={pending}
+                                    onChange={(e) => { setDueDate(e.target.value); revalidate({ dueDate: e.target.value }); }}
+                                />
+                                <FieldError>{errors.dueDate}</FieldError>
+                            </Field>
+                        ) : null}
+
+                        {schedule === "weekly" ? (
+                            <FieldSet data-invalid={!!errors.weekdays || undefined}>
+                                <FieldLegend variant="label">Weekdays</FieldLegend>
+                                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                    {WEEKDAYS.map((day) => (
+                                        <Field key={day} orientation="horizontal" className="w-auto">
+                                            <Checkbox
+                                                id={`weekday-${day}`}
+                                                checked={weekdays.includes(day)}
+                                                disabled={pending}
+                                                onCheckedChange={(checked) => toggleWeekday(day, checked === true)}
+                                            />
+                                            <FieldLabel htmlFor={`weekday-${day}`} className="font-normal">
+                                                {WEEKDAY_LABELS[day]}
+                                            </FieldLabel>
+                                        </Field>
+                                    ))}
+                                </div>
+                                <FieldError>{errors.weekdays}</FieldError>
+                            </FieldSet>
+                        ) : null}
+
+                        {isEdit ? (
+                            <Field orientation="horizontal">
+                                <Checkbox
+                                    id="active"
+                                    checked={active}
+                                    disabled={pending}
+                                    onCheckedChange={(checked) => setActive(checked === true)}
+                                />
+                                <FieldLabel htmlFor="active" className="font-normal">Active</FieldLabel>
+                            </Field>
+                        ) : null}
+                    </FieldSet>
+                </div>
 
                 <Button type="submit" disabled={pending} className="w-fit">
                     {pending ? <Spinner data-icon="inline-start" /> : null}

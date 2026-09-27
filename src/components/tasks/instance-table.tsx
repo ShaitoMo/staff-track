@@ -29,7 +29,7 @@ export function InstanceTable({ rows }: { rows: InstanceRow[] }) {
                                 <InstanceDetailDialog row={row} />
                             </TableCell>
                             <TableCell className="text-muted-foreground">{row.branchName}</TableCell>
-                            <TableCell>{row.assignee}</TableCell>
+                            <TableCell className="capitalize">{row.assignee}</TableCell>
                             <TableCell className="font-mono">{row.dueDate}</TableCell>
                             <TableCell>
                                 <StatusBadge status={row.status} />

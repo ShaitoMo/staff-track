@@ -2,7 +2,7 @@
 name: StaffTrack
 description: Internal ops console for a multi-branch market chain — scheduling, tasks, attendance, and coverage.
 colors:
-  market-blue: "#1E90FF"
+  market-blue: "#0066CC"
   ledger-ink: "#16191B"
   slate: "#5B6368"
   paper: "#F8FAFA"
@@ -71,7 +71,7 @@ One deliberate exception carries the brand: a single confident blue accent, used
 Restrained strategy: a neutral slate palette carries the whole system; one accent is spent deliberately, not scattered.
 
 ### Primary
-- **Market Blue** (`#1E90FF`): the one committed accent. Primary buttons, active nav item, links, focus rings. Used on a small minority of any given screen — its rarity is what makes it read as the thing to act on.
+- **Market Blue** (`#0066CC`): the one committed accent. Primary buttons, active nav item, links, focus rings. Used on a small minority of any given screen — its rarity is what makes it read as the thing to act on. (Darkened from an earlier `#1E90FF` to clear WCAG AA 4.5:1 contrast with white button text — `/impeccable audit` flagged the original at 3.2:1.)
 
 ### Neutral
 - **Ledger Ink** (`#16191B`): primary text.

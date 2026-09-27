@@ -22,7 +22,7 @@ export function InstanceCards({ rows }: { rows: InstanceRow[] }) {
                         </div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">Assigned to </span>
-                            {row.assignee}
+                            <span className="capitalize">{row.assignee}</span>
                         </div>
                         {row.completedByName !== null ? (
                             <div className="flex items-center justify-between gap-2 text-sm">

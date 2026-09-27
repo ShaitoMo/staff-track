@@ -17,7 +17,7 @@ export function TaskCards({ rows }: { rows: TaskRow[] }) {
                         <div className="text-sm text-muted-foreground">{row.branchName}</div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">Assigned to </span>
-                            {row.assignee}
+                            <span className="capitalize">{row.assignee}</span>
                         </div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">Repeats </span>

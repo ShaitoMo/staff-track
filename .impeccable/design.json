@@ -7,7 +7,7 @@
       "market-blue": {
         "role": "primary",
         "displayName": "Market Blue",
-        "canonical": "#1E90FF",
+        "canonical": "#0066CC",
         "tonalRamp": [
           "oklch(0.15 0.05 253)",
           "oklch(0.27 0.10 253)",
@@ -109,7 +109,7 @@
       "refersTo": "button-primary",
       "description": "The one primary action per view (e.g. login's \"Sign in\").",
       "html": "<button class=\"ds-btn-primary\" type=\"button\">Sign in</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: none; border-radius: var(--radius-md, 0.36rem); background: var(--primary, #1E90FF); color: var(--primary-foreground, #FFFFFF); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary, #1E90FF) 80%, transparent); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #1E90FF) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2rem; padding: 0 0.625rem; border: none; border-radius: var(--radius-md, 0.36rem); background: var(--primary, #0066CC); color: var(--primary-foreground, #FFFFFF); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary, #0066CC) 80%, transparent); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #0066CC) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
     },
     {
       "name": "Outline Button",
@@ -117,7 +117,7 @@
       "refersTo": "button-outline",
       "description": "Lower-emphasis actions, e.g. the app shell's \"Log out\".",
       "html": "<button class=\"ds-btn-outline\" type=\"button\">Log out</button>",
-      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.625rem; border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-md, 0.36rem); background: var(--background, #F8FAFA); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease; } .ds-btn-outline:hover { background: color-mix(in oklch, var(--foreground, #16191B) 5%, var(--background, #F8FAFA)); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #1E90FF) 50%, transparent); }"
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.625rem; border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-md, 0.36rem); background: var(--background, #F8FAFA); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease; } .ds-btn-outline:hover { background: color-mix(in oklch, var(--foreground, #16191B) 5%, var(--background, #F8FAFA)); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #0066CC) 50%, transparent); }"
     },
     {
       "name": "Card",
@@ -133,7 +133,7 @@
       "refersTo": "field",
       "description": "The Field + FieldLabel + Input pattern every form control uses.",
       "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-phone\">Phone</label><input class=\"ds-input\" id=\"ds-phone\" type=\"tel\" placeholder=\"555-0100\" /></div>",
-      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; } .ds-field-label { font-size: 0.875rem; font-weight: 500; color: var(--foreground, #16191B); } .ds-input { height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-md, 0.36rem); background: var(--background, #F8FAFA); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.875rem; width: 100%; box-sizing: border-box; } .ds-input:focus-visible { outline: none; border-color: var(--ring, #1E90FF); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #1E90FF) 50%, transparent); } .ds-input::placeholder { color: var(--muted-foreground, #5B6368); }"
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; } .ds-field-label { font-size: 0.875rem; font-weight: 500; color: var(--foreground, #16191B); } .ds-input { height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-md, 0.36rem); background: var(--background, #F8FAFA); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 0.875rem; width: 100%; box-sizing: border-box; } .ds-input:focus-visible { outline: none; border-color: var(--ring, #0066CC); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring, #0066CC) 50%, transparent); } .ds-input::placeholder { color: var(--muted-foreground, #5B6368); }"
     },
     {
       "name": "Destructive Alert",

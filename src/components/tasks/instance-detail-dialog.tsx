@@ -44,7 +44,7 @@ export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow
                     {row.description !== null ? <DetailField label="Description">{row.description}</DetailField> : null}
                     <div className="grid grid-cols-2 gap-3">
                         <DetailField label="Branch">{row.branchName}</DetailField>
-                        <DetailField label="Assigned to">{row.assignee}</DetailField>
+                        <DetailField label="Assigned to"><span className="capitalize">{row.assignee}</span></DetailField>
                         <DetailField label="Schedule">{row.schedule}</DetailField>
                         <DetailField label="Due">
                             <span className="font-mono">{row.dueDate}</span>

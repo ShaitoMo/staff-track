@@ -32,7 +32,7 @@ export function TaskTable({ rows }: { rows: TaskRow[] }) {
                         <TableRow key={row.taskId}>
                             <TableCell className="font-medium">{row.title}</TableCell>
                             <TableCell className="text-muted-foreground">{row.branchName}</TableCell>
-                            <TableCell>{row.assignee}</TableCell>
+                            <TableCell className="capitalize">{row.assignee}</TableCell>
                             <TableCell>{row.schedule}</TableCell>
                             <TableCell>
                                 <Badge variant={row.active ? "secondary" : "outline"}>{row.active ? "Active" : "Inactive"}</Badge>
