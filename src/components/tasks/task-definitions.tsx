@@ -1,5 +1,6 @@
 import { AccessMessage } from "@/components/layout/access-message";
 import { BranchFilter } from "@/components/layout/branch-filter";
+import { TaskCards } from "@/components/tasks/task-cards";
 import { TaskRow, TaskTable } from "@/components/tasks/task-table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { ApiError } from "@/lib/api-client";
@@ -71,7 +72,10 @@ export async function TaskDefinitions({ branchId }: { branchId?: number }) {
                     </EmptyHeader>
                 </Empty>
             ) : (
-                <TaskTable rows={rows} />
+                <>
+                    <TaskTable rows={rows} />
+                    <TaskCards rows={rows} />
+                </>
             )}
         </div>
     );

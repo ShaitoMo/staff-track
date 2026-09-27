@@ -11,29 +11,36 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
-import { createTask } from "@/lib/api/tasks";
+import { createTask, updateTask } from "@/lib/api/tasks";
 import { WEEKDAY_LABELS } from "@/lib/recurrence-label";
 import {
+    AssigneeCandidate,
     assigneeOptionsForBranch,
     AssigneeKind,
     buildCreateTaskBody,
+    BranchLink,
+    buildUpdateTaskBody,
+    EditableTaskState,
+    hasTaskChanges,
     isTaskFormValid,
     Schedule,
     TaskFormErrors,
     validateTaskForm,
+    validateTaskUpdate,
     Weekday,
     WEEKDAYS,
 } from "@/lib/task-form-validation";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
-import { SafeUser } from "@/types/user";
-import { UserBranch } from "@/types/user-branch";
 
 interface TaskFormProps {
     branches: Branch[];
     roles: Role[];
-    users: SafeUser[];
-    userBranches: UserBranch[];
+    users: AssigneeCandidate[];
+    userBranches: BranchLink[];
+    mode?: "create" | "edit";
+    taskId?: number;
+    initialValues?: EditableTaskState;
 }
 
 const ASSIGNEE_KINDS: { value: AssigneeKind; label: string }[] = [
@@ -47,22 +54,27 @@ const SCHEDULES: { value: Schedule; label: string }[] = [
     { value: "weekly", label: "Certain weekdays" },
 ];
 
-export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps) {
+export function TaskForm({ branches, roles, users, userBranches, mode = "create", taskId, initialValues }: TaskFormProps) {
     const router = useRouter();
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [branchId, setBranchId] = useState<number | null>(null);
-    const [assigneeKind, setAssigneeKind] = useState<AssigneeKind>("person");
-    const [assignedTo, setAssignedTo] = useState<number | null>(null);
-    const [roleId, setRoleId] = useState<number | null>(null);
-    const [schedule, setSchedule] = useState<Schedule>("one_off");
-    const [dueDate, setDueDate] = useState("");
-    const [weekdays, setWeekdays] = useState<Weekday[]>([]);
+    const isEdit = mode === "edit";
+    const [title, setTitle] = useState(initialValues?.title ?? "");
+    const [description, setDescription] = useState(initialValues?.description ?? "");
+    const [branchId, setBranchId] = useState<number | null>(initialValues?.branchId ?? null);
+    const [assigneeKind, setAssigneeKind] = useState<AssigneeKind>(initialValues?.assigneeKind ?? "person");
+    const [assignedTo, setAssignedTo] = useState<number | null>(initialValues?.assignedTo ?? null);
+    const [roleId, setRoleId] = useState<number | null>(initialValues?.roleId ?? null);
+    const [schedule, setSchedule] = useState<Schedule>(initialValues?.schedule ?? "one_off");
+    const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "");
+    const [weekdays, setWeekdays] = useState<Weekday[]>(initialValues?.weekdays ?? []);
+    const [active, setActive] = useState(initialValues?.active ?? true);
     const [errors, setErrors] = useState<TaskFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, setPending] = useState(false);
 
     const people = assigneeOptionsForBranch(branchId, users, userBranches);
+    // A task's kind is fixed once created: a one-off can't start repeating, nor a recurring one stop.
+    const wasOneOff = isEdit && initialValues?.schedule === "one_off";
+    const scheduleOptions = isEdit ? SCHEDULES.filter((option) => option.value !== "one_off") : SCHEDULES;
 
     function handleBranchChange(value: string | null) {
         if (value === null) return;
@@ -79,13 +91,23 @@ export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps
         setSubmitError(null);
 
         const input = { title, description, branchId, assigneeKind, assignedTo, roleId, schedule, dueDate, weekdays };
-        const validationErrors = validateTaskForm(input);
+        const validationErrors = isEdit
+            ? validateTaskUpdate(initialValues!, { ...input, active })
+            : validateTaskForm(input);
         setErrors(validationErrors);
         if (!isTaskFormValid(validationErrors)) return;
 
         setPending(true);
         try {
-            await createTask(buildCreateTaskBody(input));
+            if (isEdit) {
+                const body = buildUpdateTaskBody(initialValues!, { ...input, active });
+                if (hasTaskChanges(body)) {
+                    await updateTask(taskId!, body);
+                }
+            } else {
+                await createTask(buildCreateTaskBody(input));
+            }
+
             router.push("/tasks");
             router.refresh();
         } catch (error) {
@@ -98,12 +120,12 @@ export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps
     return (
         <form onSubmit={handleSubmit} noValidate className="flex max-w-lg flex-col gap-6">
             <FieldGroup>
-                {submitError && (
+                {submitError ? (
                     <Alert variant="destructive">
                         <AlertCircleIcon />
                         <AlertDescription>{submitError}</AlertDescription>
                     </Alert>
-                )}
+                ) : null}
 
                 <Field data-invalid={!!errors.title || undefined}>
                     <FieldLabel htmlFor="title">Title</FieldLabel>
@@ -118,7 +140,7 @@ export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps
 
                 <Field data-invalid={!!errors.branchId || undefined}>
                     <FieldLabel htmlFor="branch">Branch</FieldLabel>
-                    <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending}>
+                    <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending || isEdit}>
                         <SelectTrigger id="branch" className="w-full">
                             <SelectValue placeholder="Select a branch">
                                 {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
@@ -164,7 +186,7 @@ export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps
                             >
                                 <SelectTrigger id="assigned-to" className="w-full">
                                     <SelectValue placeholder={branchId === null ? "Choose a branch first" : "Select a person"}>
-                                        {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? "Select a person"}
+                                        {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? (branchId === null ? "Choose a branch first" : "Select a person")}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -202,33 +224,40 @@ export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps
                     <FieldError>{errors.assignee}</FieldError>
                 </Field>
 
-                <Field>
-                    <FieldLabel htmlFor="schedule">Repeats</FieldLabel>
-                    <Select value={schedule} onValueChange={(value) => setSchedule(value as Schedule)} disabled={pending}>
-                        <SelectTrigger id="schedule" className="w-full">
-                            <SelectValue>
-                                {(value: string) => SCHEDULES.find((option) => option.value === value)?.label}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {SCHEDULES.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </Field>
+                {wasOneOff ? (
+                    <Field>
+                        <FieldLabel>Repeats</FieldLabel>
+                        <p className="text-sm text-muted-foreground">Once. A one-off task&apos;s date can&apos;t be changed.</p>
+                    </Field>
+                ) : (
+                    <Field>
+                        <FieldLabel htmlFor="schedule">Repeats</FieldLabel>
+                        <Select value={schedule} onValueChange={(value) => setSchedule(value as Schedule)} disabled={pending}>
+                            <SelectTrigger id="schedule" className="w-full">
+                                <SelectValue>
+                                    {(value: string) => SCHEDULES.find((option) => option.value === value)?.label}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {scheduleOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </Field>
+                )}
 
-                {schedule === "one_off" && (
+                {!isEdit && schedule === "one_off" ? (
                     <Field data-invalid={!!errors.dueDate || undefined}>
                         <FieldLabel htmlFor="due-date">Due date</FieldLabel>
                         <Input id="due-date" type="date" value={dueDate} disabled={pending} onChange={(e) => setDueDate(e.target.value)} />
                         <FieldError>{errors.dueDate}</FieldError>
                     </Field>
-                )}
+                ) : null}
 
-                {schedule === "weekly" && (
+                {schedule === "weekly" ? (
                     <FieldSet data-invalid={!!errors.weekdays || undefined}>
                         <FieldLegend variant="label">Weekdays</FieldLegend>
                         <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -248,11 +277,23 @@ export function TaskForm({ branches, roles, users, userBranches }: TaskFormProps
                         </div>
                         <FieldError>{errors.weekdays}</FieldError>
                     </FieldSet>
-                )}
+                ) : null}
+
+                {isEdit ? (
+                    <Field orientation="horizontal">
+                        <Checkbox
+                            id="active"
+                            checked={active}
+                            disabled={pending}
+                            onCheckedChange={(checked) => setActive(checked === true)}
+                        />
+                        <FieldLabel htmlFor="active" className="font-normal">Active</FieldLabel>
+                    </Field>
+                ) : null}
 
                 <Button type="submit" disabled={pending} className="w-fit">
-                    {pending && <Spinner data-icon="inline-start" />}
-                    Create task
+                    {pending ? <Spinner data-icon="inline-start" /> : null}
+                    {isEdit ? "Save changes" : "Create task"}
                 </Button>
             </FieldGroup>
         </form>

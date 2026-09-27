@@ -1,9 +1,9 @@
-import { MyTaskList } from "@/components/tasks/my-task-list";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Suspense } from "react";
+import { StaffDashboard } from "@/components/tasks/staff-dashboard";
+import { Spinner } from "@/components/ui/spinner";
 import { fetchApi } from "@/lib/api-server";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
-import type { TaskInstanceListView } from "@/types/task-instance";
 import { SafeUser } from "@/types/user";
 
 export default async function DashboardPage() {
@@ -11,21 +11,18 @@ export default async function DashboardPage() {
     const canManage = session?.role === OWNER_ROLE || session?.role === MANAGER_ROLE;
 
     if (session && !canManage) {
-        const instances = await fetchApi<TaskInstanceListView[]>(`/api/users/${session.userId}/tasks?status=pending`);
-
         return (
             <div className="flex flex-col gap-4">
                 <h1 className="text-xl font-medium">My tasks</h1>
-                {instances.length === 0 ? (
-                    <Empty>
-                        <EmptyHeader>
-                            <EmptyTitle>No tasks right now</EmptyTitle>
-                            <EmptyDescription>Tasks assigned to you will show up here.</EmptyDescription>
-                        </EmptyHeader>
-                    </Empty>
-                ) : (
-                    <MyTaskList instances={instances} />
-                )}
+                <Suspense
+                    fallback={
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner /> Loading…
+                        </div>
+                    }
+                >
+                    <StaffDashboard userId={session.userId} />
+                </Suspense>
             </div>
         );
     }
