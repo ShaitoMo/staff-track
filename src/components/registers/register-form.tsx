@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type SubmitEvent } from "react";
+import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,9 +30,9 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
     const [name, setName] = useState(initialValues?.name ?? "");
     const [errors, setErrors] = useState<RegisterFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [pending, setPending] = useState(false);
+    const [pending, startTransition] = useTransition();
 
-    async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
 
@@ -40,21 +40,20 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
         setErrors(validationErrors);
         if (!isRegisterFormValid(validationErrors)) return;
 
-        setPending(true);
-        try {
-            if (mode === "create") {
-                await createRegister({ branchId: branchId!, name });
-            } else if (name !== initialValues?.name) {
-                await updateRegister(registerId!, { name });
-            }
+        startTransition(async () => {
+            try {
+                if (mode === "create") {
+                    await createRegister({ branchId: branchId!, name });
+                } else if (name !== initialValues?.name) {
+                    await updateRegister(registerId!, { name });
+                }
 
-            router.push("/registers");
-            router.refresh();
-        } catch (error) {
-            setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
-        } finally {
-            setPending(false);
-        }
+                router.push("/registers");
+                router.refresh();
+            } catch (error) {
+                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+            }
+        });
     }
 
     return (

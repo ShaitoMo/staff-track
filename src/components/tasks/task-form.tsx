@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type SubmitEvent } from "react";
+import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -69,7 +69,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     const [active, setActive] = useState(initialValues?.active ?? true);
     const [errors, setErrors] = useState<TaskFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [pending, setPending] = useState(false);
+    const [pending, startTransition] = useTransition();
 
     const people = assigneeOptionsForBranch(branchId, users, userBranches);
     // A task's kind is fixed once created: a one-off can't start repeating, nor a recurring one stop.
@@ -105,7 +105,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
         revalidate({ weekdays: next });
     }
 
-    async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
 
@@ -116,24 +116,23 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
         setErrors(validationErrors);
         if (!isTaskFormValid(validationErrors)) return;
 
-        setPending(true);
-        try {
-            if (isEdit) {
-                const body = buildUpdateTaskBody(initialValues!, { ...input, active });
-                if (hasTaskChanges(body)) {
-                    await updateTask(taskId!, body);
+        startTransition(async () => {
+            try {
+                if (isEdit) {
+                    const body = buildUpdateTaskBody(initialValues!, { ...input, active });
+                    if (hasTaskChanges(body)) {
+                        await updateTask(taskId!, body);
+                    }
+                } else {
+                    await createTask(buildCreateTaskBody(input));
                 }
-            } else {
-                await createTask(buildCreateTaskBody(input));
-            }
 
-            router.push("/tasks");
-            router.refresh();
-        } catch (error) {
-            setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
-        } finally {
-            setPending(false);
-        }
+                router.push("/tasks");
+                router.refresh();
+            } catch (error) {
+                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+            }
+        });
     }
 
     return (
