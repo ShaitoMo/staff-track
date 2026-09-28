@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type SubmitEvent } from "react";
+import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -56,7 +56,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
     const [errors, setErrors] = useState<UserFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [branchWarnings, setBranchWarnings] = useState<string[]>([]);
-    const [pending, setPending] = useState(false);
+    const [pending, startTransition] = useTransition();
 
     function toggleBranch(branchId: number, selected: boolean) {
         setBranchSelections((prev) => ({
@@ -110,7 +110,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         return warnings;
     }
 
-    async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
         setBranchWarnings([]);
@@ -122,11 +122,35 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         setErrors(validationErrors);
         if (!isUserFormValid(validationErrors)) return;
 
-        setPending(true);
-        try {
-            if (mode === "create") {
-                const created = await createUser({ name, phone, password, roleId: roleId! });
-                const warnings = await applyBranchDiff(created.userId);
+        startTransition(async () => {
+            try {
+                if (mode === "create") {
+                    const created = await createUser({ name, phone, password, roleId: roleId! });
+                    const warnings = await applyBranchDiff(created.userId);
+                    if (warnings.length > 0) {
+                        // The user now exists, so staying on the create form would make a retry
+                        // re-create them. The edit page loads the links that did go through.
+                        router.replace(`/users/${created.userId}/edit?branch_warning=1`);
+                        return;
+                    }
+
+                    router.push("/users");
+                    router.refresh();
+                    return;
+                }
+
+                // Edit mode.
+                const patch: UpdateUserInput = {};
+                if (name !== initialValues?.name) patch.name = name;
+                if (phone !== initialValues?.phone) patch.phone = phone;
+                if (canEditRoleAndStatus && roleId !== initialValues?.roleId) patch.roleId = roleId ?? undefined;
+                if (canEditRoleAndStatus && isActive !== initialValues?.isActive) patch.isActive = isActive;
+
+                if (Object.keys(patch).length > 0) {
+                    await updateUser(userId!, patch);
+                }
+
+                const warnings = await applyBranchDiff(userId!);
                 if (warnings.length > 0) {
                     setBranchWarnings(warnings);
                     return;
@@ -134,33 +158,10 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
 
                 router.push("/users");
                 router.refresh();
-                return;
+            } catch (error) {
+                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
             }
-
-            // Edit mode.
-            const patch: UpdateUserInput = {};
-            if (name !== initialValues?.name) patch.name = name;
-            if (phone !== initialValues?.phone) patch.phone = phone;
-            if (canEditRoleAndStatus && roleId !== initialValues?.roleId) patch.roleId = roleId ?? undefined;
-            if (canEditRoleAndStatus && isActive !== initialValues?.isActive) patch.isActive = isActive;
-
-            if (Object.keys(patch).length > 0) {
-                await updateUser(userId!, patch);
-            }
-
-            const warnings = await applyBranchDiff(userId!);
-            if (warnings.length > 0) {
-                setBranchWarnings(warnings);
-                return;
-            }
-
-            router.push("/users");
-            router.refresh();
-        } catch (error) {
-            setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
-        } finally {
-            setPending(false);
-        }
+        });
     }
 
     return (

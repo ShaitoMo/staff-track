@@ -24,10 +24,12 @@ function AccessMessage({ message }: { message: string }) {
 
 export default async function EditUserPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ userId: string }>;
+    searchParams: Promise<{ branch_warning?: string }>;
 }) {
-    const { userId: userIdParam } = await params;
+    const [{ userId: userIdParam }, { branch_warning }] = await Promise.all([params, searchParams]);
 
     if (!/^\d+$/.test(userIdParam)) {
         return <AccessMessage message="Invalid user." />;
@@ -66,6 +68,15 @@ export default async function EditUserPage({
     return (
         <div className="flex flex-col gap-4">
             <h1 className="text-xl font-medium">Edit {targetUser.name}</h1>
+            {branch_warning && (
+                <Alert variant="destructive" className="max-w-lg">
+                    <AlertCircleIcon />
+                    <AlertDescription>
+                        The user was created, but some branches couldn&apos;t be linked. Check the branches
+                        below and save again.
+                    </AlertDescription>
+                </Alert>
+            )}
             <UserForm
                 mode="edit"
                 userId={userId}
