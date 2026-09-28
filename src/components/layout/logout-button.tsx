@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -8,17 +8,14 @@ import { logout } from "@/lib/api-client";
 
 export function LogoutButton() {
     const router = useRouter();
-    const [pending, setPending] = useState(false);
+    const [pending, startTransition] = useTransition();
 
-    async function handleLogout() {
-        setPending(true);
-        try {
+    function handleLogout() {
+        startTransition(async () => {
             await logout().catch(() => undefined);
             router.push("/login");
             router.refresh();
-        } finally {
-            setPending(false);
-        }
+        });
     }
 
     return (
