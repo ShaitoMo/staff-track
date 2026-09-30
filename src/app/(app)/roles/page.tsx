@@ -47,14 +47,15 @@ export default async function RolesPage({
 
     const requestedBranchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
     const branchId = branches.some((b) => b.branchId === requestedBranchId) ? requestedBranchId : branches[0]?.branchId;
+    const branchName = branches.find((b) => b.branchId === branchId)?.name;
     const weekStart = mondayOf(parseDateParam(week));
 
     return (
         <div className="flex flex-col gap-8">
             <h1 className="text-xl font-medium">Roles &amp; coverage</h1>
 
-            <section className="flex flex-col gap-4">
-                <h2 className="text-base font-medium">Roles</h2>
+            <section aria-labelledby="roles-heading" className="flex flex-col gap-4">
+                <h2 id="roles-heading" className="text-base font-medium">Roles</h2>
                 {isOwner ? <RoleForm /> : null}
                 {isOwner ? null : (
                     <p className="text-xs text-muted-foreground">
@@ -64,8 +65,10 @@ export default async function RolesPage({
                 <RoleList roles={buildRoleMembers(visibleRoles, users)} />
             </section>
 
-            <section className="flex flex-col gap-4">
-                <h2 className="text-base font-medium">Coverage</h2>
+            <section aria-labelledby="coverage-heading" className="flex flex-col gap-4">
+                <h2 id="coverage-heading" className="text-base font-medium">
+                    {branchName ? `Coverage for ${branchName}` : "Coverage"}
+                </h2>
                 {branchId === undefined ? (
                     <Empty>
                         <EmptyHeader>
@@ -84,9 +87,9 @@ export default async function RolesPage({
                                 showAll={false}
                             />
                         ) : null}
-                        {/* Keyed so a new branch or week shows the fallback instead of keeping the old grid on screen. */}
+                        {/* Keyed by branch only: a new week reloads just the weekly table inside the section. */}
                         <Suspense
-                            key={`${branchId}-${weekStart}`}
+                            key={branchId}
                             fallback={
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <Spinner /> Loading…
