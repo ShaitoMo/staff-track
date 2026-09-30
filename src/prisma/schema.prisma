@@ -50,8 +50,9 @@ model Role {
   roleId Int    @id @default(autoincrement()) @map("role_id")
   name   String @unique @db.VarChar
 
-  users User[]
-  tasks Task[] // tasks targeting this whole role (assigned_role_id)
+  users        User[]
+  tasks        Task[] // tasks targeting this whole role (assigned_role_id)
+  coverageReqs CoverageRequirement[]
 
   @@map("roles")
 }
@@ -92,6 +93,8 @@ model Branch {
   shifts       Shift[]
   attendance   Attendance[]
   tasks        Task[]
+  shiftPeriods ShiftPeriod[]
+  coverageReqs CoverageRequirement[]
 
   @@map("branches")
 }
@@ -149,6 +152,45 @@ model Shift {
   register Register? @relation(fields: [branchId, registerId], references: [branchId, registerId])
 
   @@map("shifts")
+}
+
+// named slots a day is divided into ('Morning', 'Evening'), with the hours a shift in that slot
+// normally runs. A NULL branch_id is the chain-wide default; a row naming a branch is that
+// branch's own version of the slot.
+model ShiftPeriod {
+  periodId     Int      @id @default(autoincrement()) @map("period_id")
+  branchId     Int?     @map("branch_id") // NULL = applies to all branches
+  name         String   @db.VarChar // 'Morning', 'Evening'
+  defaultStart DateTime @map("default_start") @db.Time
+  defaultEnd   DateTime @map("default_end") @db.Time
+  sortOrder    Int      @default(0) @map("sort_order")
+
+  branch       Branch?               @relation(fields: [branchId], references: [branchId])
+  requirements CoverageRequirement[]
+  // shifts Shift[] — added when shifts.periodId lands
+
+  @@map("shift_periods")
+}
+
+// how many people of a role a branch needs in a period — the target the schedule is measured
+// against. A NULL weekday is the every-day rule; a row naming a weekday overrides it for that day.
+model CoverageRequirement {
+  requirementId Int @id @default(autoincrement()) @map("requirement_id")
+  branchId      Int @map("branch_id")
+  roleId        Int @map("role_id")
+  periodId      Int @map("period_id")
+  weekday       Int? // 0=Sun … 6=Sat; NULL = every day
+  requiredCount Int @default(1) @map("required_count")
+
+  branch Branch      @relation(fields: [branchId], references: [branchId])
+  role   Role        @relation(fields: [roleId], references: [roleId])
+  period ShiftPeriod @relation(fields: [periodId], references: [periodId])
+
+  // Postgres treats NULLs as distinct, so this stops duplicate weekday-specific rules but NOT
+  // duplicate every-day ones. Closing that needs a partial unique index on
+  // (branch_id, role_id, period_id) WHERE weekday IS NULL, in a raw migration.
+  @@unique([branchId, roleId, periodId, weekday])
+  @@map("coverage_requirements")
 }
 
 // one row per CSV/Excel upload from the clock-in machine (FR5 v1)
