@@ -8,7 +8,11 @@ jest.mock('@/repository/user-branch-repository', () => ({
     UserBranchRepository: { getUserBranches: jest.fn() },
 }));
 jest.mock('@/repository/task-instance-repository', () => ({
-    TaskInstanceRepository: { getInstanceForWrite: jest.fn(), reviewInstance: jest.fn() },
+    TaskInstanceRepository: {
+        getInstanceForWrite: jest.fn(),
+        reviewInstance: jest.fn(),
+        getTaskInstances: jest.fn(),
+    },
 }));
 jest.mock('@/repository/role-repository', () => ({
     RoleRepository: { getRoleById: jest.fn() },
@@ -21,6 +25,7 @@ import { TaskInstanceRepository } from '@/repository/task-instance-repository';
 import { RoleRepository } from '@/repository/role-repository';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
 import { ForbiddenError, NotAssignedToTaskError, NotBranchManagerError } from '@/exceptions/forbidden-error';
+import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 
 const getUserById = UserRepository.getUserById as jest.MockedFunction<
     typeof UserRepository.getUserById
@@ -30,6 +35,9 @@ const getUserBranches = UserBranchRepository.getUserBranches as jest.MockedFunct
 >;
 const getInstanceForWrite = TaskInstanceRepository.getInstanceForWrite as jest.MockedFunction<
     typeof TaskInstanceRepository.getInstanceForWrite
+>;
+const getTaskInstances = TaskInstanceRepository.getTaskInstances as jest.MockedFunction<
+    typeof TaskInstanceRepository.getTaskInstances
 >;
 const getRoleById = RoleRepository.getRoleById as jest.MockedFunction<
     typeof RoleRepository.getRoleById
@@ -256,6 +264,57 @@ describe('review is deliberately not gated on the task being active', () => {
 
         expect(TaskInstanceRepository.reviewInstance).toHaveBeenCalledWith(
             expect.objectContaining({ instanceId: 1, decision: TaskStatus.verified }),
+        );
+    });
+});
+
+describe('getTaskInstances — resolving the user_id filter', () => {
+    it('returns an empty list for an unknown user rather than everybody\'s tasks', async () => {
+        getUserById.mockResolvedValue(null);
+
+        const rows = await TaskInstanceService.getTaskInstances({ user_id: ASSIGNEE });
+
+        expect(rows).toEqual([]);
+        expect(getTaskInstances).not.toHaveBeenCalled();
+    });
+
+    it('passes an empty branchIds list through rather than fetching branch links again', async () => {
+        getUserById.mockResolvedValue(user());
+        getUserBranches.mockResolvedValue([]);
+        getTaskInstances.mockResolvedValue([]);
+
+        await TaskInstanceService.getTaskInstances({ user_id: ASSIGNEE });
+
+        expect(getTaskInstances).toHaveBeenCalledWith(
+            expect.objectContaining({
+                assignedToUser: { userId: ASSIGNEE, roleId: ROLE, branchIds: [] },
+            }),
+        );
+    });
+});
+
+describe('getTaskInstancesForUser — a worker attached to no branch', () => {
+    it('reports a 404-shaped error for an unknown user', async () => {
+        getUserById.mockResolvedValue(null);
+
+        await expect(TaskInstanceService.getTaskInstancesForUser(ASSIGNEE, {})).rejects.toThrow(
+            UserNotFoundError,
+        );
+    });
+
+    it('still asks for personal tasks — an empty branchIds list only closes off role-targeted ones', async () => {
+        getUserById.mockResolvedValue(user());
+        getUserBranches.mockResolvedValue([]);
+        getTaskInstances.mockResolvedValue([]);
+
+        await TaskInstanceService.getTaskInstancesForUser(ASSIGNEE, {});
+
+        // buildWhere's OR still carries { assignedTo: userId }, which does not depend on branchIds;
+        // only the role-targeted arm (branchId: { in: [] }) goes empty.
+        expect(getTaskInstances).toHaveBeenCalledWith(
+            expect.objectContaining({
+                assignedToUser: { userId: ASSIGNEE, roleId: ROLE, branchIds: [] },
+            }),
         );
     });
 });

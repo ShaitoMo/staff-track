@@ -1,6 +1,7 @@
 import {
     TaskInstanceRepository,
     TaskInstanceFilters,
+    AssignedToUserFilter,
 } from '@/repository/task-instance-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
@@ -11,10 +12,12 @@ import {
     TaskInstanceDetailView,
     TaskInstanceFiltersInput,
     TaskInstanceListView,
+    UserTaskInstanceFiltersInput,
 } from '@/types/task-instance';
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error';
 import { NotAssignedToTaskError, NotBranchManagerError, SelfReviewError } from '@/exceptions/forbidden-error';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
+import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 
 type InstanceForWrite = NonNullable<
     Awaited<ReturnType<typeof TaskInstanceRepository.getInstanceForWrite>>
@@ -29,23 +32,67 @@ export class TaskInstanceService {
         };
 
         if (filters.user_id !== undefined) {
-            const user = await UserRepository.getUserById(filters.user_id);
+            const assignedToUser = await TaskInstanceService.resolveAssignedToUser(filters.user_id);
 
             // an unknown user is asking about nobody's tasks, not everybody's
-            if (!user) {
+            if (!assignedToUser) {
                 return [];
             }
 
-            const branchLinks = await UserBranchRepository.getUserBranches({ userId: user.userId });
-
-            repositoryFilters.assignedToUser = {
-                userId: user.userId,
-                roleId: user.roleId,
-                branchIds: branchLinks.map((link) => link.branchId),
-            };
+            repositoryFilters.assignedToUser = assignedToUser;
         }
 
         return TaskInstanceRepository.getTaskInstances(repositoryFilters);
+    }
+
+    /**
+     * GET /users/:userId/tasks — one worker's own list (FR: personal + claimable role tasks).
+     *
+     * Unlike getTaskInstances' user_id filter, the user comes from the path here, so an unknown
+     * one is a 404 rather than a quietly empty list.
+     */
+    static async getTaskInstancesForUser(
+        userId: number,
+        filters: UserTaskInstanceFiltersInput,
+    ): Promise<TaskInstanceListView[]> {
+        const assignedToUser = await TaskInstanceService.resolveAssignedToUser(userId);
+
+        if (!assignedToUser) {
+            throw new UserNotFoundError();
+        }
+
+        return TaskInstanceRepository.getTaskInstances({
+            status: filters.status,
+            dueFrom: filters.due_from,
+            dueTo: filters.due_to,
+            assignedToUser,
+        });
+    }
+
+    /**
+     * The "who is this" half of a task-instance list: null for an unknown user, otherwise the
+     * filter that reaches both their personal tasks and their role's tasks at branches they work.
+     *
+     * A user attached to no branch gets `branchIds: []`, which Prisma's `branchId: { in: [] }`
+     * matches against nothing — so role-targeted tasks correctly disappear for them, while a task
+     * assigned to them by name (the other arm of buildWhere's OR) is untouched by branchIds and
+     * still shows. Intentional: a worker's personal assignments do not depend on being linked to
+     * any branch at all.
+     */
+    private static async resolveAssignedToUser(userId: number): Promise<AssignedToUserFilter | null> {
+        const user = await UserRepository.getUserById(userId);
+
+        if (!user) {
+            return null;
+        }
+
+        const branchLinks = await UserBranchRepository.getUserBranches({ userId: user.userId });
+
+        return {
+            userId: user.userId,
+            roleId: user.roleId,
+            branchIds: branchLinks.map((link) => link.branchId),
+        };
     }
 
     static async getTaskInstanceById(instanceId: number): Promise<TaskInstanceDetailView | null> {
