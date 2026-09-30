@@ -18,20 +18,25 @@ export function BranchFilter({
     branches,
     activeBranchId,
     extraQuery = {},
+    showAll = true,
 }: {
     basePath: string;
     branches: Branch[];
     activeBranchId?: number;
     extraQuery?: Record<string, string>;
+    /** Hide the "All branches" link for screens that only make sense for one branch at a time. */
+    showAll?: boolean;
 }) {
     return (
         <div className="flex flex-wrap gap-2">
-            <Link
-                href={hrefFor(basePath, extraQuery)}
-                className={cn(buttonVariants({ variant: activeBranchId === undefined ? "default" : "outline", size: "sm" }))}
-            >
-                All branches
-            </Link>
+            {showAll ? (
+                <Link
+                    href={hrefFor(basePath, extraQuery)}
+                    className={cn(buttonVariants({ variant: activeBranchId === undefined ? "default" : "outline", size: "sm" }))}
+                >
+                    All branches
+                </Link>
+            ) : null}
             {branches.map((branch) => (
                 <Link
                     key={branch.branchId}
