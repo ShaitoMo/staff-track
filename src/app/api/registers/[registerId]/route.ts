@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RegisterService } from '@/services/register-service'
 import { UpdateRegisterSchema } from '@/types/register'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
-import { parseJsonBody, parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/registers/[registerId]'>
 ) {
     const { registerId: registerIdParam } = await ctx.params;
@@ -16,10 +17,24 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid registerId' }, { status: 400 });
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     try {
         const register = await RegisterService.getRegisterById(registerId);
+
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, register.branchId)
+
         return NextResponse.json(register, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
@@ -40,6 +55,12 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid registerId' }, { status: 400 });
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     const parsed = await parseJsonBody(req, UpdateRegisterSchema);
 
     if (parsed.error) {
@@ -47,9 +68,18 @@ export async function PATCH(
     }
 
     try {
+        const existing = await RegisterService.getRegisterById(registerId);
+
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, existing.branchId)
+
         const register = await RegisterService.updateRegister(registerId, parsed.data);
         return NextResponse.json(register, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof RegisterNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

@@ -7,16 +7,13 @@ import { ImportRowError } from '@/lib/attendance-import';
  * `branch_id` is required because the machine's employee numbers are only unique within a branch
  * (`user_branches.machine_employee_id`) — the same '60' can be two people at two branches, so the
  * file alone cannot say who it is about.
- *
- * `imported_by` is the manager doing the upload; a request field only until authentication exists,
- * matching `created_by` on shifts.
  */
 export const ImportAttendanceSchema = z.object({
     branch_id: z.coerce.number().int().positive(),
-    imported_by: z.coerce.number().int().positive(),
 });
 
-export type ImportAttendanceInput = z.infer<typeof ImportAttendanceSchema>;
+/** imported_by is session-derived — the route merges it in after ImportAttendanceSchema validates the rest. */
+export type ImportAttendanceInput = z.infer<typeof ImportAttendanceSchema> & { imported_by: number };
 
 export interface ImportAttendanceResult {
     batch_id: number;

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError, ZodType } from 'zod'
+import { getCurrentUser } from '@/lib/auth'
+import { AccessTokenPayload } from '@/types/auth'
+import { ForbiddenError } from '@/exceptions/forbidden-error'
 
 export function parseNumericId(value: string): number | null {
     if (!/^\d+$/.test(value)) {
@@ -61,4 +64,24 @@ export async function getOrNotFound<T>(
         console.error(error)
         return NextResponse.json({ error: failureMessage }, { status: 500 })
     }
+}
+
+/**
+ * The session check every protected route repeats: read the identity proxy.ts already verified,
+ * or hand back the 401 to return as-is. `instanceof NextResponse` is what narrows the union back
+ * to a user at the call site.
+ */
+export function requireAuthenticated(req: NextRequest): AccessTokenPayload | NextResponse {
+    const user = getCurrentUser(req)
+    return user ?? NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+}
+
+/**
+ * Maps a caught `ForbiddenError` (from requireRole/requireBranchAccess/requireSelfOrRole) to its
+ * 403, or returns null for anything else so the route's own catch can keep checking.
+ */
+export function forbiddenResponse(error: unknown): NextResponse | null {
+    return error instanceof ForbiddenError
+        ? NextResponse.json({ error: error.message }, { status: 403 })
+        : null
 }

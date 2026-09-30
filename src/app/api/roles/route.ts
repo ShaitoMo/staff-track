@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RoleService } from '@/services/role-service'
 import { CreateRoleSchema } from '@/types/role'
+import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
-import { zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, zodErrorResponse } from '@/lib/route-utils'
 
 export async function GET() {
     try {
@@ -15,6 +16,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     let body
     try {
         body = await req.json();
@@ -29,9 +36,14 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        requireRole(user, [OWNER_ROLE])
         const role = await RoleService.createRole(validationResult.data);
         return NextResponse.json(role, { status: 201 })
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof DuplicateRoleNameError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

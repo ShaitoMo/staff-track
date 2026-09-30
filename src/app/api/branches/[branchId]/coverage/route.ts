@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { CoverageGapsService } from '@/services/coverage-gaps-service'
 import { CoverageGapsFiltersSchema } from '@/types/coverage-gap'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 
 /**
@@ -22,6 +24,12 @@ export async function GET(
 
     const branchId = Number(branchIdParam);
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     const searchParams = req.nextUrl.searchParams
     const validationResult = CoverageGapsFiltersSchema.safeParse({
         weekStart: searchParams.get('weekStart') ?? undefined,
@@ -36,9 +44,15 @@ export async function GET(
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, branchId)
         const rows = await CoverageGapsService.getCoverageGaps(branchId, validationResult.data.weekStart)
         return NextResponse.json(rows, { status: 200 })
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

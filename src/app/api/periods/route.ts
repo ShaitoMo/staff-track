@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { PeriodService } from '@/services/period-service'
 import { CreatePeriodSchema, PeriodFiltersSchema } from '@/types/shift-period'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 
 /**
@@ -24,10 +26,22 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, validationResult.data.branchId)
         const periods = await PeriodService.getPeriodsByBranch(validationResult.data.branchId)
         return NextResponse.json(periods, { status: 200 })
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
@@ -38,6 +52,12 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/periods — branchId is optional; null or omitted means a chain-wide period. */
 export async function POST(req: NextRequest) {
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     let body
     try {
         body = await req.json();
@@ -56,9 +76,21 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        // A chain-wide period (no branchId) is owner-only; a branch-specific one just needs access to it.
+        if (validationResult.data.branchId === null || validationResult.data.branchId === undefined) {
+            requireRole(user, [OWNER_ROLE])
+        } else {
+            requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+            requireBranchAccess(user, validationResult.data.branchId)
+        }
+
         const period = await PeriodService.createPeriod(validationResult.data);
         return NextResponse.json(period, { status: 201 })
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

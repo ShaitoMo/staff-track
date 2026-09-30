@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { UserTaskInstanceFiltersSchema } from '@/types/task-instance'
+import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
 /**
@@ -22,6 +24,12 @@ export async function GET(
 
     const userId = Number(userIdParam);
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     const searchParams = req.nextUrl.searchParams
 
     const validationResult = UserTaskInstanceFiltersSchema.safeParse({
@@ -39,9 +47,14 @@ export async function GET(
     }
 
     try {
+        requireSelfOrRole(user, userId, [OWNER_ROLE, MANAGER_ROLE])
         const instances = await TaskInstanceService.getTaskInstancesForUser(userId, validationResult.data);
         return NextResponse.json(instances, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

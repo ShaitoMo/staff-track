@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ShiftService } from '@/services/shift-service'
 import { UpdateShiftSchema } from '@/types/shift'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
@@ -8,10 +9,10 @@ import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-er
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
-import { parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/shifts/[shiftId]'>
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
@@ -22,6 +23,12 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     try {
         const shift = await ShiftService.getShiftById(shiftId);
 
@@ -29,8 +36,15 @@ export async function GET(
             return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
         }
 
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, shift.branch_id)
+
         return NextResponse.json(shift, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch shift' }, { status: 500 });
     }
@@ -53,6 +67,18 @@ export async function PATCH(
 
     if (shiftId === null) {
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
+    }
+
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
+    const existing = await ShiftService.getShiftById(shiftId);
+
+    if (!existing) {
+        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
     }
 
     let body
@@ -83,9 +109,20 @@ export async function PATCH(
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, existing.branch_id)
+
+        if (validationResult.data.branch_id !== undefined) {
+            requireBranchAccess(user, validationResult.data.branch_id)
+        }
+
         const shift = await ShiftService.updateShift(shiftId, validationResult.data);
         return NextResponse.json(shift, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
@@ -110,7 +147,7 @@ export async function PATCH(
 
 /** DELETE /api/shifts/:shiftId — unschedules a shift. */
 export async function DELETE(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/shifts/[shiftId]'>
 ) {
     const { shiftId: shiftIdParam } = await ctx.params;
@@ -121,10 +158,28 @@ export async function DELETE(
         return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
+    const existing = await ShiftService.getShiftById(shiftId);
+
+    if (!existing) {
+        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+    }
+
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, existing.branch_id)
         await ShiftService.deleteShift(shiftId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }

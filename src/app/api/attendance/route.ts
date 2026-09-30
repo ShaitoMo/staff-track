@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { AttendanceService } from '@/services/attendance-service';
 import { AttendanceFiltersSchema, CreateAttendanceSchema } from '@/types/attendance';
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac';
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 import { DuplicateAttendanceError } from '@/exceptions/duplicate-attendance-error';
@@ -23,10 +25,30 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 });
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE]);
+
+        if (validationResult.data.branch_id !== undefined) {
+            requireBranchAccess(user, validationResult.data.branch_id);
+        }
+
         const attendance = await AttendanceService.getAttendance(validationResult.data);
-        return NextResponse.json(attendance, { status: 200 });
+        const visible = user.role === OWNER_ROLE
+            ? attendance
+            : attendance.filter((row) => user.branchIds.includes(row.branch_id));
+
+        return NextResponse.json(visible, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
     }
@@ -40,6 +62,12 @@ export async function GET(req: NextRequest) {
  * request is malformed, it has simply been entered before.
  */
 export async function POST(req: NextRequest) {
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     let body;
     try {
         body = await req.json();
@@ -58,9 +86,15 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, validationResult.data.branch_id)
         const attendance = await AttendanceService.createAttendance(validationResult.data);
         return NextResponse.json(attendance, { status: 201 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof DuplicateAttendanceError) {
             return NextResponse.json({ error: error.message }, { status: 409 });
         }

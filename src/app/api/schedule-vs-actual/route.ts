@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { ScheduleVsActualService } from '@/services/schedule-vs-actual-service'
 import { ScheduleVsActualFiltersSchema } from '@/types/schedule-vs-actual'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
@@ -32,10 +34,30 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: errors }, { status: 400 })
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+
+        if (validationResult.data.branch_id !== undefined) {
+            requireBranchAccess(user, validationResult.data.branch_id)
+        }
+
         const rows = await ScheduleVsActualService.getScheduleVsActual(validationResult.data)
-        return NextResponse.json(rows, { status: 200 })
+        const visible = user.role === OWNER_ROLE
+            ? rows
+            : rows.filter((row) => user.branchIds.includes(row.branch_id))
+
+        return NextResponse.json(visible, { status: 200 })
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof BranchNotFoundError || error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

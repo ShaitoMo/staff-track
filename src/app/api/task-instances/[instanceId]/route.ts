@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
+import { requireTaskInstanceAccess } from '@/lib/rbac'
 
-/** GET /api/task-instances/:instanceId — one instance with all of its media, newest first. */
+/** GET /api/task-instances/:instanceId — owner unrestricted, manager their branches, staff only if directly assigned by name (narrower than the list's role-matching). */
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]'>
 ) {
     const { instanceId: instanceIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(instanceIdParam)) {
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
+    }
+
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
     }
 
     try {
@@ -19,8 +27,14 @@ export async function GET(
             return NextResponse.json({ error: 'Task instance not found' }, { status: 404 });
         }
 
+        requireTaskInstanceAccess(user, instance.task.branch_id, instance.assignee?.user_id)
+
         return NextResponse.json(instance, { status: 200 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         console.error(error);
         return NextResponse.json({ error: 'Failed to fetch task instance' }, { status: 500 })
     }

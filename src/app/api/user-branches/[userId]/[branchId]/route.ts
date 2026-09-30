@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserBranchService } from '@/services/user-branch-service'
+import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { UserBranchNotFoundError } from '@/exceptions/user-branch-not-found-error'
-import { parseNumericId } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 
 export async function DELETE(
-    _req: NextRequest,
+    req: NextRequest,
     ctx: RouteContext<'/api/user-branches/[userId]/[branchId]'>
 ) {
     const { userId: userIdParam, branchId: branchIdParam } = await ctx.params;
@@ -21,10 +22,22 @@ export async function DELETE(
         return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
     }
 
+    const user = requireAuthenticated(req);
+
+    if (user instanceof NextResponse) {
+        return user;
+    }
+
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        requireBranchAccess(user, branchId)
         await UserBranchService.removeUserFromBranch(userId, branchId);
         return new NextResponse(null, { status: 204 });
     } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
         if (error instanceof UserBranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
