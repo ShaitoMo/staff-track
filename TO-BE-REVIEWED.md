@@ -91,12 +91,22 @@ data.
 **Where it goes:** a `task_schedule_changes` table written by `updateTask`, or reusing whatever
 general audit-log mechanism arrives first. Deferred because no one has asked the question yet.
 
-## 1f. Media serving route
+## 1f. Media reads have no ownership or permission check
 
-Media serving route deferred; blocked on auth, permission = same check as viewing the instance.
+`GET /api/media/:mediaId` and `GET /api/task-instances/:instanceId/media` return whatever record
+or list is asked for — there is no caller identity yet to check it against, so anyone who has or
+guesses an id can read it. The eventual route that serves the file itself (see below) is blocked
+on the same gap and should get the identical check.
+
+**Where it goes:** the same permission `TaskInstanceService.assertMayComplete`/`assertMayReview`
+already compute — a manager of the task's branch, or the person assigned/who completed the
+instance. Both media reads already resolve the instance (directly or via `MediaRepository`), so
+the branch and assignee are one query away once a caller identity exists.
+
+**Trigger:** whenever auth lands.
 
 (`media.file_path` is a storage reference, not a URL — `uploads/` sits outside `public/` so
-nothing serves it today.)
+nothing serves the file itself today.)
 
 ## 2. Response casing on `GET /api/users/{userId}/branches`
 

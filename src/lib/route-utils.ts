@@ -40,3 +40,25 @@ export async function parseJsonBody<T>(req: NextRequest, schema: ZodType<T>): Pr
 
     return { data: result.data }
 }
+
+/**
+ * Runs a GET handler's read, mapping one specific not-found error to a 404 (with its own message)
+ * and everything else to a 500 with `failureMessage` — the shape every simple GET-by-id route in
+ * this codebase already repeats by hand.
+ */
+export async function getOrNotFound<T>(
+    handler: () => Promise<T>,
+    NotFoundErrorClass: new () => Error,
+    failureMessage: string,
+): Promise<NextResponse> {
+    try {
+        const data = await handler()
+        return NextResponse.json(data, { status: 200 })
+    } catch (error) {
+        if (error instanceof NotFoundErrorClass) {
+            return NextResponse.json({ error: error.message }, { status: 404 })
+        }
+        console.error(error)
+        return NextResponse.json({ error: failureMessage }, { status: 500 })
+    }
+}
