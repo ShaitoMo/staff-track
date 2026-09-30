@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: stafftrack-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stafftrack
+      POSTGRES_PASSWORD: stafftrack_pass
+      POSTGRES_DB: stafftrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stafftrack -d stafftrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
