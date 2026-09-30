@@ -8,13 +8,15 @@ import {
     verifyAccessToken,
 } from '@/lib/auth'
 
-/** Reachable without a session — login/refresh can't require what they grant, and logout must survive an expired token. */
-const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'])
+/** Reachable without a session — login/refresh can't require what they grant, logout must survive an expired token, and /login is where an unauthenticated page request gets sent. */
+const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/logout', '/login'])
 
 /**
- * Authenticates every /api/* request once, on the Node.js runtime Proxy defaults to since Next 16.
+ * Authenticates every request except static assets, on the Node.js runtime Proxy defaults to since Next 16.
  * Header stripping runs before the public-path check, not inside it, so a public route that later
  * reads identity sees 'nobody' rather than forged headers, with no sanitizing of its own required.
+ * On success, page Server Components read the stamped x-auth-* headers directly via next/headers
+ * instead of calling back into /api/auth/me.
  */
 export async function proxy(request: NextRequest) {
     const headers = new Headers(request.headers)
@@ -30,7 +32,10 @@ export async function proxy(request: NextRequest) {
     const user = token ? await verifyAccessToken(token) : null
 
     if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+        if (request.nextUrl.pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+        }
+        return NextResponse.redirect(new URL('/login', request.url))
     }
 
     headers.set(AUTH_HEADER_USER_ID, String(user.userId))
@@ -41,5 +46,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/api/:path*'],
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
