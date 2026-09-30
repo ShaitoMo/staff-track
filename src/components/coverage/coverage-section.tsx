@@ -81,7 +81,7 @@ export async function CoverageSection({
                     rows={buildRequirementGrid(roles, sortedPeriods, requirements)}
                 />
                 <p className="text-xs text-muted-foreground">
-                    Blank means no requirement is set. 0 means the role is explicitly not needed.
+                    Blank means not set yet. Enter 0 if the role isn&apos;t needed in that period.
                 </p>
             </div>
 

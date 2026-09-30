@@ -63,7 +63,12 @@ describe('parseRequiredCount', () => {
         expect(parseRequiredCount(input)).toBe(expected);
     });
 
-    it.each(['', '  ', '-1', '1.5', 'two', '1e3', '99999999999999999999'])('rejects %j', (input) => {
+    it('accepts the maximum and rejects one above it', () => {
+        expect(parseRequiredCount('999')).toBe(999);
+        expect(parseRequiredCount('1000')).toBeNull();
+    });
+
+    it.each(['', '  ', '-1', '1.5', 'two', '1e3', '9999999999', '99999999999999999999'])('rejects %j', (input) => {
         expect(parseRequiredCount(input)).toBeNull();
     });
 });
@@ -133,10 +138,20 @@ describe('buildWeeklyCoverage', () => {
         ]);
     });
 
-    it('falls back to a placeholder name for an unknown role or period', () => {
-        const rows = buildWeeklyCoverage([gap('2026-09-28', 1, 0, 99, 98)], [], [], weekStart);
+    it('leaves out a role the viewer cannot see instead of showing its id', () => {
+        const rows = buildWeeklyCoverage(
+            [gap('2026-09-28', 1, 0, 99, 10), gap('2026-09-28', 1, 0, 1, 10)],
+            [cashier],
+            [morning],
+            weekStart,
+        );
 
-        expect(rows[0].roleName).toBe('Role 99');
+        expect(rows.map((row) => row.roleName)).toEqual(['Cashier']);
+    });
+
+    it('falls back to a placeholder name for an unknown period', () => {
+        const rows = buildWeeklyCoverage([gap('2026-09-28', 1, 0, 1, 98)], [cashier], [], weekStart);
+
         expect(rows[0].periodName).toBe('Period 98');
     });
 });

@@ -30,13 +30,16 @@ export function formatDay(dateString: string): string {
     return `${part("weekday")} ${part("day")} ${part("month")}`;
 }
 
-/** A whole number of 0 or more; anything else (blank, negative, decimal, text) is not a valid count. */
+/** The largest headcount the page accepts; far below the database's integer limit, well above any real shift. */
+export const MAX_REQUIRED_COUNT = 999;
+
+/** A whole number from 0 to MAX_REQUIRED_COUNT; anything else (blank, negative, decimal, text) is not valid. */
 export function parseRequiredCount(input: string): number | null {
     const trimmed = input.trim();
     if (!/^\d+$/.test(trimmed)) return null;
 
     const count = Number(trimmed);
-    return Number.isSafeInteger(count) ? count : null;
+    return count <= MAX_REQUIRED_COUNT ? count : null;
 }
 
 export interface GridCell {
@@ -108,6 +111,9 @@ export function buildWeeklyCoverage(
 
     const groups = new Map<string, { roleId: number; periodId: number; byDate: Map<string, CoverageGapRow> }>();
     for (const gap of gaps) {
+        // A role the viewer can't see (e.g. owner, for a manager) is left out rather than shown as "Role 1".
+        if (!roleNames.has(gap.roleId)) continue;
+
         const key = `${gap.roleId}:${gap.periodId}`;
         const group = groups.get(key) ?? { roleId: gap.roleId, periodId: gap.periodId, byDate: new Map() };
         group.byDate.set(gap.shiftDate, gap);
@@ -116,7 +122,7 @@ export function buildWeeklyCoverage(
 
     return [...groups.values()]
         .map((group) => ({
-            roleName: roleNames.get(group.roleId) ?? `Role ${group.roleId}`,
+            roleName: roleNames.get(group.roleId) ?? "",
             period: periodById.get(group.periodId),
             periodId: group.periodId,
             days: dates.map((shiftDate): WeeklyDay => {
