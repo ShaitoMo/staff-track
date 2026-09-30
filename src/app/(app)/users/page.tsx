@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AccessMessage } from "@/components/layout/access-message";
+import { BranchFilter } from "@/components/layout/branch-filter";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { BranchFilter } from "@/components/users/branch-filter";
 import { UserCards } from "@/components/users/user-cards";
 import { UserTable } from "@/components/users/user-table";
 import { ApiError } from "@/lib/api-client";
@@ -55,7 +55,7 @@ export default async function UsersPage({
                     Add user
                 </Link>
             </div>
-            {isOwner && <BranchFilter branches={branches} activeBranchId={branchId} />}
+            {isOwner && <BranchFilter basePath="/users" branches={branches} activeBranchId={branchId} />}
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>

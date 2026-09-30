@@ -26,6 +26,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                             <Link href="/branches" className="text-sm font-medium text-foreground hover:text-primary">
                                 Branches
                             </Link>
+                            <Link href="/registers" className="text-sm font-medium text-foreground hover:text-primary">
+                                Registers
+                            </Link>
                         </nav>
                     )}
                 </div>
