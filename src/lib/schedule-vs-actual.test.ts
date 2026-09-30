@@ -27,6 +27,7 @@ function shift(overrides: Partial<ShiftView> = {}): ShiftView {
         user_id: 1,
         branch_id: 1,
         register_id: null,
+        period_id: null,
         shift_date: '2026-07-01',
         start_time: '09:00',
         end_time: '17:00',

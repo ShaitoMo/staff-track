@@ -109,4 +109,11 @@ export class BranchRepository {
             throw error
         }
     }
+    static async assertExists(branchId: number): Promise<void> {
+        const branch = await BranchRepository.getBranchById(branchId)
+
+        if (!branch) {
+            throw new BranchNotFoundError()
+        }
+    }
 }

@@ -36,6 +36,12 @@ export type UserShiftFiltersInput = z.infer<typeof UserShiftFiltersSchema>;
  * (the column is NULL otherwise), and the register must belong to `branch_id`, which the service
  * checks because only it can read the register.
  *
+ * `period_id` is optional. When given, `start_time`/`end_time` are inherited from that period's
+ * defaults — the service copies them onto the row (see ShiftService.createShift) rather than
+ * reading them through the relation later, so a request naming `period_id` must not also send its
+ * own times: the two sources would silently disagree about which one wins. When `period_id` is
+ * absent, `start_time`/`end_time` come from the request exactly as before, and both are required.
+ *
  * `created_by` is the manager doing the scheduling; a request field only until authentication
  * exists, matching CreateTaskSchema's `assigned_by`.
  *
@@ -47,12 +53,33 @@ export const CreateShiftSchema = z.object({
     user_id: z.number().int().positive(),
     branch_id: z.number().int().positive(),
     register_id: z.number().int().positive().nullable().optional(),
+    period_id: z.number().int().positive().optional(),
     shift_date: DateOnlySchema,
-    start_time: TimeOnlySchema,
-    end_time: TimeOnlySchema,
+    start_time: TimeOnlySchema.optional(),
+    end_time: TimeOnlySchema.optional(),
     created_by: z.number().int().positive(),
 }).superRefine((data, ctx) => {
-    const { start_time: startTime, end_time: endTime } = data;
+    const { start_time: startTime, end_time: endTime, period_id: periodId } = data;
+
+    if (periodId !== undefined) {
+        if (startTime !== undefined || endTime !== undefined) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['period_id'],
+                message: 'start_time/end_time are inherited from period_id and must not be sent with it',
+            });
+        }
+        return;
+    }
+
+    if (startTime === undefined || endTime === undefined) {
+        ctx.addIssue({
+            code: 'custom',
+            path: [startTime === undefined ? 'start_time' : 'end_time'],
+            message: 'start_time and end_time are required when period_id is not given',
+        });
+        return;
+    }
 
     // A time that failed the format check never reaches here as a Date: Zod stops at the failed
     // string check and leaves the key absent, whatever the inferred type claims. Ordering has
@@ -140,6 +167,7 @@ export interface ShiftView {
     user_id: number;
     branch_id: number;
     register_id: number | null;
+    period_id: number | null;
     shift_date: string;
     start_time: string;
     end_time: string;

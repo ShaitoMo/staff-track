@@ -133,6 +133,7 @@ model Shift {
   userId     Int      @map("user_id")
   branchId   Int      @map("branch_id")
   registerId Int?     @map("register_id") // NULL for non-cashier shifts
+  periodId   Int?     @map("period_id") // named slot this shift was scheduled from, if any
   shiftDate  DateTime @map("shift_date") @db.Date
   startTime  DateTime @map("start_time") @db.Time
   endTime    DateTime @map("end_time") @db.Time
@@ -151,6 +152,16 @@ model Shift {
   // field to participate in multiple relations.
   register Register? @relation(fields: [branchId, registerId], references: [branchId, registerId])
 
+  // NOT a composite FK against (branchId, periodId): shift_periods.branch_id is nullable (a NULL
+  // row applies chain-wide), so MATCH SIMPLE would let a period from any branch attach as long as
+  // its branch_id happens to be NULL — it can't express "same branch, or global". The branch match
+  // is an app-level check instead (see ShiftService.assertPeriodAtBranch).
+  //
+  // onDelete: Restrict overrides Prisma's own default (SetNull, since the relation is optional):
+  // deleting a referenced period must be refused (409), not silently drop off the shifts scheduled
+  // from it — see PeriodService.deletePeriod.
+  period ShiftPeriod? @relation(fields: [periodId], references: [periodId], onDelete: Restrict)
+
   @@map("shifts")
 }
 
@@ -167,29 +178,26 @@ model ShiftPeriod {
 
   branch       Branch?               @relation(fields: [branchId], references: [branchId])
   requirements CoverageRequirement[]
-  // shifts Shift[] — added when shifts.periodId lands
+  shifts       Shift[]
 
   @@map("shift_periods")
 }
 
 // how many people of a role a branch needs in a period — the target the schedule is measured
-// against. A NULL weekday is the every-day rule; a row naming a weekday overrides it for that day.
+// against, every day of the week. A helper for building the schedule: nothing reads this table to
+// create, block, or modify a shift.
 model CoverageRequirement {
   requirementId Int @id @default(autoincrement()) @map("requirement_id")
   branchId      Int @map("branch_id")
   roleId        Int @map("role_id")
   periodId      Int @map("period_id")
-  weekday       Int? // 0=Sun … 6=Sat; NULL = every day
-  requiredCount Int @default(1) @map("required_count")
+  requiredCount Int @default(1) @map("required_count") // 0 is a real value: explicitly not needed
 
   branch Branch      @relation(fields: [branchId], references: [branchId])
   role   Role        @relation(fields: [roleId], references: [roleId])
   period ShiftPeriod @relation(fields: [periodId], references: [periodId])
 
-  // Postgres treats NULLs as distinct, so this stops duplicate weekday-specific rules but NOT
-  // duplicate every-day ones. Closing that needs a partial unique index on
-  // (branch_id, role_id, period_id) WHERE weekday IS NULL, in a raw migration.
-  @@unique([branchId, roleId, periodId, weekday])
+  @@unique([branchId, roleId, periodId])
   @@map("coverage_requirements")
 }
 

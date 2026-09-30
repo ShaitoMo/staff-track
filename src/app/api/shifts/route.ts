@@ -7,6 +7,8 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
+import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 
 //GET /api/shifts?branch_id=&user_id=&register_id=&from=&to=
 
@@ -78,7 +80,9 @@ export async function POST(req: NextRequest) {
             error instanceof UserNotFoundError ||
             error instanceof BranchNotFoundError ||
             error instanceof RegisterNotFoundError ||
-            error instanceof UserNotAtBranchError
+            error instanceof UserNotAtBranchError ||
+            error instanceof ShiftPeriodNotFoundError ||
+            error instanceof ShiftPeriodNotAtBranchError
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
