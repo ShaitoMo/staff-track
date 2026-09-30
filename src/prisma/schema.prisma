@@ -196,6 +196,12 @@ model Task {
   origin         TaskOrigin @default(assigned)
   isRecurring    Boolean    @default(false) @map("is_recurring")
   recurrence     String?    @db.VarChar // 'daily', 'weekly:mon,wed'; NULL if one-off
+  // "generates new instances and accepts new completions", NOT "exists". Flipping this to false
+  // cancels the task's outstanding work: pending rows drop out of the daily list and completion
+  // is refused (409). For a recurring task the daily job also deletes those pending rows, since
+  // it can regenerate them if the task is switched back on; a one-off's instance is kept and
+  // merely hidden, because nothing would ever recreate it. Instances already completed stay
+  // visible and stay reviewable — the record of work that did happen is never rewritten.
   active         Boolean    @default(true)
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
@@ -227,6 +233,10 @@ model TaskInstance {
 
   media Media[]
 
+  // one occurrence per task per day. Every instance insert goes through
+  // ON CONFLICT DO NOTHING, so generation is idempotent: the daily top-up job
+  // re-inserts the same 14-day window every run and this absorbs the overlap.
+  @@unique([taskId, dueDate])
   @@map("task_instances")
 }
 

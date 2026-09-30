@@ -269,6 +269,59 @@ async function main() {
       uploadedBy: bob.userId,
     },
   });
+
+  // ---------- Today-relative instances ----------
+  // The fixed dates above keep a stable history to look at; these make the endpoints usable
+  // straight after seeding, since GET /api/task-instances?date= is normally asked about today.
+  const today = new Date();
+  const dayOffset = (days: number) =>
+    new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + days));
+
+  // due today, untouched — the worker's list
+  await prisma.taskInstance.create({
+    data: {
+      taskId: restockTask.taskId,
+      dueDate: dayOffset(0),
+      status: TaskStatus.pending,
+    },
+  });
+
+  // done today, waiting on a manager — exercises the review endpoint
+  const awaitingReview = await prisma.taskInstance.create({
+    data: {
+      taskId: cleanRegistersTask.taskId,
+      dueDate: dayOffset(0),
+      status: TaskStatus.completed,
+      completedBy: frank.userId,
+      completedAt: new Date(),
+    },
+  });
+
+  await prisma.media.create({
+    data: {
+      taskInstanceId: awaitingReview.instanceId,
+      filePath: "/uploads/clean-registers-today.jpg",
+      uploadedBy: frank.userId,
+    },
+  });
+
+  // yesterday, never done — the overdue case
+  await prisma.taskInstance.create({
+    data: {
+      taskId: restockTask.taskId,
+      dueDate: dayOffset(-1),
+      status: TaskStatus.pending,
+    },
+  });
+
+  // tomorrow, at the other branch
+  await prisma.taskInstance.create({
+    data: {
+      taskId: downtownTask.taskId,
+      dueDate: dayOffset(1),
+      status: TaskStatus.pending,
+    },
+  });
 }
 
 main()

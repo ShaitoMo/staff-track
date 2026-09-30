@@ -1,6 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
-
+import 'dotenv/config'
 const globalForDb = globalThis as unknown as {
   db: PrismaClient | undefined;
 };
