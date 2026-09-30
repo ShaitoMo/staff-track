@@ -1,4 +1,3 @@
-import { TaskStatus } from '@prisma/client';
 import {
     TaskInstanceRepository,
     TaskInstanceFilters,
@@ -68,7 +67,7 @@ export class TaskInstanceService {
         const instance = await TaskInstanceService.loadForWrite(instanceId);
 
         await TaskInstanceService.assertMayComplete(instance, completedBy);
-        assertTransition(instance.status, TaskStatus.completed);
+        assertTransition(instance.status, 'completed');
 
         const filePath = await savePhoto(photo, instanceId);
 
@@ -95,7 +94,7 @@ export class TaskInstanceService {
      */
     static async reviewInstance(params: {
         instanceId: number;
-        decision: typeof TaskStatus.verified | typeof TaskStatus.rejected;
+        decision: 'verified' | 'rejected';
         reviewedBy: number;
     }): Promise<TaskInstanceDetailView> {
         const { instanceId, decision, reviewedBy } = params;
