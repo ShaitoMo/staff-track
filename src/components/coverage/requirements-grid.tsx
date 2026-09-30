@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api-client";
 import { createRequirement, updateRequirement } from "@/lib/api/coverage-requirements";
-import { GridCell, GridRow, parseRequiredCount } from "@/lib/coverage-rows";
+import { GridCell, GridRow, MAX_REQUIRED_COUNT, parseRequiredCount } from "@/lib/coverage-rows";
 
 export interface GridPeriod {
     periodId: number;
@@ -37,9 +37,16 @@ function RequirementCell({
     function save() {
         if (value.trim() === saved) return;
 
+        // A requirement can't be deleted from here, so an emptied cell just goes back to its saved value.
+        if (value.trim() === "") {
+            setValue(saved);
+            setError(null);
+            return;
+        }
+
         const count = parseRequiredCount(value);
         if (count === null) {
-            setError("Enter a whole number, 0 or more.");
+            setError(`Enter a whole number from 0 to ${MAX_REQUIRED_COUNT}.`);
             return;
         }
 
