@@ -32,6 +32,7 @@ export function BranchFilter({
             {showAll ? (
                 <Link
                     href={hrefFor(basePath, extraQuery)}
+                    aria-current={activeBranchId === undefined ? "true" : undefined}
                     className={cn(buttonVariants({ variant: activeBranchId === undefined ? "default" : "outline", size: "sm" }))}
                 >
                     All branches
@@ -41,6 +42,7 @@ export function BranchFilter({
                 <Link
                     key={branch.branchId}
                     href={hrefFor(basePath, extraQuery, branch.branchId)}
+                    aria-current={activeBranchId === branch.branchId ? "true" : undefined}
                     className={cn(buttonVariants({ variant: activeBranchId === branch.branchId ? "default" : "outline", size: "sm" }))}
                 >
                     {branch.name}

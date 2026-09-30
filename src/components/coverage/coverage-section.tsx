@@ -1,23 +1,22 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AlertCircleIcon } from "lucide-react";
 import { RequirementsGrid } from "@/components/coverage/requirements-grid";
-import { WeeklyCoverage } from "@/components/coverage/weekly-coverage";
+import { WeeklyCoverageSection } from "@/components/coverage/weekly-coverage-section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import {
-    addDays,
-    buildRequirementGrid,
-    buildWeeklyCoverage,
-    formatDay,
-    sortPeriods,
-} from "@/lib/coverage-rows";
-import { CoverageGapRow } from "@/types/coverage-gap";
+import { addDays, buildRequirementGrid, formatDay, sortPeriods } from "@/lib/coverage-rows";
+import { cn } from "@/lib/utils";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
 import { Role } from "@/types/role";
 import { ShiftPeriodView } from "@/types/shift-period";
+
+/** Touch screens get a full 44px tap target; mouse layouts keep the compact size. */
+const weekLinkTouch = "[@media(pointer:coarse)]:h-11";
 
 function weekHref(branchId: number, weekStart: string): string {
     return `/roles?${new URLSearchParams({ branch: String(branchId), week: weekStart })}`;
@@ -34,13 +33,11 @@ export async function CoverageSection({
 }) {
     let requirements: CoverageRequirementView[];
     let periods: ShiftPeriodView[];
-    let gaps: CoverageGapRow[];
 
     try {
-        [requirements, periods, gaps] = await Promise.all([
+        [requirements, periods] = await Promise.all([
             fetchApi<CoverageRequirementView[]>(`/api/coverage-requirements?branchId=${branchId}`),
             fetchApi<ShiftPeriodView[]>(`/api/periods?branchId=${branchId}`),
-            fetchApi<CoverageGapRow[]>(`/api/branches/${branchId}/coverage?weekStart=${weekStart}`),
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
@@ -68,8 +65,6 @@ export async function CoverageSection({
             </Empty>
         );
     }
-
-    const dates = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
 
     return (
         <div className="flex flex-col gap-6">
@@ -99,19 +94,36 @@ export async function CoverageSection({
                     <div className="flex gap-2">
                         <Link
                             href={weekHref(branchId, addDays(weekStart, -7))}
-                            className={buttonVariants({ variant: "outline", size: "sm" })}
+                            scroll={false}
+                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), weekLinkTouch)}
                         >
                             Previous week
                         </Link>
                         <Link
                             href={weekHref(branchId, addDays(weekStart, 7))}
-                            className={buttonVariants({ variant: "outline", size: "sm" })}
+                            scroll={false}
+                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), weekLinkTouch)}
                         >
                             Next week
                         </Link>
                     </div>
                 </div>
-                <WeeklyCoverage rows={buildWeeklyCoverage(gaps, roles, sortedPeriods, weekStart)} dates={dates} />
+                {/* Keyed by week only, so changing the week reloads just this table and leaves the grid in place. */}
+                <Suspense
+                    key={weekStart}
+                    fallback={
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner /> Loading…
+                        </div>
+                    }
+                >
+                    <WeeklyCoverageSection
+                        branchId={branchId}
+                        weekStart={weekStart}
+                        roles={roles}
+                        periods={sortedPeriods}
+                    />
+                </Suspense>
             </div>
         </div>
     );

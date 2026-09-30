@@ -1,5 +1,5 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDay, WeeklyCoverageRow } from "@/lib/coverage-rows";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +16,16 @@ export function WeeklyCoverage({ rows, dates }: { rows: WeeklyCoverageRow[]; dat
     }
 
     return (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="rounded-lg border border-border">
             <Table>
+                <TableCaption className="sr-only">
+                    People scheduled compared with people required, per role, shift period and day
+                </TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Role</TableHead>
+                        <TableHead scope="col" className="sticky left-0 z-10 bg-background">Role</TableHead>
                         {dates.map((date) => (
-                            <TableHead key={date} className="whitespace-nowrap">
+                            <TableHead key={date} scope="col" className="whitespace-nowrap">
                                 {formatDay(date)}
                             </TableHead>
                         ))}
@@ -31,10 +34,10 @@ export function WeeklyCoverage({ rows, dates }: { rows: WeeklyCoverageRow[]; dat
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={`${row.roleName}-${row.periodName}`}>
-                            <TableCell>
-                                <div className="font-medium">{row.roleName}</div>
-                                <div className="text-xs text-muted-foreground">{row.periodName}</div>
-                            </TableCell>
+                            <TableHead scope="row" className="sticky left-0 z-10 h-auto bg-background py-2">
+                                {row.roleName}
+                                <span className="block text-xs font-normal text-muted-foreground">{row.periodName}</span>
+                            </TableHead>
                             {row.days.map((day) => (
                                 <TableCell
                                     key={day.shiftDate}

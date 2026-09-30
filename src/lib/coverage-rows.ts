@@ -19,12 +19,15 @@ export function mondayOf(dateString: string): string {
 
 /** 'Mon 28 Sep', in UTC so a calendar day never slips with the viewer's time zone. */
 export function formatDay(dateString: string): string {
-    return new Date(`${dateString}T00:00:00.000Z`).toLocaleDateString("en-GB", {
+    const parts = new Intl.DateTimeFormat("en-US", {
         weekday: "short",
         day: "numeric",
         month: "short",
         timeZone: "UTC",
-    });
+    }).formatToParts(new Date(`${dateString}T00:00:00.000Z`));
+    const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+
+    return `${part("weekday")} ${part("day")} ${part("month")}`;
 }
 
 /** A whole number of 0 or more; anything else (blank, negative, decimal, text) is not a valid count. */

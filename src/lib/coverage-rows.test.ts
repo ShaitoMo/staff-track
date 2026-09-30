@@ -2,6 +2,7 @@ import {
     addDays,
     buildRequirementGrid,
     buildWeeklyCoverage,
+    formatDay,
     mondayOf,
     parseRequiredCount,
     sortPeriods,
@@ -36,6 +37,13 @@ describe('mondayOf', () => {
 
     it('crosses a month and year boundary', () => {
         expect(mondayOf('2027-01-01')).toBe('2026-12-28');
+    });
+});
+
+describe('formatDay', () => {
+    it('gives the same three-letter month style for every month', () => {
+        expect(formatDay('2026-09-28')).toBe('Mon 28 Sep');
+        expect(formatDay('2026-10-01')).toBe('Thu 1 Oct');
     });
 });
 

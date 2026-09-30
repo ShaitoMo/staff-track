@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api-client";
 import { createRequirement, updateRequirement } from "@/lib/api/coverage-requirements";
 import { GridCell, GridRow, parseRequiredCount } from "@/lib/coverage-rows";
@@ -28,6 +28,7 @@ function RequirementCell({
     cell: GridCell;
 }) {
     const router = useRouter();
+    const errorId = useId();
     const saved = cell.requiredCount === null ? "" : String(cell.requiredCount);
     const [value, setValue] = useState(saved);
     const [error, setError] = useState<string | null>(null);
@@ -68,8 +69,9 @@ function RequirementCell({
                     placeholder="–"
                     aria-label={label}
                     aria-invalid={error !== null || undefined}
+                    aria-describedby={error ? errorId : undefined}
                     disabled={pending}
-                    className="w-16 tabular-nums"
+                    className="w-16 tabular-nums [@media(pointer:coarse)]:h-11"
                     onChange={(event) => setValue(event.target.value)}
                     onBlur={save}
                     onKeyDown={(event) => {
@@ -78,7 +80,11 @@ function RequirementCell({
                 />
                 {pending ? <Spinner /> : null}
             </div>
-            {error ? <p className="max-w-40 text-xs text-destructive">{error}</p> : null}
+            {error ? (
+                <p id={errorId} role="alert" className="max-w-40 text-xs text-destructive">
+                    {error}
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -95,11 +101,12 @@ export function RequirementsGrid({
     return (
         <div className="overflow-x-auto rounded-lg border border-border">
             <Table>
+                <TableCaption className="sr-only">People required for each role in each shift period</TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Role</TableHead>
+                        <TableHead scope="col">Role</TableHead>
                         {periods.map((period) => (
-                            <TableHead key={period.periodId}>
+                            <TableHead key={period.periodId} scope="col">
                                 <div>{period.name}</div>
                                 <div className="font-mono font-normal text-muted-foreground">
                                     {period.defaultStart}–{period.defaultEnd}
@@ -111,7 +118,7 @@ export function RequirementsGrid({
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={row.roleId}>
-                            <TableCell className="font-medium">{row.roleName}</TableCell>
+                            <TableHead scope="row">{row.roleName}</TableHead>
                             {row.cells.map((cell, index) => (
                                 <TableCell key={cell.periodId}>
                                     <RequirementCell
