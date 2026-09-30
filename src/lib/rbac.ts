@@ -1,6 +1,7 @@
 import { AccessTokenPayload } from '@/types/auth'
 import { UpdateUserInput } from '@/types/user'
 import { UserBranchService } from '@/services/user-branch-service'
+import { UserService } from '@/services/user-service'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
 import { BranchAccessDeniedError } from '@/exceptions/branch-access-denied-error'
 import { ForbiddenError, SelfRoleChangeError, SelfStatusChangeError } from '@/exceptions/forbidden-error'
@@ -56,23 +57,46 @@ export async function requireCallerCanReachUser(caller: AccessTokenPayload, targ
     requireAnyBranchAccess(caller, branches.map((branch) => branch.branchId))
 }
 
+/** What requireTaskInstanceAccess needs to know about an instance — the detail view satisfies it. */
+export interface TaskInstanceAccessSubject {
+    completed_by: number | null
+    assignee: { user_id: number } | null
+    task: { branch_id: number; assigned_role_id: number | null }
+}
+
 /**
- * Throws unless the caller may access a task instance at `branchId`: owner (any branch), a
- * manager of that branch, or the instance's own assignee.
+ * Throws unless the caller may access a task instance: owner (any branch), a manager of its
+ * branch, or a staff member who is its named assignee, who completed it, or — for a task aimed at
+ * a whole role, which has no named assignee — an active holder of that role at the branch.
+ *
+ * The role-holder check re-reads the user rather than trusting the token, which carries a role
+ * name but no role id; it only runs when the cheaper checks have already failed.
  */
-export function requireTaskInstanceAccess(user: AccessTokenPayload, branchId: number, assigneeUserId?: number | null): void {
+export async function requireTaskInstanceAccess(user: AccessTokenPayload, instance: TaskInstanceAccessSubject): Promise<void> {
     if (user.role === OWNER_ROLE) {
         return
     }
 
     if (user.role === MANAGER_ROLE) {
-        requireBranchAccess(user, branchId)
+        requireBranchAccess(user, instance.task.branch_id)
         return
     }
 
-    if (assigneeUserId !== user.userId) {
-        throw new ForbiddenError()
+    if (instance.assignee?.user_id === user.userId || instance.completed_by === user.userId) {
+        return
     }
+
+    const { assigned_role_id: roleId, branch_id: branchId } = instance.task
+
+    if (roleId !== null && user.branchIds.includes(branchId)) {
+        const caller = await UserService.getUserById(user.userId)
+
+        if (caller?.isActive && caller.roleId === roleId) {
+            return
+        }
+    }
+
+    throw new ForbiddenError()
 }
 
 /**

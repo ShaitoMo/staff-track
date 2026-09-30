@@ -72,8 +72,10 @@ interface TaskInstanceBase {
     due_date: string;
     status: TaskStatus;
     completed_by: number | null;
+    completed_by_name: string | null;
     completed_at: Date | null;
     reviewed_by: number | null;
+    reviewed_by_name: string | null;
     reviewed_at: Date | null;
     task: {
         task_id: number;
@@ -83,6 +85,7 @@ interface TaskInstanceBase {
         branch_name: string;
         assigned_to: number | null;
         assigned_role_id: number | null;
+        recurrence: string | null;
     };
     /** Named person the task targets; null when it targets a whole role. */
     assignee: { user_id: number; name: string } | null;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { UserTaskInstanceFiltersSchema } from '@/types/task-instance'
-import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireCallerCanReachUser, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { logger } from '@/lib/logger'
 
@@ -49,8 +49,15 @@ export async function GET(
 
     try {
         requireSelfOrRole(user, userId, [OWNER_ROLE, MANAGER_ROLE])
+        await requireCallerCanReachUser(user, userId)
         const instances = await TaskInstanceService.getTaskInstancesForUser(userId, validationResult.data);
-        return NextResponse.json(instances, { status: 200 });
+
+        // Sharing one branch with the worker doesn't entitle a manager to their tasks at the others.
+        const visible = user.role === MANAGER_ROLE && user.userId !== userId
+            ? instances.filter(instance => user.branchIds.includes(instance.task.branch_id))
+            : instances;
+
+        return NextResponse.json(visible, { status: 200 });
     } catch (error) {
         const forbidden = forbiddenResponse(error);
         if (forbidden) {

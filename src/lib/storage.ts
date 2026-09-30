@@ -1,15 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
 
 /**
  * Uploads live outside `public/`, so photo proof is not served as a static asset to anyone who
- * guesses a filename. Serving them will need a route that checks who is asking; that route does
- * not exist yet, and putting the directory under `public/` now would quietly make it unnecessary.
+ * guesses a filename. They are served only by GET /api/media/:mediaId/file, which checks who is
+ * asking (via readPhoto below).
  */
 const UPLOAD_ROOT = path.join(process.cwd(), 'uploads');
 
-/** Kept in step with the extension map below. */
+/** The types we accept, and the extension each is stored under. */
 const ALLOWED_MIME_TYPES: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
@@ -17,12 +18,22 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
     'image/heic': 'heic',
 };
 
-export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+/** The inverse of ALLOWED_MIME_TYPES: what to tell the browser a stored file is, from its extension. */
+const MIME_BY_EXTENSION: Record<string, string> = Object.fromEntries(
+    Object.entries(ALLOWED_MIME_TYPES).map(([mimeType, extension]) => [extension, mimeType]),
+);
 
 export class InvalidPhotoError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'InvalidPhotoError';
+    }
+}
+
+export class PhotoNotFoundError extends Error {
+    constructor() {
+        super('Photo file not found');
+        this.name = 'PhotoNotFoundError';
     }
 }
 
@@ -97,6 +108,29 @@ export async function savePhoto(file: File, instanceId: number): Promise<string>
 
     // stored as a URL-style path, matching the existing media rows
     return `/uploads/${fileName}`;
+}
+
+/**
+ * Reads a stored photo back for serving. Only the file name of `filePath` is used, so a stored
+ * or forged value like '../../secret' cannot leave the upload directory; the content type comes
+ * from the extension, and a file whose extension we never write is treated as not found.
+ */
+export async function readPhoto(filePath: string): Promise<{ data: Buffer; contentType: string }> {
+    const fileName = path.basename(filePath);
+    const contentType = MIME_BY_EXTENSION[path.extname(fileName).slice(1).toLowerCase()];
+
+    if (!contentType) {
+        throw new PhotoNotFoundError();
+    }
+
+    try {
+        return { data: await readFile(path.join(UPLOAD_ROOT, fileName)), contentType };
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            throw new PhotoNotFoundError();
+        }
+        throw error;
+    }
 }
 
 /** Best-effort cleanup for a photo that was written to disk but never made it into the database. */

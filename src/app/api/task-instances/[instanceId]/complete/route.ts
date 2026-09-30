@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { InvalidPhotoError } from '@/lib/storage'
+import { MAX_PHOTO_BYTES } from '@/lib/photo-limits'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { PhotoRequiredError } from '@/exceptions/photo-required-error'
 import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 import { logger } from '@/lib/logger'
+
+/** Room for the multipart framing around a photo that is itself within MAX_PHOTO_BYTES. */
+const MULTIPART_OVERHEAD_BYTES = 1024 * 1024
 
 /** PATCH .../complete — multipart `photo` only; completer and completed_at both come from the session/server clock, not the body. */
 export async function PATCH(
@@ -23,6 +27,12 @@ export async function PATCH(
 
     if (user instanceof NextResponse) {
         return user;
+    }
+
+    // A cheap early refusal: req.formData() buffers the whole body before savePhoto's own size
+    // check can run. The header is only the client's claim, so savePhoto still enforces the limit.
+    if (Number(req.headers.get('content-length')) > MAX_PHOTO_BYTES + MULTIPART_OVERHEAD_BYTES) {
+        return NextResponse.json({ error: 'Photo is too large' }, { status: 413 })
     }
 
     let formData: FormData
