@@ -1,11 +1,11 @@
 import { Prisma } from '@prisma/client'
-import { prisma } from '@/lib/db'
+import { db } from '@/lib/db'
 import { Role, CreateRoleInput } from '@/types/role'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 export class RoleRepository {
     static async getAllRoles(): Promise<Role []> {
-        const roles = await prisma.role.findMany({
+        const roles = await db.role.findMany({
             select: {
                 roleId: true,
                 name: true,
@@ -15,7 +15,7 @@ export class RoleRepository {
     }
     static async createRole(role: CreateRoleInput): Promise<Role> {
         try {
-            const newRole = await prisma.role.create({
+            const newRole = await db.role.create({
                 data: {
                     name: role.name,
                 },
@@ -33,7 +33,7 @@ export class RoleRepository {
 
     }
     static async getRoleById(roleId: number): Promise<Role | null> {
-        const role = await prisma.role.findUnique({
+        const role = await db.role.findUnique({
             where: {   
                 roleId: roleId,
             },
@@ -46,7 +46,7 @@ export class RoleRepository {
     }
     static async updateRole(roleId: number, data: CreateRoleInput): Promise<Role> {
         try {
-            const role = await prisma.role.update({
+            const role = await db.role.update({
                 where: {
                     roleId: roleId,
                 },
