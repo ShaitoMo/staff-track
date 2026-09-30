@@ -48,7 +48,7 @@ export default async function EditUserPage({
             fetchApi<SafeUser>(`/api/users/${userId}`),
             fetchApi<Role[]>("/api/roles"),
             fetchApi<Branch[]>("/api/branches"),
-            fetchApi<UserBranch[]>(`/api/user-branches?user_id=${userId}`),
+            fetchApi<UserBranch[]>(`/api/user-branches?userId=${userId}`),
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
@@ -65,6 +65,11 @@ export default async function EditUserPage({
     const assignableRoles = roles.filter((role) => role.name !== OWNER_ROLE || role.roleId === targetUser.roleId);
     const canEditRoleAndStatus = session?.role === OWNER_ROLE && session.userId !== userId;
 
+    const failedBranchNames = (branch_warning ?? "")
+        .split(",")
+        .map((id) => branches.find((branch) => branch.branchId === Number(id))?.name)
+        .filter((name): name is string => Boolean(name));
+
     return (
         <div className="flex flex-col gap-4">
             <h1 className="text-xl font-medium">Edit {targetUser.name}</h1>
@@ -72,8 +77,11 @@ export default async function EditUserPage({
                 <Alert variant="destructive" className="max-w-lg">
                     <AlertCircleIcon />
                     <AlertDescription>
-                        The user was created, but some branches couldn&apos;t be linked. Check the branches
-                        below and save again.
+                        The user was created, but{" "}
+                        {failedBranchNames.length > 0
+                            ? `these branches couldn't be linked: ${failedBranchNames.join(", ")}`
+                            : "some branches couldn't be linked"}
+                        . Check the branches below and save again.
                     </AlertDescription>
                 </Alert>
             )}

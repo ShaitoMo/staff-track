@@ -81,9 +81,9 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
             }));
     }
 
-    async function applyBranchDiff(userIdForLinks: number): Promise<string[]> {
+    async function applyBranchDiff(userIdForLinks: number): Promise<{ branchId: number; message: string }[]> {
         const diff = diffBranchLinks(initialValues?.branchLinks ?? [], selectedBranchLinks());
-        const warnings: string[] = [];
+        const warnings: { branchId: number; message: string }[] = [];
 
         const removeIds = [...diff.toRemove, ...diff.toUpdate.map((link) => link.branchId)];
         const removeResults = await Promise.allSettled(
@@ -92,7 +92,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         removeResults.forEach((result, index) => {
             if (result.status === "rejected") {
                 const branchName = branches.find((b) => b.branchId === removeIds[index])?.name ?? `branch ${removeIds[index]}`;
-                warnings.push(`Could not remove ${branchName}.`);
+                warnings.push({ branchId: removeIds[index], message: `Could not remove ${branchName}.` });
             }
         });
 
@@ -104,7 +104,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
             if (result.status === "fulfilled") return;
             const branchName = branches.find((b) => b.branchId === addLinks[index].branchId)?.name ?? `branch ${addLinks[index].branchId}`;
             const reason = result.reason instanceof ApiError ? `: ${result.reason.message}` : ".";
-            warnings.push(`Could not link ${branchName}${reason}`);
+            warnings.push({ branchId: addLinks[index].branchId, message: `Could not link ${branchName}${reason}` });
         });
 
         return warnings;
@@ -130,7 +130,8 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                     if (warnings.length > 0) {
                         // The user now exists, so staying on the create form would make a retry
                         // re-create them. The edit page loads the links that did go through.
-                        router.replace(`/users/${created.userId}/edit?branch_warning=1`);
+                        const failedIds = [...new Set(warnings.map((warning) => warning.branchId))].join(",");
+                        router.replace(`/users/${created.userId}/edit?branch_warning=${failedIds}`);
                         return;
                     }
 
@@ -152,7 +153,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
 
                 const warnings = await applyBranchDiff(userId!);
                 if (warnings.length > 0) {
-                    setBranchWarnings(warnings);
+                    setBranchWarnings(warnings.map((warning) => warning.message));
                     return;
                 }
 
