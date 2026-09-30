@@ -80,9 +80,10 @@ verifies the `stafftrack_access` JWT cookie (`jose`), and on success stamps trus
 `x-auth-role` / `x-auth-branch-ids` headers onto the forwarded request; on failure it returns a JSON 401
 for `/api/*` or redirects a page request to `/login`. Route handlers read identity via `getCurrentUser`;
 Server Components read the same stamped headers via `src/lib/session.ts` (`next/headers`) with no extra
-network round-trip. Access tokens are short-lived (15 min) and carry `role`/`branchIds`; only
-`POST /api/auth/refresh` re-derives those from the database, so a permission change can take up to 15
-minutes to apply to an already-issued token — this is a documented tradeoff, not a bug.
+network round-trip. Access tokens are short-lived (10 min) and carry `role`/`branchIds`; when one lapses,
+`src/proxy.ts` silently mints a new one from the 7-day refresh cookie (the same `AuthService.refresh` that
+`POST /api/auth/refresh` uses). Only a refresh re-derives role/branches from the database, so a permission
+change can take up to 10 minutes to apply to an already-issued token — a documented tradeoff, not a bug.
 
 **Frontend (`src/app/(auth)`, `src/app/(app)`, `src/components/ui`):** route groups split public pages
 (`(auth)/login`) from session-gated ones (`(app)/*`, whose layout re-checks the session as defense in

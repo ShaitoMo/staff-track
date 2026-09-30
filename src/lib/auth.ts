@@ -5,8 +5,8 @@ import { AccessTokenPayload, RefreshTokenPayload } from '@/types/auth'
 export const ACCESS_COOKIE_NAME = 'stafftrack_access'
 export const REFRESH_COOKIE_NAME = 'stafftrack_refresh'
 
-const ACCESS_TTL = '15m'
-const ACCESS_MAX_AGE_SECONDS = 15 * 60
+const ACCESS_TTL = '10m'
+const ACCESS_MAX_AGE_SECONDS = 10 * 60
 const REFRESH_TTL = '7d'
 const REFRESH_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
