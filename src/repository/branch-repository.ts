@@ -18,6 +18,24 @@ export class BranchRepository {
             location: b.location ?? undefined,
         }))
     }
+    static async getBranchesByUser(userId: number): Promise<Branch[]> {
+        const branches = await db.branch.findMany({
+            where: {
+                userBranches: { some: { userId } },
+            },
+            select: {
+                branchId: true,
+                name: true,
+                location: true,
+            },
+        })
+
+        return branches.map(b => ({
+            branchId: b.branchId,
+            name: b.name,
+            location: b.location ?? undefined,
+        }))
+    }
     static async createBranch(data: CreateBranchInput): Promise<Branch> {
         const branch = await db.branch.create({
             data: {
