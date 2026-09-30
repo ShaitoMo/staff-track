@@ -28,11 +28,13 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
     const [location, setLocation] = useState(initialValues?.location ?? "");
     const [errors, setErrors] = useState<BranchFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
     const [pending, setPending] = useState(false);
 
     async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
+        setNotice(null);
 
         const validationErrors = validateBranchForm(
             { name, location },
@@ -50,9 +52,11 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                 if (name !== initialValues?.name) patch.name = name;
                 if (location && location !== initialValues?.location) patch.location = location;
 
-                if (Object.keys(patch).length > 0) {
-                    await updateBranch(branchId!, patch);
+                if (Object.keys(patch).length === 0) {
+                    setNotice("No changes to save.");
+                    return;
                 }
+                await updateBranch(branchId!, patch);
             }
 
             router.push("/branches");
@@ -71,6 +75,12 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                     <Alert variant="destructive">
                         <AlertCircleIcon />
                         <AlertDescription>{submitError}</AlertDescription>
+                    </Alert>
+                )}
+
+                {notice && (
+                    <Alert role="status">
+                        <AlertDescription>{notice}</AlertDescription>
                     </Alert>
                 )}
 
