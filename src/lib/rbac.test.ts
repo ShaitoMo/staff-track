@@ -1,10 +1,10 @@
 import {
     MANAGER_ROLE,
     OWNER_ROLE,
+    requireAnyBranchAccess,
     requireBranchAccess,
     requireRole,
     requireSelfOrRole,
-    requireSharedBranchWithUser,
     requireTaskInstanceAccess,
 } from '@/lib/rbac'
 import { InsufficientRoleError } from '@/exceptions/insufficient-role-error'
@@ -50,21 +50,21 @@ describe('requireSelfOrRole', () => {
     })
 })
 
-describe('requireSharedBranchWithUser', () => {
+describe('requireAnyBranchAccess', () => {
     it('lets the owner through regardless of the target branches', () => {
-        expect(() => requireSharedBranchWithUser(user({ role: OWNER_ROLE, branchIds: [] }), [7])).not.toThrow()
+        expect(() => requireAnyBranchAccess(user({ role: OWNER_ROLE, branchIds: [] }), [7])).not.toThrow()
     })
 
     it('lets a manager through when they share a branch with the target', () => {
-        expect(() => requireSharedBranchWithUser(user({ branchIds: [1, 2] }), [2, 3])).not.toThrow()
+        expect(() => requireAnyBranchAccess(user({ branchIds: [1, 2] }), [2, 3])).not.toThrow()
     })
 
     it('blocks a manager from a target at a different branch', () => {
-        expect(() => requireSharedBranchWithUser(user({ branchIds: [1] }), [2])).toThrow(BranchAccessDeniedError)
+        expect(() => requireAnyBranchAccess(user({ branchIds: [1] }), [2])).toThrow(BranchAccessDeniedError)
     })
 
     it('blocks a manager from a target with no branch links at all (e.g. the owner account)', () => {
-        expect(() => requireSharedBranchWithUser(user({ branchIds: [1] }), [])).toThrow(BranchAccessDeniedError)
+        expect(() => requireAnyBranchAccess(user({ branchIds: [1] }), [])).toThrow(BranchAccessDeniedError)
     })
 })
 

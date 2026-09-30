@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
-import { UserBranchService } from '@/services/user-branch-service'
 import { UserUpdateSchema } from '@/types/user'
-import { MANAGER_ROLE, OWNER_ROLE, requireRole, requireSelfOrRole, requireSharedBranchWithUser } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireCallerCanReachUser, requireSelfOrRole, requireUserUpdateAllowed } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
@@ -35,6 +34,8 @@ export async function GET(
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
+
+        await requireCallerCanReachUser(caller, userId)
 
         return NextResponse.json(user, { status: 200 });
     } catch (error) {
@@ -79,14 +80,15 @@ export async function PATCH(
     }
 
     try {
-        requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
+        requireUserUpdateAllowed(caller, userId, validationResult.data)
 
-        if (validationResult.data.roleId !== undefined) {
-            requireRole(caller, [OWNER_ROLE])
+        const existing = await UserService.getUserById(userId);
+
+        if (!existing) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        const targetBranches = await UserBranchService.getBranchesByUser(userId)
-        requireSharedBranchWithUser(caller, targetBranches.map((branch) => branch.branchId))
+        await requireCallerCanReachUser(caller, userId)
 
         const user = await UserService.updateUser(userId, validationResult.data);
         return NextResponse.json(user, { status: 200 });
@@ -99,7 +101,7 @@ export async function PATCH(
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
         if (error instanceof DuplicatePhoneError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })

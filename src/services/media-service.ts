@@ -6,10 +6,8 @@ import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
 
 export class MediaService {
     /**
-     * Every photo attached to one occurrence.
-     *
-     * The instance is checked first so a bad id reads as 404 rather than an empty list — an
-     * instance with no photos yet and an instance that does not exist look identical otherwise.
+     * Every photo attached to one occurrence. Instance is checked first so a bad id reads as 404,
+     * not an empty list (indistinguishable otherwise).
      */
     static async getMediaForInstance(instanceId: number): Promise<MediaRecordView[]> {
         const exists = await TaskInstanceRepository.instanceExists(instanceId)

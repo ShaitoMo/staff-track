@@ -34,15 +34,10 @@ export type DashboardFiltersInput = z.infer<typeof DashboardFiltersSchema>;
 // ---------- Response shape ----------
 
 /**
- * One row per branch: how many scheduled shifts in the range were actually worked.
- *
- * Named `attendance_coverage`, not `coverage` — this project already has an unrelated "coverage"
- * concept (`GET /branches/:id/coverage`, required-staffing-count vs. scheduled-count). This is a
- * different question: of the shifts that got scheduled, how many were actually shown up for.
- * `shifts_covered` counts shifts whose schedule-vs-actual flag is anything but `no_show` — late
- * or left-early is still covered, just not clean. Always one row per branch in scope: the
- * single-branch view returns one row, the all-branches view returns one row per existing branch
- * (including branches with zero shifts scheduled, which is itself the finding).
+ * One row per branch: how many scheduled shifts in the range were actually worked. Named
+ * `attendance_coverage`, not `coverage` — distinct from `GET /branches/:id/coverage`'s
+ * required-vs-scheduled staffing question. `shifts_covered` counts anything but `no_show` (late/
+ * left-early still count). One row per branch in scope, including branches with zero shifts.
  */
 export interface AttendanceCoverageRow {
     branch_id: number;

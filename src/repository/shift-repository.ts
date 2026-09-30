@@ -54,13 +54,10 @@ export class ShiftRepository {
     }
 
     /**
-     * The same user's shifts on the same day whose span clashes with [startTime, endTime).
-     *
-     * Both intervals are treated as half-open, so `lt`/`gt` rather than `lte`/`gte`: a shift that
-     * starts exactly when another ends is back-to-back, not a clash, and 09:00-17:00 followed by
-     * 17:00-21:00 is a normal handover.
-     *
-     * Branch is deliberately not a filter — see ShiftService.assertNoDoubleBooking.
+     * The same user's shifts on the same day whose span clashes with [startTime, endTime). Both
+     * intervals are half-open (`lt`/`gt`, not `lte`/`gte`) — 09:00-17:00 then 17:00-21:00 is a
+     * normal handover, not a clash. Branch is deliberately not a filter — see
+     * ShiftService.assertNoDoubleBooking.
      */
     static async getOverlappingShifts(query: OverlapQuery): Promise<ShiftView[]> {
         const shifts = await db.shift.findMany({

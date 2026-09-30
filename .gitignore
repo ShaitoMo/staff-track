@@ -51,3 +51,8 @@ next-env.d.ts
 # editor / agent tooling
 .claude/
 .vscode/
+
+# personal working notes, not part of the codebase
+/AUTH-RBAC-FEATURE.md
+/TASK-FEATURE.md
+/TO-BE-REVIEWED.md

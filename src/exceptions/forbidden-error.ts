@@ -32,3 +32,19 @@ export class SelfReviewError extends ForbiddenError {
         this.name = 'SelfReviewError'
     }
 }
+
+/** Changing roleId always requires acting on someone else, even for an owner. */
+export class SelfRoleChangeError extends ForbiddenError {
+    constructor(message = 'You may not change your own role') {
+        super(message)
+        this.name = 'SelfRoleChangeError'
+    }
+}
+
+/** Changing isActive always requires acting on someone else, even for an owner. */
+export class SelfStatusChangeError extends ForbiddenError {
+    constructor(message = 'You may not change your own active status') {
+        super(message)
+        this.name = 'SelfStatusChangeError'
+    }
+}

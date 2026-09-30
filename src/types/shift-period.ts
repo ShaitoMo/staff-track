@@ -43,12 +43,9 @@ export type CreatePeriodInput = z.infer<typeof CreatePeriodSchema>
 // ---------- Editing (PATCH /periods/:id) ----------
 
 /**
- * `branchId` is not editable: moving a period between branches (or to/from global) changes which
- * shifts and coverage requirements it can legally attach to, which is a new period, not an edit of
- * this one.
- *
- * `defaultStart`/`defaultEnd` must be sent together, for the reason UpdateShiftSchema pairs its own
- * start/end: sent alone, neither describes the resulting span.
+ * `branchId` is not editable — moving a period between branches (or to/from global) changes what
+ * it can attach to, which is a new period, not an edit. `defaultStart`/`defaultEnd` must be sent
+ * together, same reason as UpdateShiftSchema's start/end pairing.
  */
 export const UpdatePeriodSchema = z.object({
     name: z.string().min(1).max(50).optional(),

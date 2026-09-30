@@ -6,10 +6,8 @@ import { machineTimeToUtc } from '@/lib/machine-time';
 const MS_PER_MINUTE = 60 * 1000;
 
 /**
- * How far either end of a shift may slip before the row stops reading as `on_time`.
- *
- * A constant, not a column and not a query parameter: per-branch policy is a schema question for
- * the day it is asked, and a tunable would let the report be re-run until the numbers look good.
+ * How far either end of a shift may slip before it stops reading as `on_time`. A constant, not a
+ * column or query param — a tunable would let the report be re-run until the numbers look good.
  */
 export const LATE_GRACE_MINUTES = 5;
 
@@ -27,11 +25,9 @@ interface ScheduledShift {
 }
 
 /**
- * The instant a wall-clock shift time actually happened.
- *
- * `shift_date` and the two times are naive — Postgres `date` and `time` carry no zone — while
- * attendance is `timestamptz`, a real instant. The two can only be compared through the zone the
- * clock machines stand in, which is the same conversion the CSV import does on the way in.
+ * The instant a wall-clock shift time actually happened. `shift_date`/times are naive (no zone),
+ * while attendance is `timestamptz` — comparable only through the machines' zone, same conversion
+ * the CSV import uses.
  */
 export function scheduledInstant(shiftDate: string, timeOfDay: string): Date {
     const [year, month, day] = shiftDate.split('-').map(Number);
@@ -41,16 +37,11 @@ export function scheduledInstant(shiftDate: string, timeOfDay: string): Date {
 }
 
 /**
- * Every scheduled shift against the punches recorded around it (FR6).
- *
- * A punch is a *presence interval*, not an arrival instant, and one interval can cover more than
- * one shift — which is what a split day is. Nothing is consumed: an earlier design marked each
- * punch as spent so no two shifts could claim it, and a man who worked 09:00-21:00 on one punch had
- * his evening shift reported as a no-show. Overlap draws the distinction that consumption was
- * reaching for, without inventing an absence.
- *
- * `punches` must already be narrowed to the same people and branches as `shifts`, over a window a
- * little wider than the report's own — a shift late on the last day ends after that day does.
+ * Every scheduled shift against the punches recorded around it (FR6). A punch is a *presence
+ * interval*, not an arrival instant, and one interval can cover more than one shift (a split day)
+ * — nothing is consumed, since an earlier "mark as spent" design falsely no-showed shifts covered
+ * by one long punch. `punches` must already be narrowed to `shifts`' people/branches, over a
+ * window a little wider than the report's own.
  */
 export function compareScheduleWithAttendance(
     shifts: ShiftView[],
@@ -99,15 +90,10 @@ function workplaceKey(userId: number, branchId: number): string {
 }
 
 /**
- * Whether the worker was present for any part of this shift.
- *
- * A closed punch is a plain interval overlap, strict at both ends: a punch that ends exactly when a
- * shift begins covers none of it, the same half-open convention `getOverlappingShifts` uses when it
- * decides two shifts are back-to-back rather than clashing.
- *
- * An open punch has no known end. Treating it as presence-until-further-notice would mark every
- * later shift attended on the strength of one forgotten clock-out, so it falls back to the question
- * an arrival can answer on its own: did they turn up for roughly this shift.
+ * Whether the worker was present for any part of this shift. A closed punch is a strict interval
+ * overlap (half-open, same convention as `getOverlappingShifts`). An open punch has no known end —
+ * treating it as presence-until-further-notice would falsely mark every later shift attended off
+ * one forgotten clock-out, so it falls back to "did they arrive for roughly this shift."
  */
 function matches(punch: AttendanceView, { startAt, endAt }: ScheduledShift): boolean {
     const clockIn = punch.clock_in.getTime();
@@ -124,11 +110,9 @@ function matches(punch: AttendanceView, { startAt, endAt }: ScheduledShift): boo
 }
 
 /**
- * The comparison itself.
- *
- * `actual_clock_out` comes from the last punch of the shift rather than the latest clock-out
- * recorded: someone who went to lunch and never clocked out again is still inside the building,
- * and reporting the lunch departure would read as leaving early.
+ * The comparison itself. `actual_clock_out` is the last punch's clock-out, not the latest
+ * recorded — someone who never clocked back in from lunch is still inside, and using that
+ * departure would misreport leaving early.
  */
 function toRow(
     { shift, startAt, endAt }: ScheduledShift,

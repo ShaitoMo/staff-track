@@ -4,8 +4,6 @@ import { ShiftRepository } from '@/repository/shift-repository'
 import { UserRepository } from '@/repository/user-repository'
 import { ScheduleVsActualFiltersInput, ScheduleVsActualRow } from '@/types/schedule-vs-actual'
 import { compareScheduleWithAttendance } from '@/lib/schedule-vs-actual'
-import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
-import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
@@ -24,11 +22,11 @@ export class ScheduleVsActualService {
         const { branch_id: branchId, user_id: userId, from, to } = filters
 
         if (branchId !== undefined) {
-            await ScheduleVsActualService.assertBranchExists(branchId)
+            await BranchRepository.assertExists(branchId)
         }
 
         if (userId !== undefined) {
-            await ScheduleVsActualService.assertUserExists(userId)
+            await UserRepository.assertExists(userId)
         }
 
         const shifts = await ShiftRepository.getShifts({ branchId, userId, from, to })
@@ -45,21 +43,5 @@ export class ScheduleVsActualService {
         })
 
         return compareScheduleWithAttendance(shifts, punches)
-    }
-
-    private static async assertBranchExists(branchId: number): Promise<void> {
-        const branch = await BranchRepository.getBranchById(branchId)
-
-        if (!branch) {
-            throw new BranchNotFoundError()
-        }
-    }
-
-    private static async assertUserExists(userId: number): Promise<void> {
-        const user = await UserRepository.getUserById(userId)
-
-        if (!user) {
-            throw new UserNotFoundError()
-        }
     }
 }

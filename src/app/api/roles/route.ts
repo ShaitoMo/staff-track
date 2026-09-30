@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof DuplicateRoleNameError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return NextResponse.json({ error: error.message }, { status: 409 })
         }
         logger.error({ err: error }, 'Failed to create role')
         return NextResponse.json({ error: 'Failed to create role' }, { status: 500 })

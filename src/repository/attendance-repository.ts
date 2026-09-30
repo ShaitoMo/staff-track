@@ -36,12 +36,9 @@ export class AttendanceRepository {
 
     /**
      * One upload: the batch row and every punch it produced, in a transaction so a half-written
-     * import cannot be left behind.
-     *
-     * `skipDuplicates` leans on @@unique([userId, clockIn]) to make re-uploading the same file, or
-     * a file with the same punch listed twice, a no-op instead of an error — Postgres checks each
-     * row against the index as it inserts, so a duplicate later in this same batch is skipped just
-     * like one from a previous import. The count that comes back is what actually landed.
+     * import can't be left behind. `skipDuplicates` leans on @@unique([userId, clockIn]) to make a
+     * re-uploaded file, or one listing the same punch twice, a no-op — the returned count is what
+     * actually landed.
      */
     static async importAttendance(input: {
         fileName: string;

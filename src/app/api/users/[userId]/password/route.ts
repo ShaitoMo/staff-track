@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/services/user-service'
 import { UserBranchService } from '@/services/user-branch-service'
 import { UpdatePasswordSchema } from '@/types/user'
-import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole, requireSharedBranchWithUser } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireAnyBranchAccess, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
@@ -43,7 +43,7 @@ export async function PUT(
 
         if (user.userId !== userId) {
             const targetBranches = await UserBranchService.getBranchesByUser(userId)
-            requireSharedBranchWithUser(user, targetBranches.map((branch) => branch.branchId))
+            requireAnyBranchAccess(user, targetBranches.map((branch) => branch.branchId))
         }
 
         await UserService.updatePassword(userId, validationResult.data.password);
