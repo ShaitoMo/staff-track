@@ -4,6 +4,7 @@ import { CoverageRequirementService } from '@/services/coverage-requirement-serv
 import { UpdateCoverageRequirementSchema } from '@/types/coverage-requirement'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { CoverageRequirementNotFoundError } from '@/exceptions/coverage-requirement-not-found-error'
+import { logger } from '@/lib/logger'
 
 /** PATCH /api/coverage-requirements/:id — requiredCount is the only editable field. */
 export async function PATCH(
@@ -60,7 +61,7 @@ export async function PATCH(
         if (error instanceof CoverageRequirementNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update coverage requirement')
         return NextResponse.json({ error: 'Failed to update coverage requirement' }, { status: 500 })
     }
 }
@@ -103,7 +104,7 @@ export async function DELETE(
         if (error instanceof CoverageRequirementNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to delete coverage requirement')
         return NextResponse.json({ error: 'Failed to delete coverage requirement' }, { status: 500 })
     }
 }

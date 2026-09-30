@@ -10,6 +10,7 @@ import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -45,7 +46,7 @@ export async function GET(
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch shift');
         return NextResponse.json({ error: 'Failed to fetch shift' }, { status: 500 });
     }
 }
@@ -140,7 +141,7 @@ export async function PATCH(
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update shift')
         return NextResponse.json({ error: 'Failed to update shift' }, { status: 500 })
     }
 }
@@ -183,7 +184,7 @@ export async function DELETE(
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to delete shift')
         return NextResponse.json({ error: 'Failed to delete shift' }, { status: 500 })
     }
 }

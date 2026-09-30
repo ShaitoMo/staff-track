@@ -6,6 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 import { DuplicateAttendanceError } from '@/exceptions/duplicate-attendance-error';
+import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch attendance');
         return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
     }
 }
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof BranchNotFoundError || error instanceof UserNotAtBranchError) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to create attendance');
         return NextResponse.json({ error: 'Failed to create attendance' }, { status: 500 });
     }
 }

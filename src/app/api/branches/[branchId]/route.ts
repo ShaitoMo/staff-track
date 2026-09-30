@@ -4,6 +4,7 @@ import { BranchUpdateSchema } from '@/types/branch'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -39,7 +40,7 @@ export async function GET(
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch branch');
         return NextResponse.json({ error: 'Failed to fetch branch' }, { status: 500 });
     }
 }
@@ -82,7 +83,7 @@ export async function PATCH(
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update branch')
         return NextResponse.json({ error: 'Failed to update branch' }, { status: 500 })
     }
 }

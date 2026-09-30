@@ -16,20 +16,21 @@
 import 'dotenv/config';
 import { TaskService } from '@/services/task-service';
 import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 async function main() {
     const startedAt = new Date();
     const { tasks, created, deleted } = await TaskService.reconcileInstances(startedAt);
 
-    console.log(
-        `[top-up] ${startedAt.toISOString()} — ${tasks} recurring task(s) checked, ` +
-        `${created} new instance(s) created, ${deleted} cancelled instance(s) removed`,
+    logger.info(
+        { job: 'top-up-instances', tasksChecked: tasks, instancesCreated: created, instancesDeleted: deleted },
+        'Run complete',
     );
 }
 
 main()
     .catch((error) => {
-        console.error('[top-up] failed', error);
+        logger.error({ job: 'top-up-instances', err: error }, 'Run failed');
         process.exit(1);
     })
     .finally(async () => {

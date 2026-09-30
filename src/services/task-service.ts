@@ -13,6 +13,7 @@ import {
 import { machineDayOf } from '@/lib/machine-time';
 import { CreateTaskInput, Task, UpdateTaskInput } from '../types/task';
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
+import { logger } from '@/lib/logger';
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error';
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error';
@@ -94,8 +95,9 @@ export class TaskService {
         // the task's whole forward window on the strength of a typo, so leave the rows alone and
         // let the next edit — or a corrected rule — settle it.
         if (generates && !isValidRecurrence(task.recurrence as string)) {
-            console.error(
-                `Task ${task.task_id} was updated to an unparseable recurrence '${task.recurrence}'; instances left as they are`,
+            logger.warn(
+                { taskId: task.task_id, recurrence: task.recurrence },
+                'Task was updated to an unparseable recurrence; instances left as they are',
             );
             return;
         }
@@ -167,8 +169,9 @@ export class TaskService {
             try {
                 dates = getDates(task.recurrence as string, from, to);
             } catch {
-                console.error(
-                    `Task ${task.task_id} has an unparseable recurrence '${task.recurrence}'; skipping`,
+                logger.warn(
+                    { taskId: task.task_id, recurrence: task.recurrence },
+                    'Task has an unparseable recurrence; skipping',
                 );
                 continue;
             }

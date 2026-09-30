@@ -7,6 +7,7 @@ import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { DuplicateUserBranchError } from '@/exceptions/duplicate-user-branch-error'
 import { DuplicateMachineEmployeeIdError } from '@/exceptions/duplicate-machine-employee-id-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
     const userIdParam = req.nextUrl.searchParams.get('userId');
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch user branches');
         return NextResponse.json({ error: 'Failed to fetch user branches' }, { status: 500 });
     }
 }
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
         if (error instanceof DuplicateMachineEmployeeIdError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to assign user to branch')
         return NextResponse.json({ error: 'Failed to assign user to branch' }, { status: 500 })
     }
 }

@@ -7,6 +7,7 @@ import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -41,7 +42,7 @@ export async function GET(
         if (forbidden) {
             return forbidden;
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch user');
         return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
     }
 }
@@ -103,7 +104,7 @@ export async function PATCH(
         if (error instanceof InvalidRoleError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update user')
         return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
     }
 }

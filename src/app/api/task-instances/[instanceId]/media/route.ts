@@ -4,6 +4,7 @@ import { TaskInstanceService } from '@/services/task-instance-service'
 import { requireTaskInstanceAccess } from '@/lib/rbac'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 /** GET /api/task-instances/:instanceId/media — newest first; 404 vs empty `[]` kept distinct. Same access rule as GET .../:instanceId, which already carries this array — this is for a caller that wants only the photos. */
 export async function GET(
@@ -43,7 +44,7 @@ export async function GET(
         if (error instanceof TaskInstanceNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch media')
         return NextResponse.json({ error: 'Failed to fetch media' }, { status: 500 })
     }
 }

@@ -4,6 +4,7 @@ import { ShiftService } from '@/services/shift-service'
 import { UserShiftFiltersSchema } from '@/types/shift'
 import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/users/:userId/shifts?from=&to=
@@ -55,7 +56,7 @@ export async function GET(
         if (error instanceof UserNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch shifts');
         return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 });
     }
 }

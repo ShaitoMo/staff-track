@@ -5,6 +5,7 @@ import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     _req: NextRequest,
@@ -27,7 +28,7 @@ export async function GET(
 
         return NextResponse.json(role, { status: 200 });
     } catch (error) {
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch role');
         return NextResponse.json({ error: 'Failed to fetch role' }, { status: 500 });
     }
 }
@@ -78,7 +79,7 @@ export async function PATCH(
         if (error instanceof DuplicateRoleNameError) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to update role')
         return NextResponse.json({ error: 'Failed to update role' }, { status: 500 })
     }
 }

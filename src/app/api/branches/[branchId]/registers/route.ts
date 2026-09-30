@@ -3,6 +3,7 @@ import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { RegisterService } from '@/services/register-service'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { logger } from '@/lib/logger'
 
 export async function GET(
     req: NextRequest,
@@ -35,7 +36,7 @@ export async function GET(
         if (error instanceof BranchNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        console.error(error);
+        logger.error({ err: error }, 'Failed to fetch registers');
         return NextResponse.json({ error: 'Failed to fetch registers' }, { status: 500 });
     }
 }

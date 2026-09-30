@@ -33,6 +33,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local dev log file (pino, dev only — see src/lib/logger.ts)
+/logs/
+
 # env files (can opt-in for committing if needed)
 .env*
 
