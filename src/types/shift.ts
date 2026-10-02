@@ -137,6 +137,59 @@ export const UpdateShiftSchema = z.object({
 
 export type UpdateShiftInput = z.infer<typeof UpdateShiftSchema>;
 
+// ---------- Copying a week (POST /api/shifts/copy-week) ----------
+
+/**
+ * POST /api/shifts/copy-week. Copies one branch's shifts from the seven days before `week_start`
+ * onto the seven days from it, same people, periods, registers and hours. `week_start` is not
+ * forced to a Monday — the schedule page always sends one, and any 7-day window copies the same way.
+ */
+export const CopyWeekSchema = z.object({
+    branch_id: z.number().int().positive(),
+    week_start: DateOnlySchema,
+});
+
+export type CopyWeekInput = z.infer<typeof CopyWeekSchema>;
+
+/** `skipped` counts source shifts left out: the person clashes, left the branch, or is inactive. */
+export interface CopyWeekResult {
+    created: number;
+    skipped: number;
+}
+
+// ---------- A branch's week, readable by its staff (GET /api/branches/:branchId/schedule) ----------
+
+/** Always one 7-day window from `week_start`, so a read stays bounded whoever asks. */
+export const BranchScheduleQuerySchema = z.object({
+    week_start: DateOnlySchema,
+});
+
+export type BranchScheduleQueryInput = z.infer<typeof BranchScheduleQuerySchema>;
+
+/**
+ * One shift as any member of the branch may see it: names already resolved, nothing about the
+ * person beyond name and role (no phone, no active flag), nothing about who scheduled it.
+ */
+export interface BranchScheduleShift {
+    shift_id: number;
+    user_id: number;
+    user_name: string;
+    role_name: string;
+    shift_date: string;
+    start_time: string;
+    end_time: string;
+    period_id: number | null;
+    register_name: string | null;
+}
+
+export interface BranchScheduleView {
+    branch_id: number;
+    branch_name: string;
+    /** In schedule order (sort order, then name). */
+    periods: { period_id: number; name: string }[];
+    shifts: BranchScheduleShift[];
+}
+
 
 export interface ShiftView {
     shift_id: number;

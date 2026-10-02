@@ -2,7 +2,7 @@ import { Prisma, Shift as ShiftRow } from "@prisma/client";
 import { db } from "@/lib/db";
 import { toDateOnlyString } from "@/types/date-only";
 import { toTimeOnlyString } from "@/types/time-only";
-import { CreateShiftInput, ShiftView, UpdateShiftInput } from "@/types/shift";
+import { BranchScheduleShift, CreateShiftInput, ShiftView, UpdateShiftInput } from "@/types/shift";
 import { UserNotFoundError } from "@/exceptions/user-not-found-error";
 import { ShiftNotFoundError } from "@/exceptions/shift-not-found-error";
 
@@ -66,6 +66,53 @@ export class ShiftRepository {
         });
 
         return shifts.map(ShiftRepository.toView);
+    }
+
+    /** A branch's shifts in the window with person, role and register names joined in — one query. */
+    static async getBranchScheduleShifts(branchId: number, from: Date, to: Date): Promise<BranchScheduleShift[]> {
+        const shifts = await db.shift.findMany({
+            where: { branchId, shiftDate: { gte: from, lte: to } },
+            include: {
+                user: { select: { name: true, role: { select: { name: true } } } },
+                register: { select: { name: true } },
+            },
+            orderBy: [{ shiftDate: 'asc' }, { startTime: 'asc' }, { shiftId: 'asc' }],
+        });
+
+        return shifts.map((shift) => ({
+            shift_id: shift.shiftId,
+            user_id: shift.userId,
+            user_name: shift.user.name,
+            role_name: shift.user.role.name,
+            shift_date: toDateOnlyString(shift.shiftDate),
+            start_time: toTimeOnlyString(shift.startTime),
+            end_time: toTimeOnlyString(shift.endTime),
+            period_id: shift.periodId,
+            register_name: shift.register?.name ?? null,
+        }));
+    }
+
+    /** Every shift these people hold in the window, at any branch — one query for a whole batch. */
+    static async getShiftsForUsers(userIds: number[], from: Date, to: Date): Promise<ShiftView[]> {
+        const shifts = await db.shift.findMany({
+            where: {
+                userId: { in: userIds },
+                shiftDate: { gte: from, lte: to },
+            },
+        });
+
+        return shifts.map(ShiftRepository.toView);
+    }
+
+    /** Inserts a batch in one statement; returns how many rows went in. */
+    static async createShifts(rows: Prisma.ShiftCreateManyInput[]): Promise<number> {
+        if (rows.length === 0) {
+            return 0;
+        }
+
+        const { count } = await db.shift.createMany({ data: rows });
+
+        return count;
     }
 
     private static buildOverlapWhere(query: OverlapQuery): Prisma.ShiftWhereInput {
