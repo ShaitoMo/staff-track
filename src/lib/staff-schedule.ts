@@ -21,8 +21,10 @@ export interface RosterPerson {
     endTime: string;
 }
 
-/** A period on one day with whoever works it; `name` is null for shifts on custom hours. */
+/** A period on one day with whoever works it; `periodId` and `name` are null for shifts on custom hours. */
 export interface RosterGroup {
+    /** Unique within a day, unlike `name` — a branch can have its own period named like a chain-wide one. */
+    periodId: number | null;
     name: string | null;
     people: RosterPerson[];
 }
@@ -83,6 +85,7 @@ export function branchRoster(schedule: BranchScheduleView, dates: string[]): Ros
 
         const groups: RosterGroup[] = schedule.periods
             .map((period) => ({
+                periodId: period.period_id,
                 name: period.name,
                 people: shifts.filter((shift) => shift.period_id === period.period_id).map(toPerson).toSorted(byName),
             }))
@@ -95,6 +98,6 @@ export function branchRoster(schedule: BranchScheduleView, dates: string[]): Ros
             .map(toPerson)
             .toSorted((a, b) => a.startTime.localeCompare(b.startTime) || byName(a, b));
 
-        return { date, groups: custom.length > 0 ? [...groups, { name: null, people: custom }] : groups };
+        return { date, groups: custom.length > 0 ? [...groups, { periodId: null, name: null, people: custom }] : groups };
     });
 }

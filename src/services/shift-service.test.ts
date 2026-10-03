@@ -3,8 +3,7 @@ jest.mock('@/repository/shift-repository', () => ({
     ShiftRepository: {
         getOverlappingShifts: jest.fn(),
         getShifts: jest.fn(),
-        getShiftsForUsers: jest.fn(),
-        createShifts: jest.fn(),
+        copyIntoWeek: jest.fn(),
     },
 }));
 jest.mock('@/repository/branch-repository', () => ({
@@ -13,11 +12,16 @@ jest.mock('@/repository/branch-repository', () => ({
 jest.mock('@/repository/user-repository', () => ({
     UserRepository: { getAllUsers: jest.fn() },
 }));
+jest.mock('@/repository/shift-period-repository', () => ({
+    ShiftPeriodRepository: { getPeriodsByBranch: jest.fn() },
+}));
 
 import { ShiftService } from '@/services/shift-service';
-import { ShiftRepository, OverlapQuery } from '@/repository/shift-repository';
+import { NewShiftRow, ShiftRepository, OverlapQuery } from '@/repository/shift-repository';
+import { ShiftPeriodRepository } from '@/repository/shift-period-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { ShiftView } from '@/types/shift';
+import { ShiftPeriodView } from '@/types/shift-period';
 import { SafeUser } from '@/types/user';
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error';
 
@@ -25,11 +29,11 @@ const getOverlappingShifts = ShiftRepository.getOverlappingShifts as jest.Mocked
     typeof ShiftRepository.getOverlappingShifts
 >;
 const getShifts = ShiftRepository.getShifts as jest.MockedFunction<typeof ShiftRepository.getShifts>;
-const getShiftsForUsers = ShiftRepository.getShiftsForUsers as jest.MockedFunction<
-    typeof ShiftRepository.getShiftsForUsers
->;
-const createShifts = ShiftRepository.createShifts as jest.MockedFunction<typeof ShiftRepository.createShifts>;
+const copyIntoWeek = ShiftRepository.copyIntoWeek as jest.MockedFunction<typeof ShiftRepository.copyIntoWeek>;
 const getAllUsers = UserRepository.getAllUsers as jest.MockedFunction<typeof UserRepository.getAllUsers>;
+const getPeriodsByBranch = ShiftPeriodRepository.getPeriodsByBranch as jest.MockedFunction<
+    typeof ShiftPeriodRepository.getPeriodsByBranch
+>;
 
 /** `assertNoDoubleBooking` is private; element access reaches it without widening the service API. */
 const assertNoDoubleBooking = (query: OverlapQuery): Promise<void> =>
@@ -130,14 +134,29 @@ describe('copyWeek', () => {
         created_by: 9,
     });
 
+    const period = (periodId: number, defaultStart: string, defaultEnd: string) =>
+        ({ periodId, branchId: 1, name: 'Morning', defaultStart, defaultEnd, sortOrder: 1 }) as ShiftPeriodView;
+
+    /** Stands in for the transaction: hands `plan` what is already booked and records what it would insert. */
+    function bookedInTarget(booked: ShiftView[]): () => NewShiftRow[] {
+        let inserted: NewShiftRow[] = [];
+        copyIntoWeek.mockImplementation(async (_window, plan) => {
+            inserted = plan(booked);
+            return inserted.length;
+        });
+        return () => inserted;
+    }
+
+    const timeOf = (value: NewShiftRow['startTime']) => (value as Date).toISOString().slice(11, 16);
+
     beforeEach(() => {
-        createShifts.mockImplementation(async (rows) => rows.length);
+        getPeriodsByBranch.mockResolvedValue([period(3, '09:00', '17:00')]);
     });
 
     it('reads the seven days before week_start and copies each shift seven days forward', async () => {
         getShifts.mockResolvedValue([shift({})]);
         getAllUsers.mockResolvedValue([staff(7)]);
-        getShiftsForUsers.mockResolvedValue([]);
+        const inserted = bookedInTarget([]);
 
         await expect(copy()).resolves.toEqual({ created: 1, skipped: 0 });
 
@@ -146,15 +165,32 @@ describe('copyWeek', () => {
             from: new Date('2026-09-21T00:00:00Z'),
             to: new Date('2026-09-27T00:00:00Z'),
         });
-        const [row] = createShifts.mock.calls[0][0];
+        expect(copyIntoWeek.mock.calls[0][0]).toEqual({
+            branchId: 1,
+            from: new Date('2026-09-28T00:00:00Z'),
+            to: new Date('2026-10-04T00:00:00Z'),
+            userIds: [7],
+        });
+        const [row] = inserted();
         expect(row).toMatchObject({ userId: 7, registerId: 2, periodId: 3, createdBy: 9 });
         expect((row.shiftDate as Date).toISOString()).toBe('2026-09-28T00:00:00.000Z');
+    });
+
+    it("gives a period shift the period's current hours, and keeps a custom-hours shift's own", async () => {
+        getPeriodsByBranch.mockResolvedValue([period(3, '07:00', '15:00')]);
+        getShifts.mockResolvedValue([shift({}), shift({ shift_id: 2, period_id: null, start_time: '18:00', end_time: '20:00' })]);
+        getAllUsers.mockResolvedValue([staff(7)]);
+        const inserted = bookedInTarget([]);
+
+        await copy();
+
+        expect(inserted().map((row) => `${timeOf(row.startTime)}-${timeOf(row.endTime)}`)).toEqual(['07:00-15:00', '18:00-20:00']);
     });
 
     it('skips a shift that clashes with one already booked in the target week', async () => {
         getShifts.mockResolvedValue([shift({}), shift({ shift_id: 2, shift_date: '2026-09-22' })]);
         getAllUsers.mockResolvedValue([staff(7)]);
-        getShiftsForUsers.mockResolvedValue([shift({ shift_id: 5, shift_date: '2026-09-28', start_time: '16:00', end_time: '20:00' })]);
+        bookedInTarget([shift({ shift_id: 5, shift_date: '2026-09-28', start_time: '16:00', end_time: '20:00' })]);
 
         await expect(copy()).resolves.toEqual({ created: 1, skipped: 1 });
     });
@@ -162,16 +198,16 @@ describe('copyWeek', () => {
     it('treats a handover (one ends as the next starts) as no clash', async () => {
         getShifts.mockResolvedValue([shift({})]);
         getAllUsers.mockResolvedValue([staff(7)]);
-        getShiftsForUsers.mockResolvedValue([shift({ shift_id: 5, shift_date: '2026-09-28', start_time: '17:00', end_time: '21:00' })]);
+        bookedInTarget([shift({ shift_id: 5, shift_date: '2026-09-28', start_time: '17:00', end_time: '21:00' })]);
 
         await expect(copy()).resolves.toEqual({ created: 1, skipped: 0 });
     });
 
-    it('skips people who are inactive or no longer at the branch, without querying their bookings', async () => {
+    it('skips people who are inactive or no longer at the branch, without opening the copy transaction', async () => {
         getShifts.mockResolvedValue([shift({ user_id: 7 }), shift({ shift_id: 2, user_id: 8 })]);
         getAllUsers.mockResolvedValue([staff(7, false)]);
 
         await expect(copy()).resolves.toEqual({ created: 0, skipped: 2 });
-        expect(getShiftsForUsers).not.toHaveBeenCalled();
+        expect(copyIntoWeek).not.toHaveBeenCalled();
     });
 });

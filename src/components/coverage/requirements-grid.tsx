@@ -8,6 +8,8 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { ApiError } from "@/lib/api-client";
 import { createRequirement, updateRequirement } from "@/lib/api/coverage-requirements";
 import { GridCell, GridRow, MAX_REQUIRED_COUNT, parseRequiredCount } from "@/lib/coverage-rows";
+import { TOUCH_HEIGHT } from "@/lib/touch";
+import { cn } from "@/lib/utils";
 
 export interface GridPeriod {
     periodId: number;
@@ -78,7 +80,7 @@ function RequirementCell({
                     aria-invalid={error !== null || undefined}
                     aria-describedby={error ? errorId : undefined}
                     disabled={pending}
-                    className="w-16 tabular-nums [@media(pointer:coarse)]:h-11"
+                    className={cn("w-16 tabular-nums", TOUCH_HEIGHT)}
                     onChange={(event) => setValue(event.target.value)}
                     onBlur={save}
                     onKeyDown={(event) => {

@@ -11,6 +11,11 @@ export function addDays(dateString: string, days: number): string {
     return toDateOnlyString(new Date(new Date(`${dateString}T00:00:00.000Z`).getTime() + days * MS_PER_DAY));
 }
 
+/** The seven days from `weekStart`, as 'YYYY-MM-DD' strings. */
+export function weekDates(weekStart: string): string[] {
+    return Array.from({ length: DAYS_IN_WEEK }, (_, index) => addDays(weekStart, index));
+}
+
 /** The Monday on or before the given 'YYYY-MM-DD' day, so the week always reads Monday to Sunday. */
 export function mondayOf(dateString: string): string {
     const weekday = new Date(`${dateString}T00:00:00.000Z`).getUTCDay();
@@ -28,6 +33,13 @@ export function formatDay(dateString: string): string {
     const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
 
     return `${part("weekday")} ${part("day")} ${part("month")}`;
+}
+
+/** '28 Sep – 4 Oct': formatDay without the weekday, so both ends read 'Sep' like the rest of the app. */
+export function formatWeekRange(weekStart: string): string {
+    const day = (dateString: string) => formatDay(dateString).split(" ").slice(1).join(" ");
+
+    return `${day(weekStart)} – ${day(addDays(weekStart, DAYS_IN_WEEK - 1))}`;
 }
 
 /** The largest headcount the page accepts; far below the database's integer limit, well above any real shift. */
@@ -107,7 +119,7 @@ export function buildWeeklyCoverage(
 ): WeeklyCoverageRow[] {
     const roleNames = new Map(roles.map((role) => [role.roleId, role.name]));
     const periodById = new Map(periods.map((period) => [period.periodId, period]));
-    const dates = Array.from({ length: DAYS_IN_WEEK }, (_, index) => addDays(weekStart, index));
+    const dates = weekDates(weekStart);
 
     const groups = new Map<string, { roleId: number; periodId: number; byDate: Map<string, CoverageGapRow> }>();
     for (const gap of gaps) {

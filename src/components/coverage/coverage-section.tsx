@@ -1,26 +1,18 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { AlertCircleIcon } from "lucide-react";
 import { RequirementsGrid } from "@/components/coverage/requirements-grid";
 import { WeeklyCoverageSection } from "@/components/coverage/weekly-coverage-section";
+import { WeekNav } from "@/components/layout/week-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { addDays, buildRequirementGrid, formatDay, sortPeriods } from "@/lib/coverage-rows";
-import { cn } from "@/lib/utils";
+import { buildRequirementGrid, mondayOf, sortPeriods } from "@/lib/coverage-rows";
+import { todayDateString } from "@/lib/instance-rows";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
 import { Role } from "@/types/role";
 import { ShiftPeriodView } from "@/types/shift-period";
-
-/** Touch screens get a full 44px tap target; mouse layouts keep the compact size. */
-const weekLinkTouch = "[@media(pointer:coarse)]:h-11";
-
-function weekHref(branchId: number, weekStart: string): string {
-    return `/roles?${new URLSearchParams({ branch: String(branchId), week: weekStart })}`;
-}
 
 export async function CoverageSection({
     branchId,
@@ -86,27 +78,15 @@ export async function CoverageSection({
             </div>
 
             <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-medium">
-                        Week of {formatDay(weekStart)}{" "}
-                        <span className="font-normal text-muted-foreground">(scheduled / required)</span>
-                    </h3>
-                    <div className="flex gap-2">
-                        <Link
-                            href={weekHref(branchId, addDays(weekStart, -7))}
-                            scroll={false}
-                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), weekLinkTouch)}
-                        >
-                            Previous week
-                        </Link>
-                        <Link
-                            href={weekHref(branchId, addDays(weekStart, 7))}
-                            scroll={false}
-                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), weekLinkTouch)}
-                        >
-                            Next week
-                        </Link>
-                    </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <WeekNav
+                        basePath="/roles"
+                        weekStart={weekStart}
+                        thisWeek={mondayOf(todayDateString())}
+                        query={{ branch: String(branchId) }}
+                        heading="h3"
+                    />
+                    <span className="text-xs text-muted-foreground">Counts are scheduled / required</span>
                 </div>
                 {/* Keyed by week only, so changing the week reloads just this table and leaves the grid in place. */}
                 <Suspense

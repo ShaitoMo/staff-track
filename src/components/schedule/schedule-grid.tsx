@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CopyIcon, PlusIcon, XIcon } from "lucide-react";
 import {
@@ -27,14 +27,34 @@ import {
     RegisterSeat,
     RoleRow,
     SchedulePerson,
-    SlotShift,
+    slotKey,
     StaffMember,
 } from "@/lib/schedule-grid";
+import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 import { ShiftPeriodView } from "@/types/shift-period";
 
-/** Touch screens get a full 44px tap target; mouse layouts keep the compact size. */
-const touch = "[@media(pointer:coarse)]:h-11";
+/** Tailwind's `xl`: from here up the whole week fits as a table; below it, one day at a time. */
+const WIDE_QUERY = "(min-width: 80rem)";
+
+function subscribeToWidth(onChange: () => void): () => void {
+    const query = window.matchMedia(WIDE_QUERY);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+}
+
+/**
+ * Which schedule layout to mount. The server can't know the screen, so it renders "both" and CSS
+ * shows the right one (no flash on first paint); once hydrated, only the visible layout stays
+ * mounted, so each refresh after an edit re-renders one set of cells, not two.
+ */
+function useLayout(): "both" | "table" | "day" {
+    return useSyncExternalStore(
+        subscribeToWidth,
+        () => (window.matchMedia(WIDE_QUERY).matches ? "table" : "day"),
+        () => "both",
+    );
+}
 
 /** Runs one schedule edit, then refreshes the server data; keeps its own pending and error state per cell. */
 function useScheduleAction() {
@@ -138,7 +158,7 @@ function PersonPicker({
                 aria-label={label}
                 className={cn(
                     "-ml-1 gap-1 border-transparent px-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground data-popup-open:bg-muted data-popup-open:text-foreground [&>svg:last-child]:hidden",
-                    touch,
+                    TOUCH_HEIGHT,
                 )}
             >
                 <PlusIcon className="size-3.5" aria-hidden="true" />
@@ -314,25 +334,25 @@ function OpenRegistersCellView({
     periodId,
     cell,
     staff,
-    names,
     slot,
+    busy,
 }: {
     branchId: number;
     periodLabel: string;
     periodId: number;
     cell: OpenRegisterCell;
+    /** Active people only, so `onShift` below leaves out anyone switched off. */
     staff: StaffMember[];
-    names: Map<number, string>;
-    slot: SlotShift[];
+    slot: SchedulePerson[];
+    busy: Set<number>;
 }) {
     const { pending, error, run } = useScheduleAction();
     const day = formatDay(cell.date);
-    const busy = new Set(slot.map((shift) => shift.userId));
 
     // Someone already working this period moves onto the register (a PATCH); anyone else gets a new shift.
     const onShift = slot
-        .filter((shift) => shift.registerId === null && names.has(shift.userId))
-        .map((shift) => ({ id: `shift:${shift.shiftId}`, name: names.get(shift.userId) ?? "" }));
+        .filter((person) => person.registerId === null && staff.some((member) => member.userId === person.userId))
+        .map((person) => ({ id: `shift:${person.shiftId}`, name: person.name }));
     const others = staff.filter((member) => !busy.has(member.userId)).map((member) => ({ id: `user:${member.userId}`, name: member.name }));
 
     function assign(registerId: number, value: string) {
@@ -420,7 +440,7 @@ export function ScheduleGrid({
     hasRegisters,
     registerRoleIds,
     staff,
-    slotShifts,
+    slots,
 }: {
     branchId: number;
     dates: string[];
@@ -434,20 +454,19 @@ export function ScheduleGrid({
     /** Roles that get register choices; empty means nobody is on a register yet, so every role does. */
     registerRoleIds: number[];
     staff: StaffMember[];
-    slotShifts: SlotShift[];
+    /** Everyone on each (date, period), keyed by slotKey — grouped once on the server. */
+    slots: Record<string, SchedulePerson[]>;
 }) {
-    // Who is already booked in each (date, period) — built once, read by every cell.
-    const slots = useMemo(() => {
-        const bySlot = new Map<string, SlotShift[]>();
-        for (const shift of slotShifts) {
-            const key = `${shift.date}:${shift.periodId}`;
-            bySlot.set(key, [...(bySlot.get(key) ?? []), shift]);
-        }
-        return bySlot;
-    }, [slotShifts]);
-    const names = useMemo(() => new Map(staff.map((member) => [member.userId, member.name])), [staff]);
+    const layout = useLayout();
+    // Who is already booked in each slot, as a Set per slot — built once per data change, not per cell render.
+    const busyBySlot = useMemo(
+        () => new Map(Object.entries(slots).map(([key, people]) => [key, new Set(people.map((person) => person.userId))])),
+        [slots],
+    );
+    const noOne = useMemo(() => new Set<number>(), []);
 
-    const slotOf = (date: string, periodId: number) => slots.get(`${date}:${periodId}`) ?? [];
+    const slotOf = (date: string, periodId: number) => slots[slotKey(date, periodId)] ?? [];
+    const busyIn = (date: string, periodId: number) => busyBySlot.get(slotKey(date, periodId)) ?? noOne;
     const usesRegisters = (roleId: number) => registerRoleIds.length === 0 || registerRoleIds.includes(roleId);
 
     // Each period with its role rows and (when the branch has registers) its open-registers row;
@@ -471,7 +490,7 @@ export function ScheduleGrid({
             row={row}
             cellIndex={index}
             staff={staff}
-            busy={new Set(slotOf(row.cells[index].date, row.periodId).map((shift) => shift.userId))}
+            busy={busyIn(row.cells[index].date, row.periodId)}
             openSeats={usesRegisters(row.roleId) ? openRow?.cells[index].open ?? [] : []}
         />
     );
@@ -482,8 +501,8 @@ export function ScheduleGrid({
             periodId={period.periodId}
             cell={openRow.cells[index]}
             staff={staff}
-            names={names}
             slot={slotOf(openRow.cells[index].date, period.periodId)}
+            busy={busyIn(openRow.cells[index].date, period.periodId)}
         />
     );
 
@@ -495,7 +514,7 @@ export function ScheduleGrid({
     return (
         <div>
             {/* Wide screens: the whole week at once. */}
-            <div className="hidden overflow-x-auto rounded-lg border border-border bg-card xl:block">
+            {layout !== "day" ? (<div className="hidden overflow-x-auto rounded-lg border border-border bg-card xl:block">
                 <Table>
                     <TableCaption className="sr-only">
                         Weekly schedule by shift period: people per role, with the register each person works, and registers still open
@@ -544,10 +563,10 @@ export function ScheduleGrid({
                         ))}
                     </TableBody>
                 </Table>
-            </div>
+            </div>) : null}
 
             {/* Phones and tablets: one day at a time, the same cells stacked in a single column. */}
-            <DayView dates={dates} today={today} dayNeeds={dayNeeds}>
+            {layout !== "table" ? (<DayView dates={dates} today={today} dayNeeds={dayNeeds}>
                 {(index) =>
                     groups.map(({ period, rows, openRow }) => (
                         <section key={period.periodId} aria-labelledby={`day-period-${period.periodId}`} className="flex flex-col gap-2">
@@ -581,7 +600,7 @@ export function ScheduleGrid({
                         </section>
                     ))
                 }
-            </DayView>
+            </DayView>) : null}
         </div>
     );
 }
@@ -680,7 +699,7 @@ export function CopyWeekButton({ branchId, weekStart }: { branchId: number; week
             <p role="status" className={cn("text-xs empty:hidden", message?.isError ? "text-destructive" : "text-muted-foreground")}>
                 {message?.text}
             </p>
-            <Button size="sm" onClick={() => setConfirming(true)} disabled={pending} className={touch}>
+            <Button size="sm" onClick={() => setConfirming(true)} disabled={pending} className={TOUCH_HEIGHT}>
                 {pending ? <Spinner data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
                 Copy previous week
             </Button>

@@ -1,4 +1,4 @@
-import { addDays, formatDay } from "@/lib/coverage-rows";
+import { weekDates } from "@/lib/coverage-rows";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
 import { Register } from "@/types/register";
 import { Role } from "@/types/role";
@@ -6,14 +6,8 @@ import { ShiftView } from "@/types/shift";
 import { ShiftPeriodView } from "@/types/shift-period";
 import { SafeUser } from "@/types/user";
 
-const DAYS_IN_WEEK = 7;
-
 /** The one highlight in the schedule grid: a slot that still needs someone. Shared by the grid and its legend. */
 export const NEEDS_TINT = "bg-destructive/6";
-
-export function weekDates(weekStart: string): string[] {
-    return Array.from({ length: DAYS_IN_WEEK }, (_, index) => addDays(weekStart, index));
-}
 
 /** Someone on a shift, as a chip in a cell. */
 export interface SchedulePerson {
@@ -62,15 +56,6 @@ export interface OpenRegisterRow {
     cells: OpenRegisterCell[];
 }
 
-/** A period-based shift, flattened for the client's "who is free in this slot" lookups. */
-export interface SlotShift {
-    shiftId: number;
-    userId: number;
-    periodId: number;
-    date: string;
-    registerId: number | null;
-}
-
 /** A shift with custom hours — it belongs to no period, so it has no cell. */
 export interface OtherShift {
     shiftId: number;
@@ -86,7 +71,8 @@ export interface StaffMember {
     roleId: number;
 }
 
-function slotKey(date: string, periodId: number): string {
+/** The one key format for a (day, period) slot — the server builds with it and the grid reads with it. */
+export function slotKey(date: string, periodId: number): string {
     return `${date}:${periodId}`;
 }
 
@@ -94,12 +80,18 @@ function nameOf(names: Map<number, string>, userId: number): string {
     return names.get(userId) ?? `User ${userId}`;
 }
 
-/** Period-based shifts grouped by (date, period), each turned into a chip. */
-function groupBySlot(
-    shifts: ShiftView[],
-    names: Map<number, string>,
-    registerNames: Map<number, string>,
-): Map<string, SchedulePerson[]> {
+/** The week's lookups, built once in indexWeek and shared by every builder below. */
+export interface WeekIndex {
+    names: Map<number, string>;
+    roleOf: Map<number, number>;
+    /** Period-based shifts by slotKey(date, periodId), each as a chip, sorted by name. */
+    slots: Map<string, SchedulePerson[]>;
+}
+
+export function indexWeek(shifts: ShiftView[], users: SafeUser[], registers: Register[]): WeekIndex {
+    const names = new Map(users.map((user) => [user.userId, user.name]));
+    const roleOf = new Map(users.map((user) => [user.userId, user.roleId]));
+    const registerNames = new Map(registers.map((register) => [register.registerId, register.name]));
     const slots = new Map<string, SchedulePerson[]>();
 
     for (const shift of shifts) {
@@ -121,7 +113,12 @@ function groupBySlot(
         people.sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    return slots;
+    return { names, roleOf, slots };
+}
+
+/** The slots as a plain object, so they can cross to the client grid already grouped. */
+export function slotsForClient(week: WeekIndex): Record<string, SchedulePerson[]> {
+    return Object.fromEntries(week.slots);
 }
 
 /**
@@ -132,18 +129,14 @@ function groupBySlot(
  */
 export function buildRoleRows(
     shifts: ShiftView[],
-    users: SafeUser[],
+    week: WeekIndex,
     roles: Role[],
     periods: ShiftPeriodView[],
     requirements: CoverageRequirementView[],
-    registers: Register[],
     weekStart: string,
 ): RoleRow[] {
     const dates = weekDates(weekStart);
-    const names = new Map(users.map((user) => [user.userId, user.name]));
-    const roleOf = new Map(users.map((user) => [user.userId, user.roleId]));
-    const registerNames = new Map(registers.map((register) => [register.registerId, register.name]));
-    const slots = groupBySlot(shifts, names, registerNames);
+    const { roleOf, slots } = week;
 
     const required = new Map(
         requirements.map((requirement) => [`${requirement.role.roleId}:${requirement.period.periodId}`, requirement.requiredCount]),
@@ -181,13 +174,11 @@ export function buildRoleRows(
  * is read from the schedule itself; the grid offers register choices only on these rows, or on
  * every row while nobody is on a register yet (so an empty week can still be started).
  */
-export function rolesOnRegisters(shifts: ShiftView[], users: SafeUser[]): number[] {
-    const roleOf = new Map(users.map((user) => [user.userId, user.roleId]));
-
+export function rolesOnRegisters(shifts: ShiftView[], week: WeekIndex): number[] {
     return [
         ...new Set(
             shifts.flatMap((shift) => {
-                const roleId = roleOf.get(shift.user_id);
+                const roleId = week.roleOf.get(shift.user_id);
                 return shift.register_id === null || roleId === undefined ? [] : [roleId];
             }),
         ),
@@ -196,16 +187,13 @@ export function rolesOnRegisters(shifts: ShiftView[], users: SafeUser[]): number
 
 /** One row per period, every day: each register needs exactly one person per period. */
 export function buildOpenRegisterRows(
-    shifts: ShiftView[],
-    users: SafeUser[],
+    week: WeekIndex,
     registers: Register[],
     periods: ShiftPeriodView[],
     weekStart: string,
 ): OpenRegisterRow[] {
     const dates = weekDates(weekStart);
-    const names = new Map(users.map((user) => [user.userId, user.name]));
-    const registerNames = new Map(registers.map((register) => [register.registerId, register.name]));
-    const slots = groupBySlot(shifts, names, registerNames);
+    const { slots } = week;
     const sortedRegisters = registers.toSorted((a, b) => a.name.localeCompare(b.name));
 
     return periods.map((period) => ({
@@ -227,29 +215,13 @@ export function buildOpenRegisterRows(
     }));
 }
 
-export function toSlotShifts(shifts: ShiftView[]): SlotShift[] {
-    return shifts.flatMap((shift) =>
-        shift.period_id === null
-            ? []
-            : [{
-                shiftId: shift.shift_id,
-                userId: shift.user_id,
-                periodId: shift.period_id,
-                date: shift.shift_date,
-                registerId: shift.register_id,
-            }],
-    );
-}
-
-export function toOtherShifts(shifts: ShiftView[], users: SafeUser[]): OtherShift[] {
-    const names = new Map(users.map((user) => [user.userId, user.name]));
-
+export function toOtherShifts(shifts: ShiftView[], week: WeekIndex): OtherShift[] {
     return shifts.flatMap((shift) =>
         shift.period_id !== null
             ? []
             : [{
                 shiftId: shift.shift_id,
-                name: nameOf(names, shift.user_id),
+                name: nameOf(week.names, shift.user_id),
                 date: shift.shift_date,
                 startTime: shift.start_time,
                 endTime: shift.end_time,
@@ -286,12 +258,4 @@ export function summarizeWeek(roleRows: RoleRow[], openRegisterRows: OpenRegiste
         unstaffedRegisters: registerCells.reduce((total, cell) => total + cell.open.length, 0),
         crowdedRegisters: registerCells.reduce((total, cell) => total + cell.crowded.length, 0),
     };
-}
-
-/** '28 Sep – 4 Oct', in UTC like formatDay, so the label never slips a day with the viewer's zone. */
-export function formatWeekRange(weekStart: string): string {
-    // formatDay without the weekday, so both read 'Sep' rather than en-GB's 'Sept'
-    const day = (dateString: string) => formatDay(dateString).split(" ").slice(1).join(" ");
-
-    return `${day(weekStart)} – ${day(addDays(weekStart, DAYS_IN_WEEK - 1))}`;
 }

@@ -1,4 +1,4 @@
-import { ShiftRepository, ShiftFilters, OverlapQuery } from '@/repository/shift-repository'
+import { ShiftRepository, ShiftFilters, OverlapQuery, NewShiftRow } from '@/repository/shift-repository'
 import { ShiftPeriodRepository } from '@/repository/shift-period-repository'
 import { UserRepository } from '@/repository/user-repository'
 import { BranchRepository } from '@/repository/branch-repository'
@@ -24,8 +24,8 @@ import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-er
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { addDays } from '@/lib/recurrence'
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 const DAYS_PER_WEEK = 7
 
 /** One booked span in a copy batch: 'YYYY-MM-DD' and 'HH:MM' strings, which compare correctly as text. */
@@ -55,20 +55,15 @@ export class ShiftService {
 
     /** The week from `week_start` at one branch, names resolved, for anyone who works there. */
     static async getBranchSchedule(branchId: number, query: BranchScheduleQueryInput): Promise<BranchScheduleView> {
-        const branch = await BranchRepository.getBranchById(branchId)
+        const [branch, periods, shifts] = await Promise.all([
+            BranchRepository.getBranchById(branchId),
+            ShiftPeriodRepository.getPeriodsByBranch(branchId),
+            ShiftRepository.getBranchScheduleShifts(branchId, query.week_start, addDays(query.week_start, DAYS_PER_WEEK - 1)),
+        ])
 
         if (!branch) {
             throw new BranchNotFoundError()
         }
-
-        const [periods, shifts] = await Promise.all([
-            ShiftPeriodRepository.getPeriodsByBranch(branchId),
-            ShiftRepository.getBranchScheduleShifts(
-                branchId,
-                query.week_start,
-                ShiftService.shiftDays(query.week_start, DAYS_PER_WEEK - 1),
-            ),
-        ])
 
         return {
             branch_id: branch.branchId,
@@ -164,46 +159,64 @@ export class ShiftService {
     /**
      * Copies a branch's previous week onto the week starting at `week_start`, each shift seven days
      * forward. A shift is skipped, not refused, when its person is no longer active at the branch or
-     * would clash with something already booked (at any branch) — so a second run copies nothing.
-     * Three reads and one insert, whatever the week's size.
+     * would clash with something already booked (at any branch) — so a second run copies nothing,
+     * even one running at the same moment (see ShiftRepository.copyIntoWeek). A shift from a period
+     * takes that period's current hours, as one added by hand would; a custom-hours shift keeps its own.
      */
     static async copyWeek(data: CopyWeekInput & { created_by: number }): Promise<CopyWeekResult> {
-        await BranchRepository.assertExists(data.branch_id)
-
         const targetFrom = data.week_start
-        const targetTo = ShiftService.shiftDays(targetFrom, DAYS_PER_WEEK - 1)
 
-        const [source, staff] = await Promise.all([
+        const [, source, staff, periods] = await Promise.all([
+            BranchRepository.assertExists(data.branch_id),
             ShiftRepository.getShifts({
                 branchId: data.branch_id,
-                from: ShiftService.shiftDays(targetFrom, -DAYS_PER_WEEK),
-                to: ShiftService.shiftDays(targetFrom, -1),
+                from: addDays(targetFrom, -DAYS_PER_WEEK),
+                to: addDays(targetFrom, -1),
             }),
             UserRepository.getAllUsers([data.branch_id]),
+            ShiftPeriodRepository.getPeriodsByBranch(data.branch_id),
         ])
 
         const activeStaff = new Set(staff.filter((user) => user.isActive).map((user) => user.userId))
         const candidates = source.filter((shift) => activeStaff.has(shift.user_id))
         const userIds = [...new Set(candidates.map((shift) => shift.user_id))]
 
-        const booked: BookedSpan[] = userIds.length === 0
-            ? []
-            : (await ShiftRepository.getShiftsForUsers(userIds, targetFrom, targetTo)).map((shift) => ({
-                userId: shift.user_id,
-                shiftDate: shift.shift_date,
-                startTime: shift.start_time,
-                endTime: shift.end_time,
-            }))
+        if (userIds.length === 0) {
+            return { created: 0, skipped: source.length }
+        }
 
-        const rows = []
+        const hours = new Map(periods.map((period) => [period.periodId, { start: period.defaultStart, end: period.defaultEnd }]))
+        const created = await ShiftRepository.copyIntoWeek(
+            { branchId: data.branch_id, from: targetFrom, to: addDays(targetFrom, DAYS_PER_WEEK - 1), userIds },
+            (booked) => ShiftService.planCopy(candidates, booked, hours, data.created_by),
+        )
+
+        return { created, skipped: source.length - created }
+    }
+
+    /** The rows a copy inserts: each candidate a week later, in its period's current hours, minus anything that would clash. */
+    private static planCopy(
+        candidates: ShiftView[],
+        alreadyBooked: ShiftView[],
+        hours: Map<number, { start: string; end: string }>,
+        createdBy: number,
+    ): NewShiftRow[] {
+        const booked: BookedSpan[] = alreadyBooked.map((shift) => ({
+            userId: shift.user_id,
+            shiftDate: shift.shift_date,
+            startTime: shift.start_time,
+            endTime: shift.end_time,
+        }))
+        const rows: NewShiftRow[] = []
 
         for (const shift of candidates) {
-            const shiftDate = ShiftService.shiftDays(DateOnlySchema.parse(shift.shift_date), DAYS_PER_WEEK)
+            const shiftDate = addDays(DateOnlySchema.parse(shift.shift_date), DAYS_PER_WEEK)
+            const periodHours = shift.period_id === null ? undefined : hours.get(shift.period_id)
             const span: BookedSpan = {
                 userId: shift.user_id,
                 shiftDate: toDateOnlyString(shiftDate),
-                startTime: shift.start_time,
-                endTime: shift.end_time,
+                startTime: periodHours?.start ?? shift.start_time,
+                endTime: periodHours?.end ?? shift.end_time,
             }
 
             if (booked.some((other) => ShiftService.spansClash(other, span))) {
@@ -217,15 +230,13 @@ export class ShiftService {
                 registerId: shift.register_id,
                 periodId: shift.period_id,
                 shiftDate,
-                startTime: TimeOnlySchema.parse(shift.start_time),
-                endTime: TimeOnlySchema.parse(shift.end_time),
-                createdBy: data.created_by,
+                startTime: TimeOnlySchema.parse(span.startTime),
+                endTime: TimeOnlySchema.parse(span.endTime),
+                createdBy,
             })
         }
 
-        const created = await ShiftRepository.createShifts(rows)
-
-        return { created, skipped: source.length - created }
+        return rows
     }
 
     /** Same person, same day, overlapping half-open spans — the rule ShiftRepository.buildOverlapWhere applies in SQL. */
@@ -234,10 +245,6 @@ export class ShiftService {
             && a.shiftDate === b.shiftDate
             && a.startTime < b.endTime
             && a.endTime > b.startTime
-    }
-
-    private static shiftDays(date: Date, days: number): Date {
-        return new Date(date.getTime() + days * MS_PER_DAY)
     }
 
     /**

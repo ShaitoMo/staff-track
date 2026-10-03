@@ -59,3 +59,6 @@ next-env.d.ts
 
 # Playwright MCP browser session output
 /.playwright-mcp/
+
+# Git Bash crash dumps
+*.stackdump

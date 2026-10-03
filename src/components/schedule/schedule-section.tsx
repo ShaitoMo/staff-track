@@ -1,24 +1,24 @@
 import Link from "next/link";
 import { AlertCircleIcon, CircleCheckIcon } from "lucide-react";
 import { CopyWeekButton, ScheduleGrid } from "@/components/schedule/schedule-grid";
-import { WeekNav } from "@/components/schedule/week-nav";
+import { WeekNav } from "@/components/layout/week-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { addDays, formatDay, mondayOf, sortPeriods } from "@/lib/coverage-rows";
+import { addDays, formatDay, mondayOf, sortPeriods, weekDates } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
 import {
     buildOpenRegisterRows,
     buildRoleRows,
-    rolesOnRegisters,
+    indexWeek,
     NEEDS_TINT,
+    rolesOnRegisters,
+    slotsForClient,
     summarizeWeek,
     toOtherShifts,
-    toSlotShifts,
     toStaff,
-    weekDates,
     WeekSummary,
 } from "@/lib/schedule-grid";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
@@ -130,11 +130,13 @@ export async function ScheduleSection({
     }
 
     const sortedPeriods = sortPeriods(periods);
-    const roleRows = buildRoleRows(shifts, users, roles, sortedPeriods, requirements, registers, weekStart);
-    const openRegisterRows = buildOpenRegisterRows(shifts, users, registers, sortedPeriods, weekStart);
-    const otherShifts = toOtherShifts(shifts, users);
+    // One pass over the week, shared by every builder below.
+    const week = indexWeek(shifts, users, registers);
+    const roleRows = buildRoleRows(shifts, week, roles, sortedPeriods, requirements, weekStart);
+    const openRegisterRows = buildOpenRegisterRows(week, registers, sortedPeriods, weekStart);
+    const otherShifts = toOtherShifts(shifts, week);
     const today = todayDateString();
-    const weekNav = <WeekNav weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />;
+    const weekNav = <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />;
 
     if (sortedPeriods.length === 0) {
         return (
@@ -177,9 +179,9 @@ export async function ScheduleSection({
                 periods={sortedPeriods}
                 openRegisterRows={openRegisterRows}
                 hasRegisters={registers.length > 0}
-                registerRoleIds={rolesOnRegisters(shifts, users)}
+                registerRoleIds={rolesOnRegisters(shifts, week)}
                 staff={toStaff(users)}
-                slotShifts={toSlotShifts(shifts)}
+                slots={slotsForClient(week)}
             />
             {otherShifts.length > 0 ? (
                 <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">

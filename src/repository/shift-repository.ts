@@ -14,6 +14,9 @@ export interface ShiftFilters {
     to?: Date;
 }
 
+/** One shift row as copy-week inserts it. */
+export type NewShiftRow = Prisma.ShiftCreateManyInput;
+
 export interface OverlapQuery {
     userId: number;
     shiftDate: Date;
@@ -92,27 +95,37 @@ export class ShiftRepository {
         }));
     }
 
-    /** Every shift these people hold in the window, at any branch — one query for a whole batch. */
-    static async getShiftsForUsers(userIds: number[], from: Date, to: Date): Promise<ShiftView[]> {
-        const shifts = await db.shift.findMany({
-            where: {
-                userId: { in: userIds },
-                shiftDate: { gte: from, lte: to },
-            },
+    /**
+     * Copy-week's write, made safe against a second copy of the same branch and week running at
+     * once. Inside one transaction it takes a lock keyed on (branch, first day of the week), reads
+     * what these people already hold in the window at any branch, lets `plan` decide the rows
+     * that don't clash, and inserts them in one statement. A concurrent copy waits on the lock,
+     * then sees the first one's rows as booked, so it inserts nothing. Returns how many rows went in.
+     */
+    static async copyIntoWeek(
+        window: { branchId: number; from: Date; to: Date; userIds: number[] },
+        plan: (booked: ShiftView[]) => NewShiftRow[],
+    ): Promise<number> {
+        const { branchId, from, to, userIds } = window;
+        const lockKey = `copy-week:${branchId}:${toDateOnlyString(from)}`;
+
+        return db.$transaction(async (tx) => {
+            // Transaction-scoped: released at commit or rollback, so it can't leak.
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+            const booked = await tx.shift.findMany({
+                where: { userId: { in: userIds }, shiftDate: { gte: from, lte: to } },
+            });
+            const rows = plan(booked.map(ShiftRepository.toView));
+
+            if (rows.length === 0) {
+                return 0;
+            }
+
+            const { count } = await tx.shift.createMany({ data: rows });
+
+            return count;
         });
-
-        return shifts.map(ShiftRepository.toView);
-    }
-
-    /** Inserts a batch in one statement; returns how many rows went in. */
-    static async createShifts(rows: Prisma.ShiftCreateManyInput[]): Promise<number> {
-        if (rows.length === 0) {
-            return 0;
-        }
-
-        const { count } = await db.shift.createMany({ data: rows });
-
-        return count;
     }
 
     private static buildOverlapWhere(query: OverlapQuery): Prisma.ShiftWhereInput {

@@ -1,10 +1,11 @@
+import { AlertCircleIcon } from "lucide-react";
 import { BranchFilter } from "@/components/layout/branch-filter";
-import { WeekNav } from "@/components/schedule/week-nav";
+import { WeekNav } from "@/components/layout/week-nav";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { fetchApi } from "@/lib/api-server";
-import { formatDay, mondayOf } from "@/lib/coverage-rows";
+import { formatDay, mondayOf, weekDates } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
-import { weekDates } from "@/lib/schedule-grid";
 import { branchRoster, MyShift, myShifts, RosterDay } from "@/lib/staff-schedule";
 import { cn } from "@/lib/utils";
 import { BranchScheduleView } from "@/types/shift";
@@ -65,7 +66,7 @@ function Roster({ days, today, userId }: { days: RosterDay[]; today: string; use
                     ) : (
                         <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-2 text-sm">
                             {day.groups.map((group) => (
-                                <div key={group.name ?? "custom"} className="col-span-2 grid grid-cols-subgrid">
+                                <div key={group.periodId ?? "custom"} className="col-span-2 grid grid-cols-subgrid">
                                     <dt className="pt-px text-xs font-medium text-muted-foreground">{group.name ?? "Other hours"}</dt>
                                     <dd>
                                         <ul className="flex flex-col gap-1">
@@ -122,9 +123,17 @@ export async function StaffSchedule({
         );
     }
 
-    const schedules = await Promise.all(
+    // Settled, not all-or-nothing: one branch failing to load shouldn't hide the others, or the
+    // viewer's own shifts there. Only when every branch fails does the error boundary take over.
+    const results = await Promise.allSettled(
         branchIds.map((branchId) => fetchApi<BranchScheduleView>(`/api/branches/${branchId}/schedule?week_start=${weekStart}`)),
     );
+    const schedules = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+    const failed = results.length - schedules.length;
+
+    if (schedules.length === 0) {
+        throw (results[0] as PromiseRejectedResult).reason;
+    }
 
     const active = schedules.find((schedule) => schedule.branch_id === requestedBranchId) ?? schedules[0];
     const today = todayDateString();
@@ -132,7 +141,16 @@ export async function StaffSchedule({
 
     return (
         <div className="flex max-w-2xl flex-col gap-6">
-            <WeekNav weekStart={weekStart} thisWeek={mondayOf(today)} query={branchQuery} />
+            <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={branchQuery} />
+            {failed > 0 ? (
+                <Alert>
+                    <AlertCircleIcon />
+                    <AlertDescription>
+                        {failed === 1 ? "One of your branches" : `${failed} of your branches`} couldn&apos;t be loaded, so shifts
+                        there are missing below. Reload the page to try again.
+                    </AlertDescription>
+                </Alert>
+            ) : null}
 
             <section aria-labelledby="my-shifts" className="flex flex-col gap-3">
                 <h2 id="my-shifts" className="text-base font-medium">Your shifts</h2>
