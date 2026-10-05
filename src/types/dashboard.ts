@@ -56,6 +56,8 @@ export interface DashboardResponse {
         no_shows: number;
         late_arrivals: number;
         early_departures: number;
+        /** Shifts whose punch is missing its clock-in or clock-out — waiting on a manager to fix. */
+        incomplete_punches: number;
     };
     tasks: {
         pending: number;

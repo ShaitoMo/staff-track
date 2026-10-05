@@ -9,6 +9,7 @@ const MANAGER_NAV = [
     { href: "/branches", label: "Branches" },
     { href: "/registers", label: "Registers" },
     { href: "/schedule", label: "Schedule" },
+    { href: "/attendance", label: "Attendance" },
     { href: "/tasks", label: "Tasks" },
     { href: "/roles", label: "Roles" },
 ];

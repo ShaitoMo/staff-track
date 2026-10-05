@@ -27,11 +27,25 @@ export const CreateAttendanceSchema = z.object({
 export type CreateAttendanceInput = z.infer<typeof CreateAttendanceSchema>;
 
 /**
+ * PATCH /api/attendance/:id — fills in or corrects either end of a punch, typically the one the
+ * machine missed. That the merged punch still ends after it starts is checked by the service,
+ * since only it knows the end this request leaves untouched.
+ */
+export const UpdateAttendanceSchema = z.object({
+    clock_in: TimestampSchema.optional(),
+    clock_out: TimestampSchema.optional(),
+}).refine((data) => data.clock_in !== undefined || data.clock_out !== undefined, {
+    message: 'At least one of clock_in or clock_out must be provided',
+});
+
+export type UpdateAttendanceInput = z.infer<typeof UpdateAttendanceSchema>;
+
+/**
  * Query parameters for GET /api/attendance.
  *
  * `from` and `to` are required, for the reason ScheduleVsActualFiltersSchema gives: this is a
  * report, always asked about a period, and an unbounded call would return every punch ever
- * recorded. They bound `clock_in` inclusively.
+ * recorded. They bound `clock_in` inclusively — or `clock_out`, for a punch with no clock-in.
  */
 export const AttendanceFiltersSchema = z.object({
     user_id: z.coerce.number().int().positive().optional(),
@@ -66,7 +80,8 @@ export interface AttendanceView {
     attendance_id: number;
     user_id: number;
     branch_id: number;
-    clock_in: Date;
+    /** Null when the machine logged a clock-out with no clock-in — a punch waiting to be fixed. */
+    clock_in: Date | null;
     clock_out: Date | null;
     source: AttendanceSource;
     import_batch_id: number | null;

@@ -6,7 +6,7 @@ import { DuplicateAttendanceError } from "@/exceptions/duplicate-attendance-erro
 export interface ImportedPunch {
     userId: number;
     branchId: number;
-    clockIn: Date;
+    clockIn: Date | null;
     clockOut: Date | null;
 }
 
@@ -19,6 +19,11 @@ export interface AttendanceFilters {
 
 export class AttendanceRepository {
 
+    /**
+     * Newest first. The window bounds `clock_in`, or `clock_out` for a punch that has no clock-in,
+     * and that same end is what orders it — sorted here, since Postgres would put every missing
+     * clock-in first regardless of when it happened.
+     */
     static async getAttendance(filters: AttendanceFilters = {}): Promise<AttendanceView[]> {
         const { userId, branchId, from, to } = filters;
 
@@ -26,19 +31,25 @@ export class AttendanceRepository {
             where: {
                 userId,
                 branchId,
-                clockIn: { gte: from, lt: to },
+                OR: [
+                    { clockIn: { gte: from, lt: to } },
+                    { clockIn: null, clockOut: { gte: from, lt: to } },
+                ],
             },
-            orderBy: [{ clockIn: 'desc' }, { attendanceId: 'desc' }],
         });
 
-        return attendance.map(AttendanceRepository.toView);
+        const when = (row: AttendanceRow) => (row.clockIn ?? row.clockOut)!.getTime();
+
+        return attendance
+            .toSorted((left, right) => when(right) - when(left) || right.attendanceId - left.attendanceId)
+            .map(AttendanceRepository.toView);
     }
 
     /**
      * One upload: the batch row and every punch it produced, in a transaction so a half-written
-     * import can't be left behind. `skipDuplicates` leans on @@unique([userId, clockIn]) to make a
-     * re-uploaded file, or one listing the same punch twice, a no-op — the returned count is what
-     * actually landed.
+     * import can't be left behind. `skipDuplicates` leans on the two unique keys, (userId, clockIn)
+     * and (userId, clockOut), to make a re-uploaded file, or one listing the same punch twice, a
+     * no-op — the returned count is what actually landed.
      */
     static async importAttendance(input: {
         fileName: string;
@@ -73,23 +84,42 @@ export class AttendanceRepository {
         });
     }
 
+    static async getAttendanceById(attendanceId: number): Promise<AttendanceView | null> {
+        const attendance = await db.attendance.findUnique({ where: { attendanceId } });
+
+        return attendance ? AttendanceRepository.toView(attendance) : null;
+    }
+
     /** A row typed in by hand: always `manual`, never part of an import batch. */
     static async createAttendance(data: CreateAttendanceInput): Promise<AttendanceView> {
-        try {
-            const attendance = await db.attendance.create({
-                data: {
-                    userId: data.user_id,
-                    branchId: data.branch_id,
-                    clockIn: data.clock_in,
-                    clockOut: data.clock_out ?? null,
-                    source: 'manual',
-                    importBatchId: null,
-                },
-            });
+        return AttendanceRepository.refusingDuplicates(() => db.attendance.create({
+            data: {
+                userId: data.user_id,
+                branchId: data.branch_id,
+                clockIn: data.clock_in,
+                clockOut: data.clock_out ?? null,
+                source: 'manual',
+                importBatchId: null,
+            },
+        }));
+    }
 
-            return AttendanceRepository.toView(attendance);
+    /** Sets the given ends; `source` stays as it was — the punch still came from where it came from. */
+    static async updateAttendance(
+        attendanceId: number,
+        data: { clockIn?: Date; clockOut?: Date },
+    ): Promise<AttendanceView> {
+        return AttendanceRepository.refusingDuplicates(() => db.attendance.update({
+            where: { attendanceId },
+            data,
+        }));
+    }
+
+    /** Either unique key — (userId, clockIn) or (userId, clockOut) — means the punch is already recorded. */
+    private static async refusingDuplicates(write: () => Promise<AttendanceRow>): Promise<AttendanceView> {
+        try {
+            return AttendanceRepository.toView(await write());
         } catch (error: unknown) {
-            // @@unique([userId, clockIn]) — re-entering a punch that is already recorded
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
                 throw new DuplicateAttendanceError()
             }
