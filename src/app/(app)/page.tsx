@@ -35,14 +35,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         );
     }
 
+    const today = todayDateString();
     const date = parseDateParam(dateParam);
 
     return (
         <div className="flex flex-col gap-6">
             <h1 className="text-xl font-medium">Dashboard</h1>
-            <DayNav basePath="/" date={date} today={todayDateString()} />
+            <DayNav basePath="/" date={date} today={today} />
             <Suspense key={date} fallback={loading}>
-                <BranchesToday date={date} />
+                <BranchesToday date={date} today={today} />
             </Suspense>
         </div>
     );

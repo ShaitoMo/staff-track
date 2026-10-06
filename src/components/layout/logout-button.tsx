@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { TOUCH_HEIGHT } from "@/lib/touch";
 import { Spinner } from "@/components/ui/spinner";
 import { logout } from "@/lib/api-client";
 
@@ -19,7 +20,7 @@ export function LogoutButton() {
     }
 
     return (
-        <Button variant="outline" size="sm" onClick={handleLogout} disabled={pending}>
+        <Button variant="outline" size="sm" className={TOUCH_HEIGHT} onClick={handleLogout} disabled={pending}>
             {pending && <Spinner data-icon="inline-start" />}
             Log out
         </Button>

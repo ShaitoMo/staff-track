@@ -19,7 +19,10 @@ export function DayNav({ basePath, date, today }: { basePath: string; date: stri
             >
                 <ChevronLeftIcon />
             </Link>
-            <h2 className="min-w-28 px-1 text-center text-sm font-medium tabular-nums">{formatDay(date)}</h2>
+            {/* not a heading: it labels the controls, and is announced when the day changes */}
+            <p aria-live="polite" className="min-w-28 px-1 text-center text-sm font-medium tabular-nums">
+                {formatDay(date)}
+            </p>
             <Link
                 href={dayHref(addDays(date, 1))}
                 scroll={false}

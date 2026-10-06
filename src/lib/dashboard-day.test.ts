@@ -74,20 +74,28 @@ describe('branchDay', () => {
         expect(day.periods.map((period) => period.managers)).toEqual([['Alice'], []]);
     });
 
-    it('lists only the roles still short that day', () => {
+    it('keeps a required period nobody works, with only the roles still short that day', () => {
         const day = branchDay(
-            schedule([]),
+            schedule([shift({ user_id: 1, period_id: 1 })]),
             '2026-09-30',
             [
-                { shiftDate: '2026-09-30', roleId: 2, periodId: 2, requiredCount: 2, scheduledCount: 1 },
+                { shiftDate: '2026-09-30', roleId: 2, periodId: 2, requiredCount: 2, scheduledCount: 0 },
                 { shiftDate: '2026-09-30', roleId: 1, periodId: 1, requiredCount: 1, scheduledCount: 1 },
                 { shiftDate: '2026-10-01', roleId: 2, periodId: 1, requiredCount: 3, scheduledCount: 0 },
             ],
             roles,
         );
 
-        expect(day.openSlots).toEqual([{ periodName: 'Evening', roleName: 'cashier', short: 1 }]);
-        expect(day.staffCount).toBe(0);
-        expect(day.periods).toEqual([]);
+        expect(day.periods).toEqual([
+            { periodId: 1, name: 'Morning', staffCount: 1, managers: [], shortages: [] },
+            { periodId: 2, name: 'Evening', staffCount: 0, managers: [], shortages: [{ roleName: 'cashier', short: 2 }] },
+        ]);
+        expect(day.shortTotal).toBe(2);
+    });
+
+    it('leaves out a period nobody works and nothing requires', () => {
+        const day = branchDay(schedule([]), '2026-09-30', [], roles);
+
+        expect(day).toEqual({ staffCount: 0, periods: [], shortTotal: 0 });
     });
 });

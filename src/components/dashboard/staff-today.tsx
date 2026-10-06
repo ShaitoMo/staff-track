@@ -64,11 +64,13 @@ function DayBlock({
                 <h2 id={id} className="text-base font-medium">
                     {label} <span className="font-normal text-muted-foreground">· {formatDay(date)}</span>
                 </h2>
-                <Link href={`/schedule?week=${mondayOf(date)}`} className={staffLinkClass}>
+                <Link href={`/schedule?week=${mondayOf(date)}`} aria-label={`${label}'s schedule`} className={staffLinkClass}>
                     Schedule
                 </Link>
             </div>
+            <h3 className="text-xs font-medium text-muted-foreground">Shift</h3>
             <ShiftList shifts={shifts} showBranch={showBranch} />
+            <h3 className="mt-1 text-xs font-medium text-muted-foreground">Tasks due</h3>
             {tasks.length === 0 ? <p className="text-sm text-muted-foreground">No tasks due.</p> : <MyTaskList rows={tasks} />}
         </section>
     );
@@ -123,7 +125,7 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
             return (
                 <Alert variant="destructive" className="max-w-2xl">
                     <AlertCircleIcon />
-                    <AlertDescription>Your home page couldn&apos;t be loaded for this account. Sign out and back in.</AlertDescription>
+                    <AlertDescription>Your home page couldn&apos;t be loaded. Reload the page; if it keeps happening, sign out and back in.</AlertDescription>
                 </Alert>
             );
         }
@@ -148,6 +150,10 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
             <BranchesFailedAlert failed={failed} consequence="shifts there are missing below" />
             <DayBlock id="today" label="Today" date={today} shifts={shifts.today} tasks={tasks.today} showBranch={showBranch} />
             <DayBlock id="tomorrow" label="Tomorrow" date={tomorrow} shifts={shifts.tomorrow} tasks={tasks.tomorrow} showBranch={showBranch} />
+            {/* right after the tasks it extends, not below the pay block */}
+            <Link href="/my-tasks" className={staffLinkClass}>
+                All my tasks
+            </Link>
             <MissedTime
                 title="Missed this month"
                 minutes={missedMinutes(report)}
@@ -155,9 +161,6 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
                 link={{ href: "/attendance", label: "Attendance" }}
                 className="rounded-lg border border-border bg-card p-4"
             />
-            <Link href="/my-tasks" className={staffLinkClass}>
-                All my tasks
-            </Link>
         </div>
     );
 }

@@ -139,7 +139,7 @@ export async function MyAttendance({ userId, weekStart }: { userId: number; week
             return (
                 <Alert variant="destructive" className="max-w-3xl">
                     <AlertCircleIcon />
-                    <AlertDescription>Your attendance couldn&apos;t be loaded for this account. Sign out and back in.</AlertDescription>
+                    <AlertDescription>Your attendance couldn&apos;t be loaded. Reload the page; if it keeps happening, sign out and back in.</AlertDescription>
                 </Alert>
             );
         }
