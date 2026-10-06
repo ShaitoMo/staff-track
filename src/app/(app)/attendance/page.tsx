@@ -1,13 +1,15 @@
 import { Suspense } from "react";
 import { AttendanceSection } from "@/components/attendance/attendance-section";
+import { MyAttendance } from "@/components/attendance/my-attendance";
 import { AccessMessage } from "@/components/layout/access-message";
 import { BranchFilter } from "@/components/layout/branch-filter";
+import { WeekNav } from "@/components/layout/week-nav";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { mondayOf } from "@/lib/coverage-rows";
-import { parseDateParam } from "@/lib/instance-rows";
+import { parseDateParam, todayDateString } from "@/lib/instance-rows";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
@@ -27,8 +29,20 @@ export default async function AttendancePage({
 }) {
     const [{ branch, week }, session] = await Promise.all([searchParams, getSession()]);
 
+    const weekStart = mondayOf(parseDateParam(week));
+
+    // Staff see only their own shifts, through the self-or-manager endpoint. The week nav sits
+    // outside the boundary so the range stays put while the next week loads.
     if (session && session.role !== OWNER_ROLE && session.role !== MANAGER_ROLE) {
-        return noAccess;
+        return (
+            <div className="flex flex-col gap-6">
+                <h1 className="text-xl font-medium">My attendance</h1>
+                <WeekNav basePath="/attendance" weekStart={weekStart} thisWeek={mondayOf(todayDateString())} query={{}} />
+                <Suspense key={weekStart} fallback={loading}>
+                    <MyAttendance userId={session.userId} weekStart={weekStart} />
+                </Suspense>
+            </div>
+        );
     }
 
     let branches: Branch[];
@@ -43,7 +57,6 @@ export default async function AttendancePage({
     }
 
     const requestedBranchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
-    const weekStart = mondayOf(parseDateParam(week));
     const branchId = branches.some((b) => b.branchId === requestedBranchId) ? requestedBranchId : branches[0]?.branchId;
     const branchName = branches.find((b) => b.branchId === branchId)?.name;
 

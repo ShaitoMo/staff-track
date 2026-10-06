@@ -67,5 +67,5 @@ _Avoid_: Occurrence, Checklist item
 ### Attendance
 
 **Attendance**:
-A recorded clock-in event for a User, sourced from a CSV/Excel import, a machine feed, or manual entry.
+One recorded stretch of work for a User at a Branch: a clock-in and a clock-out, sourced from a CSV/Excel import, a machine feed, or manual entry. Either end can be missing — the machine logged a clock-out with no clock-in, or nobody clocked out — until a manager adds it; it is compared against the User's Shifts to judge late, left early, or no-show.
 _Avoid_: Time log, Punch

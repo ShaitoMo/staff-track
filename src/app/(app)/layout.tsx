@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AppNav } from "@/components/layout/app-nav";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
@@ -14,10 +14,11 @@ const MANAGER_NAV = [
     { href: "/roles", label: "Roles" },
 ];
 
-/** Staff land on their tasks at "/"; the schedule is read-only for them. */
+/** Staff land on their tasks at "/"; the schedule and their attendance are read-only for them. */
 const STAFF_NAV = [
     { href: "/", label: "My tasks" },
     { href: "/schedule", label: "Schedule" },
+    { href: "/attendance", label: "Attendance" },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -34,13 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border px-6 py-3">
                 <span className="font-heading text-base font-medium">StaffTrack</span>
                 {/* on a phone the nav takes its own row under the brand and account */}
-                <nav className="order-last flex w-full flex-wrap items-center gap-x-4 gap-y-1 md:order-none md:w-auto">
-                    {(canManage ? MANAGER_NAV : STAFF_NAV).map((item) => (
-                        <Link key={item.href} href={item.href} className="text-sm font-medium text-foreground hover:text-primary">
-                            {item.label}
-                        </Link>
-                    ))}
-                </nav>
+                <AppNav items={canManage ? MANAGER_NAV : STAFF_NAV} />
                 <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
                     <span className="capitalize">{session.role}</span>
                     <LogoutButton />

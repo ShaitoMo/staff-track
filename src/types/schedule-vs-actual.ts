@@ -65,4 +65,10 @@ export interface ScheduleVsActualRow {
     late_minutes: number | null;
     /** Signed minutes: positive left early, negative stayed past the end. Null without a clock-out. */
     early_leave_minutes: number | null;
+    /**
+     * Arrived / left past the grace period, whatever the flag says — a late arrival who forgot to
+     * clock out was still late, and a shift can be both. Counts read these, not the flag.
+     */
+    is_late: boolean;
+    left_early: boolean;
 }

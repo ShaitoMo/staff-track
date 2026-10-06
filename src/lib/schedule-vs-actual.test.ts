@@ -193,7 +193,16 @@ describe('compareScheduleWithAttendance - flags', () => {
             incomplete_attendance_id: 7,
             late_minutes: 20,
             early_leave_minutes: null,
+            // the flag hides it, but the arrival was still late
+            is_late: true,
+            left_early: false,
         });
+    });
+
+    it('marks a shift both late and left early, though its flag says only late', () => {
+        const [row] = compareScheduleWithAttendance([shift()], [punch('2026-07-01T06:12:00Z', '2026-07-01T13:40:00Z')]);
+
+        expect(row).toMatchObject({ flag: 'late', is_late: true, left_early: true });
     });
 
     it('flags a clock-out with no clock-in as missing_clock_in, with no arrival to judge', () => {

@@ -2,19 +2,13 @@ import { BranchRepository } from '@/repository/branch-repository';
 import { AttendanceRepository } from '@/repository/attendance-repository';
 import { ShiftRepository } from '@/repository/shift-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
-import { compareScheduleWithAttendance, LATE_GRACE_MINUTES } from '@/lib/schedule-vs-actual';
+import { compareScheduleWithAttendance } from '@/lib/schedule-vs-actual';
 import { machineDayOf } from '@/lib/machine-time';
 import { DashboardFiltersInput, DashboardResponse } from '@/types/dashboard';
-import { ScheduleVsActualRow } from '@/types/schedule-vs-actual';
 import { toDateOnlyString } from '@/types/date-only';
 import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Past the grace period, by the same rule as schedule-vs-actual's flags. */
-const isLate = (row: ScheduleVsActualRow) => row.late_minutes !== null && row.late_minutes > LATE_GRACE_MINUTES;
-const leftEarly = (row: ScheduleVsActualRow) =>
-    row.early_leave_minutes !== null && row.early_leave_minutes > LATE_GRACE_MINUTES;
 
 export class DashboardService {
 
@@ -70,11 +64,11 @@ export class DashboardService {
             range: { from: toDateOnlyString(from), to: toDateOnlyString(to) },
             attendance: {
                 no_shows: rows.filter((row) => row.flag === 'no_show').length,
-                // Read from the minutes, not the flag: a punch missing an end outranks lateness in
-                // the flag, yet a late arrival who forgot to clock out was still late. A shift both
-                // late and left early counts only here, never in early_departures — as the flag would.
-                late_arrivals: rows.filter(isLate).length,
-                early_departures: rows.filter((row) => !isLate(row) && leftEarly(row)).length,
+                // Read is_late / left_early, not the flag: a punch missing an end outranks lateness
+                // in the flag, yet a late arrival who forgot to clock out was still late. A shift both
+                // late and left early counts in both, as the attendance page does.
+                late_arrivals: rows.filter((row) => row.is_late).length,
+                early_departures: rows.filter((row) => row.left_early).length,
                 incomplete_punches: rows.filter(
                     (row) => row.flag === 'missing_clock_in' || row.flag === 'missing_clock_out',
                 ).length,

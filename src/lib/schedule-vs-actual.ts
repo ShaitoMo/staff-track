@@ -1,5 +1,5 @@
 import { AttendanceView } from '@/types/attendance';
-import { AttendanceFlag, ScheduleVsActualRow } from '@/types/schedule-vs-actual';
+import { ScheduleVsActualRow } from '@/types/schedule-vs-actual';
 import { ShiftView } from '@/types/shift';
 import { machineTimeToUtc } from '@/lib/machine-time';
 
@@ -194,6 +194,8 @@ function toRow(
             incomplete_attendance_id: null,
             late_minutes: null,
             early_leave_minutes: null,
+            is_late: false,
+            left_early: false,
         };
     }
 
@@ -204,6 +206,8 @@ function toRow(
 
     const lateMinutes = first.clock_in === null ? null : minutesBetween(startAt, first.clock_in);
     const earlyLeaveMinutes = last.clock_out === null ? null : minutesBetween(last.clock_out, endAt);
+    const isLate = pastGrace(lateMinutes);
+    const leftEarly = pastGrace(earlyLeaveMinutes);
 
     return {
         ...base,
@@ -212,23 +216,20 @@ function toRow(
         actual_clock_out: last.clock_out,
         flag: missingClockIn ? 'missing_clock_in'
             : missingClockOut ? 'missing_clock_out'
-            : flagFor(lateMinutes, earlyLeaveMinutes),
+            : isLate ? 'late'
+            : leftEarly ? 'left_early'
+            : 'on_time',
         incomplete_attendance_id: (missingClockIn ?? missingClockOut)?.attendance_id ?? null,
         late_minutes: lateMinutes,
         early_leave_minutes: earlyLeaveMinutes,
+        is_late: isLate,
+        left_early: leftEarly,
     };
 }
 
-function flagFor(lateMinutes: number | null, earlyLeaveMinutes: number | null): AttendanceFlag {
-    if (lateMinutes !== null && lateMinutes > LATE_GRACE_MINUTES) {
-        return 'late';
-    }
-
-    if (earlyLeaveMinutes !== null && earlyLeaveMinutes > LATE_GRACE_MINUTES) {
-        return 'left_early';
-    }
-
-    return 'on_time';
+/** The one place the grace period is applied; every consumer reads is_late / left_early. */
+function pastGrace(minutes: number | null): boolean {
+    return minutes !== null && minutes > LATE_GRACE_MINUTES;
 }
 
 /** Whole minutes from `from` to `to`, rounded — punches carry seconds the report has no use for. */

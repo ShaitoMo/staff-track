@@ -1,5 +1,5 @@
 import { MACHINE_TIME_ZONE, machineTimeToUtc } from "@/lib/machine-time";
-import { LATE_GRACE_MINUTES, scheduledInstant } from "@/lib/schedule-vs-actual";
+import { scheduledInstant } from "@/lib/schedule-vs-actual";
 import type { AttendanceFlag, ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 
 /**
@@ -76,23 +76,39 @@ export function punchToIso(
 
 /**
  * The time a manager typed into the Fix dialog, as the instant PATCH /api/attendance/:id expects.
- * A clock-in falls on the shift's own date. A clock-out at or before the shift's scheduled start
- * is the next morning — an evening shift's 01:15 — the same rollover punchToIso applies.
+ * A clock-in falls on the shift's own date. A clock-out before the shift's scheduled start is the
+ * next morning — an evening shift's 01:15 — as the dialog says. One exactly at the start stays on
+ * the shift's date, where the server refuses it as not after the clock-in, rather than silently
+ * becoming a 24-hour punch.
  */
 export function fixTimeToIso(shiftDate: string, scheduledStart: string, time: string, end: MissingEnd): string {
     const [year, month, day] = shiftDate.split("-").map(Number);
     const [hours, minutes] = time.split(":").map(Number);
-    const nextDay = end === "clock_out" && time <= scheduledStart.slice(0, 5) ? 1 : 0;
+    const nextDay = end === "clock_out" && time < scheduledStart.slice(0, 5) ? 1 : 0;
 
     return machineTimeToUtc(year, month, day + nextDay, hours, minutes).toISOString();
 }
 
-/** How many shifts landed on each status; every status is present, zero included. */
-export function summarizeStatuses(rows: Pick<AttendanceRow, "status">[]): Record<AttendanceStatus, number> {
+/**
+ * How many shifts landed on each status; every status is present, zero included. A slip also
+ * counts where the flag doesn't say it — a shift late and left early is under both, and a late
+ * arrival with a missing clock-out is under late too — matching the dashboard's totals.
+ */
+export function summarizeStatuses(
+    rows: Pick<AttendanceRow, "status" | "isLate" | "leftEarly">[],
+): Record<AttendanceStatus, number> {
     const counts = Object.fromEntries(STATUS_ORDER.map((status) => [status, 0])) as Record<AttendanceStatus, number>;
 
     for (const row of rows) {
         counts[row.status] += 1;
+
+        if (row.isLate && row.status !== "late") {
+            counts.late += 1;
+        }
+
+        if (row.leftEarly && row.status !== "left_early") {
+            counts.left_early += 1;
+        }
     }
 
     return counts;
@@ -112,6 +128,9 @@ export interface AttendanceRow {
     fix: { attendanceId: number; end: MissingEnd } | null;
     /** 'Late 12 min · left 20 min early' — only the slips past the grace period; null when there are none. */
     detail: string | null;
+    /** Arrived / left past the grace period, whatever the flag says. */
+    isLate: boolean;
+    leftEarly: boolean;
 }
 
 /** Joins names, formats times on the branch clock, and orders by day, start, then person. */
@@ -134,6 +153,8 @@ export function buildAttendanceRows(
             status: statusOf(row, now),
             fix: fixFor(row),
             detail: slipDetail(row),
+            isLate: row.is_late,
+            leftEarly: row.left_early,
         }))
         .toSorted(
             (a, b) =>
@@ -155,13 +176,35 @@ function fixFor(row: ScheduleVsActualRow): AttendanceRow["fix"] {
     };
 }
 
+/** The minutes behind each slip; 0 for a slip within the grace period, or none. */
+const lateBy = (row: ScheduleVsActualRow) => (row.is_late ? (row.late_minutes ?? 0) : 0);
+const earlyBy = (row: ScheduleVsActualRow) => (row.left_early ? (row.early_leave_minutes ?? 0) : 0);
+
 function slipDetail(row: ScheduleVsActualRow): string | null {
     const parts = [
-        row.late_minutes !== null && row.late_minutes > LATE_GRACE_MINUTES ? `${row.late_minutes} min late` : null,
-        row.early_leave_minutes !== null && row.early_leave_minutes > LATE_GRACE_MINUTES
-            ? `left ${row.early_leave_minutes} min early`
-            : null,
+        row.is_late ? `${lateBy(row)} min late` : null,
+        row.left_early ? `left ${earlyBy(row)} min early` : null,
     ].filter((part) => part !== null);
 
     return parts.length === 0 ? null : parts.join(" · ");
+}
+
+/**
+ * Minutes lost to arriving late and leaving early — the same slips each row's detail shows.
+ * No-shows aren't counted, and neither is a shift with a missing punch: its times aren't settled
+ * until a manager adds the punch, and the page tells staff it isn't counted yet.
+ */
+export function missedMinutes(rows: ScheduleVsActualRow[]): number {
+    return rows
+        .filter((row) => row.incomplete_attendance_id === null)
+        .reduce((total, row) => total + lateBy(row) + earlyBy(row), 0);
+}
+
+/** '45 min', '1 h', '1 h 17 min'. */
+export function formatMinutes(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+
+    if (hours === 0) return `${rest} min`;
+    return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }

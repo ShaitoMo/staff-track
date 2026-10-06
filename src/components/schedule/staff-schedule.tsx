@@ -1,5 +1,6 @@
 import { AlertCircleIcon } from "lucide-react";
 import { BranchFilter } from "@/components/layout/branch-filter";
+import { TodayMark } from "@/components/layout/today-mark";
 import { WeekNav } from "@/components/layout/week-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -9,10 +10,6 @@ import { todayDateString } from "@/lib/instance-rows";
 import { branchRoster, MyShift, myShifts, RosterDay } from "@/lib/staff-schedule";
 import { cn } from "@/lib/utils";
 import { BranchScheduleView } from "@/types/shift";
-
-function TodayMark() {
-    return <span className="rounded-sm bg-foreground px-1.5 py-0.5 text-xs font-medium text-background">Today</span>;
-}
 
 function MyShiftList({ shifts, today, showBranch }: { shifts: MyShift[]; today: string; showBranch: boolean }) {
     if (shifts.length === 0) {
