@@ -2,7 +2,7 @@ import { BranchRepository } from '@/repository/branch-repository';
 import { AttendanceRepository } from '@/repository/attendance-repository';
 import { ShiftRepository } from '@/repository/shift-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
-import { compareScheduleWithAttendance } from '@/lib/schedule-vs-actual';
+import { compareScheduleWithAttendance, scheduledInstant } from '@/lib/schedule-vs-actual';
 import { machineDayOf } from '@/lib/machine-time';
 import { DashboardFiltersInput, DashboardResponse } from '@/types/dashboard';
 import { toDateOnlyString } from '@/types/date-only';
@@ -43,7 +43,13 @@ export class DashboardService {
             TaskInstanceRepository.getTaskInstances({ branchId, dueFrom: from, dueTo: to }),
         ]);
 
-        const rows = compareScheduleWithAttendance(shifts, punches);
+        const now = new Date();
+        const rows = compareScheduleWithAttendance(shifts, punches, now);
+        // The report calls any shift without punches a no-show; one that hasn't started yet hasn't
+        // been missed — the attendance page shows it as upcoming — so it isn't counted here.
+        const noShows = rows.filter(
+            (row) => row.flag === 'no_show' && scheduledInstant(row.shift_date, row.scheduled_start) <= now,
+        );
 
         const coverageBranchIds = branchId !== undefined
             ? [branchId]
@@ -63,7 +69,7 @@ export class DashboardService {
             branch_id: branchId ?? null,
             range: { from: toDateOnlyString(from), to: toDateOnlyString(to) },
             attendance: {
-                no_shows: rows.filter((row) => row.flag === 'no_show').length,
+                no_shows: noShows.length,
                 // Read is_late / left_early, not the flag: a punch missing an end outranks lateness
                 // in the flag, yet a late arrival who forgot to clock out was still late. A shift both
                 // late and left early counts in both, as the attendance page does.

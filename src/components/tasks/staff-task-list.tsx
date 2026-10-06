@@ -8,7 +8,7 @@ import type { TaskInstanceListView } from "@/types/task-instance";
 const RECENT_DAYS = 7;
 
 /** A staff member's task list: what's left to do, and how the last week's work turned out. */
-export async function StaffDashboard({ userId }: { userId: number }) {
+export async function StaffTaskList({ userId }: { userId: number }) {
     // "recently done" goes by when the work was finished, so a late task completed today still shows
     const [pending, recent, roles] = await Promise.all([
         fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?status=pending`),

@@ -1,6 +1,7 @@
 import { AlertCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { StatusBadge, StatusSummary } from "@/components/attendance/attendance-status";
+import { MissedTime } from "@/components/attendance/missed-time";
 import { TodayMark } from "@/components/layout/today-mark";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,36 +10,13 @@ import { fetchApi } from "@/lib/api-server";
 import {
     AttendanceRow,
     buildAttendanceRows,
-    formatMinutes,
     missedMinutes,
     summarizeStatuses,
 } from "@/lib/attendance-rows";
 import { addDays, formatDay, formatWeekRange, mondayOf } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
-import { LATE_GRACE_MINUTES } from "@/lib/schedule-vs-actual";
 import { cn } from "@/lib/utils";
 import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
-
-/** The time lost to slips, which is what a staff member opens this page to check. */
-function MissedTime({ minutes, pending }: { minutes: number; pending: number }) {
-    return (
-        <section aria-labelledby="missed-time" className="flex flex-col gap-1">
-            <h2 id="missed-time" className="text-sm font-medium text-muted-foreground">
-                Missed time
-            </h2>
-            <p className="text-2xl font-semibold tabular-nums">{minutes === 0 ? "No time missed" : formatMinutes(minutes)}</p>
-            <p className="text-sm text-muted-foreground">
-                Affects your pay. Counts late arrivals and early leaves past the {LATE_GRACE_MINUTES}-minute grace period.
-            </p>
-            {pending > 0 ? (
-                <p className="text-sm text-muted-foreground">
-                    {pending === 1 ? "1 shift is" : `${pending} shifts are`} missing a punch and not counted until your branch
-                    manager adds it.
-                </p>
-            ) : null}
-        </section>
-    );
-}
 
 /** Tensed to the week: a past week had no shifts, a future one has none yet. */
 function emptyWeekMessage(weekStart: string, thisWeek: string, range: string): string {
@@ -185,7 +163,7 @@ export async function MyAttendance({ userId, weekStart }: { userId: number; week
 
     return (
         <div className="flex max-w-3xl flex-col gap-6">
-            <MissedTime minutes={missedMinutes(report)} pending={rows.filter((row) => row.fix !== null).length} />
+            <MissedTime title="Missed time" minutes={missedMinutes(report)} pending={rows.filter((row) => row.fix !== null).length} />
             <section aria-labelledby="my-shifts" className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <h2 id="my-shifts" className="text-base font-medium">

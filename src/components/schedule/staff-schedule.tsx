@@ -1,8 +1,7 @@
-import { AlertCircleIcon } from "lucide-react";
 import { BranchFilter } from "@/components/layout/branch-filter";
+import { BranchesFailedAlert, settledOrThrow } from "@/components/layout/branches-failed-alert";
 import { TodayMark } from "@/components/layout/today-mark";
 import { WeekNav } from "@/components/layout/week-nav";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { fetchApi } from "@/lib/api-server";
 import { formatDay, mondayOf, weekDates } from "@/lib/coverage-rows";
@@ -125,12 +124,7 @@ export async function StaffSchedule({
     const results = await Promise.allSettled(
         branchIds.map((branchId) => fetchApi<BranchScheduleView>(`/api/branches/${branchId}/schedule?week_start=${weekStart}`)),
     );
-    const schedules = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
-    const failed = results.length - schedules.length;
-
-    if (schedules.length === 0) {
-        throw (results[0] as PromiseRejectedResult).reason;
-    }
+    const { values: schedules, failed } = settledOrThrow(results);
 
     const active = schedules.find((schedule) => schedule.branch_id === requestedBranchId) ?? schedules[0];
     const today = todayDateString();
@@ -139,15 +133,7 @@ export async function StaffSchedule({
     return (
         <div className="flex max-w-2xl flex-col gap-6">
             <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={branchQuery} />
-            {failed > 0 ? (
-                <Alert>
-                    <AlertCircleIcon />
-                    <AlertDescription>
-                        {failed === 1 ? "One of your branches" : `${failed} of your branches`} couldn&apos;t be loaded, so shifts
-                        there are missing below. Reload the page to try again.
-                    </AlertDescription>
-                </Alert>
-            ) : null}
+            <BranchesFailedAlert failed={failed} consequence="shifts there are missing below" />
 
             <section aria-labelledby="my-shifts" className="flex flex-col gap-3">
                 <h2 id="my-shifts" className="text-base font-medium">Your shifts</h2>
