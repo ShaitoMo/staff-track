@@ -5,6 +5,7 @@ import { BranchesFailedAlert, settledOrThrow } from "@/components/layout/branche
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
+import { getSelectedBranchId } from "@/lib/session";
 import { mondayOf } from "@/lib/coverage-rows";
 import { BranchDay, branchDay, DayPeriod } from "@/lib/dashboard-day";
 import { cn } from "@/lib/utils";
@@ -186,13 +187,13 @@ function BranchCard({ branch, date, week, attendanceIn }: { branch: BranchSummar
 }
 
 /**
- * The day across every branch the viewer runs — all of them for an owner, their own for a
- * manager (GET /api/branches is already scoped). Everything is who is *scheduled*, and attendance
+ * The day across the branch chosen in the top bar, or every branch the viewer runs — all of them
+ * for an owner, their own for a manager (GET /api/branches is already scoped). Everything is who is *scheduled*, and attendance
  * shows only for days already past: imports lag the day, so this never claims who is in right
  * now. Branches with something to act on come first. Reads fire together, settled per branch so
  * one failing branch doesn't hide the rest.
  */
-export async function BranchesToday({ date, today }: { date: string; today: string }) {
+export async function BranchesToday({ date, today, branchParam }: { date: string; today: string; branchParam?: string }) {
     const week = mondayOf(date);
     const attendanceIn = date < today;
     let branches: Branch[];
@@ -219,13 +220,17 @@ export async function BranchesToday({ date, today }: { date: string; today: stri
         );
     }
 
+    // the top bar's branch, or every branch for "All branches"
+    const selectedId = await getSelectedBranchId(branchParam, branches);
+    const shown = selectedId === undefined ? branches : branches.filter((branch) => branch.branchId === selectedId);
+
     let values: BranchSummary[];
     let failed: number;
 
     try {
         ({ values, failed } = settledOrThrow(
             await Promise.allSettled(
-                branches.map(async (branch): Promise<BranchSummary> => {
+                shown.map(async (branch): Promise<BranchSummary> => {
                     const [schedule, stats, gaps] = await Promise.all([
                         fetchApi<BranchScheduleView>(`/api/branches/${branch.branchId}/schedule?week_start=${week}`),
                         fetchApi<DashboardResponse>(`/api/dashboard?branch_id=${branch.branchId}&from=${date}&to=${date}`),

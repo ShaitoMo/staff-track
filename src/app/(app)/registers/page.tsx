@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { AccessMessage } from "@/components/layout/access-message";
-import { BranchFilter } from "@/components/layout/branch-filter";
 import { RegisterRow, RegisterTable } from "@/components/registers/register-table";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
+import { getSelectedBranchId } from "@/lib/session";
 import { Branch } from "@/types/branch";
 import { Register } from "@/types/register";
 
@@ -15,13 +15,13 @@ export default async function RegistersPage({
     searchParams: Promise<{ branch?: string }>;
 }) {
     const { branch } = await searchParams;
-    const branchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
-
+    let branchId: number | undefined;
     let branches: Branch[];
     let registersByBranch: Register[][];
 
     try {
         branches = await fetchApi<Branch[]>("/api/branches");
+        branchId = await getSelectedBranchId(branch, branches);
         const shown = branchId !== undefined ? branches.filter((b) => b.branchId === branchId) : branches;
         registersByBranch = await Promise.all(
             shown.map((b) => fetchApi<Register[]>(`/api/branches/${b.branchId}/registers`)),
@@ -48,7 +48,6 @@ export default async function RegistersPage({
                     Add register
                 </Link>
             </div>
-            {branches.length > 1 && <BranchFilter basePath="/registers" branches={branches} activeBranchId={branchId} />}
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>

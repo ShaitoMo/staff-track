@@ -1,5 +1,4 @@
 import { AccessMessage } from "@/components/layout/access-message";
-import { BranchFilter } from "@/components/layout/branch-filter";
 import { TaskCards } from "@/components/tasks/task-cards";
 import { TaskRow, TaskTable } from "@/components/tasks/task-table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -59,9 +58,6 @@ export async function TaskDefinitions({ branchId }: { branchId?: number }) {
 
     return (
         <div className="flex flex-col gap-4">
-            {branches.length > 1 ? (
-                <BranchFilter basePath="/tasks" branches={branches} activeBranchId={branchId} />
-            ) : null}
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>

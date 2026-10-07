@@ -19,7 +19,16 @@ import { SafeUser } from "@/types/user";
  * One branch's week of scheduled shifts against what the clock recorded (FR6). Both reads fire
  * together; the dialogs get only the id/name pairs they need, not the full user records.
  */
-export async function AttendanceSection({ branchId, weekStart }: { branchId: number; weekStart: string }) {
+export async function AttendanceSection({
+    branchId,
+    weekStart,
+    showWeekNav = true,
+}: {
+    branchId: number;
+    weekStart: string;
+    /** False when the page shows one week nav over several stacked branches. */
+    showWeekNav?: boolean;
+}) {
     const weekEnd = addDays(weekStart, 6);
 
     let report: ScheduleVsActualRow[];
@@ -52,7 +61,9 @@ export async function AttendanceSection({ branchId, weekStart }: { branchId: num
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <WeekNav basePath="/attendance" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
+                {showWeekNav ? (
+                    <WeekNav basePath="/attendance" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
+                ) : null}
                 <div className="flex flex-wrap items-center gap-2">
                     <AddPunchDialog branchId={branchId} staff={staff} defaultDate={today} />
                     <ImportAttendanceDialog branchId={branchId} />
