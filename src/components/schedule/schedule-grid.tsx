@@ -21,7 +21,7 @@ import { ApiError } from "@/lib/api-client";
 import { copyWeek, createShift, deleteShift, setShiftRegister } from "@/lib/api/shifts";
 import { addDays, formatDay } from "@/lib/coverage-rows";
 import {
-    NEEDS_TINT,
+    NEEDS_DOT,
     OpenRegisterCell,
     OpenRegisterRow,
     RegisterSeat,
@@ -284,7 +284,8 @@ function RoleCellView({
         <CellShell pending={pending} error={error}>
             {/* A met slot shows only its people; the number appears only when someone is still needed. */}
             {cell.shortfall > 0 ? (
-                <span className="text-xs font-medium text-destructive">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <span aria-hidden="true" className={NEEDS_DOT} />
                     Needs {cell.shortfall}
                     <span className="sr-only"> more of {cell.required}</span>
                 </span>
@@ -368,7 +369,7 @@ function OpenRegistersCellView({
         <CellShell pending={pending} error={error}>
             {cell.open.map((seat) => (
                 <div key={seat.registerId} className="flex flex-wrap items-center gap-x-1">
-                    <span className="text-xs font-medium text-destructive">{seat.name}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{seat.name}</span>
                     <PersonPicker
                         placeholder="Assign"
                         label={`Assign someone to ${seat.name}, ${periodLabel}, ${day}`}
@@ -506,10 +507,9 @@ export function ScheduleGrid({
         />
     );
 
-    // A slot still needing someone is tinted (see the legend); otherwise today's column carries a
-    // light tint top to bottom, so it stays findable deep in the grid.
-    const dayCell = (date: string, needsSomeone: boolean) =>
-        cn("align-top", needsSomeone ? NEEDS_TINT : date === today && "bg-muted");
+    // Today's column carries a light tint top to bottom, so it stays findable deep in the grid; a slot
+    // still needing someone says so with its own dot (NEEDS_DOT), not a fill.
+    const dayCell = (date: string) => cn("align-top", date === today && "bg-muted");
 
     return (
         <div>
@@ -543,7 +543,7 @@ export function ScheduleGrid({
                                     <TableRow key={`role-${row.roleId}-${row.periodId}`} className="hover:bg-transparent">
                                         <RowHeader title={row.roleName} />
                                         {row.cells.map((cell, index) => (
-                                            <TableCell key={cell.date} className={dayCell(cell.date, roleNeeds(row, index))}>
+                                            <TableCell key={cell.date} className={dayCell(cell.date)}>
                                                 {roleCell(row, index, openRow)}
                                             </TableCell>
                                         ))}
@@ -553,7 +553,7 @@ export function ScheduleGrid({
                                     <TableRow className="hover:bg-transparent">
                                         <RowHeader title="Open registers" muted />
                                         {openRow.cells.map((cell, index) => (
-                                            <TableCell key={cell.date} className={dayCell(cell.date, openNeeds(openRow, index))}>
+                                            <TableCell key={cell.date} className={dayCell(cell.date)}>
                                                 {openCell(period, openRow, index)}
                                             </TableCell>
                                         ))}
@@ -580,14 +580,14 @@ export function ScheduleGrid({
                                 {rows.map((row) => (
                                     <li
                                         key={row.roleId}
-                                        className={cn("grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3", roleNeeds(row, index) && NEEDS_TINT)}
+                                        className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3"
                                     >
                                         <span className="pt-0.5 text-sm font-medium">{row.roleName}</span>
                                         {roleCell(row, index, openRow)}
                                     </li>
                                 ))}
                                 {openRow ? (
-                                    <li className={cn("grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3", openNeeds(openRow, index) && NEEDS_TINT)}>
+                                    <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3">
                                         <span className="pt-0.5 text-xs text-muted-foreground">Open registers</span>
                                         {openNeeds(openRow, index) ? (
                                             openCell(period, openRow, index)
@@ -645,7 +645,7 @@ function DayView({
                             <span className={cn(!isSelected && "text-muted-foreground")}>{weekday}</span>
                             <span className="text-sm font-medium tabular-nums">{day}</span>
                             {dayNeeds[index] ? (
-                                <span aria-hidden="true" className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive" />
+                                <span aria-hidden="true" className={cn(NEEDS_DOT, "absolute top-1 right-1")} />
                             ) : null}
                         </button>
                     );
@@ -699,7 +699,7 @@ export function CopyWeekButton({ branchId, weekStart }: { branchId: number; week
             <p role="status" className={cn("text-xs empty:hidden", message?.isError ? "text-destructive" : "text-muted-foreground")}>
                 {message?.text}
             </p>
-            <Button size="sm" onClick={() => setConfirming(true)} disabled={pending} className={TOUCH_HEIGHT}>
+            <Button variant="outline" size="sm" onClick={() => setConfirming(true)} disabled={pending} className={TOUCH_HEIGHT}>
                 {pending ? <Spinner data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
                 Copy previous week
             </Button>

@@ -86,6 +86,8 @@ Destructive, warning, success/verified, and informational states use shadcn's de
 
 One adjustment: the destructive `Badge` (e.g. "Overdue", "Declined") sets its text in `color-mix(in oklch, var(--destructive) 85%, black)`, because the plain token on its own 10% tint measured 4.0:1 at 12px on a white card; the darker shade clears AA's 4.5:1 at 5.7:1 on a card and 5.4:1 on the `#f8fafa` page background. Dark mode keeps the plain token.
 
+Status color marks, it doesn't fill. In the schedule grid a slot still needing someone gets a small destructive dot before muted "Needs N" text (`NEEDS_DOT`, `src/lib/schedule-grid.ts`), not a tinted cell; the weekly table on Roles & coverage uses the same dot before "0 / 1 (−1)" in plain text, not red: when most of a week is short, filled cells turned the grid pink and stopped reading as a signal. Red text is kept for real conflicts (a register with two people on it) and errors; an unstaffed register is muted, since the week's summary line already counts it.
+
 ### Named Rules
 **The One Accent Rule.** Market Blue appears only on the primary action per view and on interactive/focus state. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.
 
