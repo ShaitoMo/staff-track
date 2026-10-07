@@ -6,7 +6,7 @@ import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -53,6 +53,21 @@ const SCHEDULES: { value: Schedule; label: string }[] = [
     { value: "daily", label: "Every day" },
     { value: "weekly", label: "Certain weekdays" },
 ];
+
+/**
+ * One section of the form card: its name in a narrow left column from `md` up, the fields stacked to
+ * the right; on a phone, the name above. A rule between sections and wider padding than the gaps
+ * between fields, so each section reads as a group. The legend floats so it leaves the fieldset's
+ * border and sits in the grid like any other box (HTML: a floated legend isn't the "rendered legend").
+ */
+function FormSection({ legend, children }: { legend: string; children: React.ReactNode }) {
+    return (
+        <FieldSet className="grid gap-x-8 gap-y-4 border-t border-border px-4 py-6 first-of-type:border-t-0 sm:px-6 md:grid-cols-[10rem_minmax(0,1fr)]">
+            <FieldLegend className="float-left mb-0 font-semibold">{legend}</FieldLegend>
+            <div className="flex min-w-0 flex-col gap-5">{children}</div>
+        </FieldSet>
+    );
+}
 
 export function TaskForm({ branches, roles, users, userBranches, mode = "create", taskId, initialValues }: TaskFormProps) {
     const router = useRouter();
@@ -139,18 +154,18 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     }
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="flex max-w-3xl flex-col gap-6">
-            <FieldGroup>
+        <form onSubmit={handleSubmit} noValidate className="max-w-3xl">
+            <div className="rounded-xl bg-card ring-1 ring-foreground/10">
                 {submitError ? (
-                    <Alert variant="destructive">
-                        <AlertCircleIcon />
-                        <AlertDescription>{submitError}</AlertDescription>
-                    </Alert>
+                    <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+                        <Alert variant="destructive">
+                            <AlertCircleIcon />
+                            <AlertDescription>{submitError}</AlertDescription>
+                        </Alert>
+                    </div>
                 ) : null}
 
-                <FieldSet>
-                    <FieldLegend>Details</FieldLegend>
-
+                <FormSection legend="Details">
                     <Field data-invalid={!!errors.title || undefined}>
                         <FieldLabel htmlFor="title">Title</FieldLabel>
                         <Input
@@ -166,12 +181,10 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                         <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
                         <Input id="description" value={description} disabled={pending} onChange={(e) => setDescription(e.target.value)} />
                     </Field>
-                </FieldSet>
+                </FormSection>
 
-                <div className="grid gap-6 md:grid-cols-2">
-                    <FieldSet>
-                        <FieldLegend>Assignment</FieldLegend>
-
+                {/* one column, in the order it's filled in: the branch decides who can be picked below */}
+                <FormSection legend="Assignment">
                         <Field data-invalid={!!errors.branchId || undefined}>
                             <FieldLabel htmlFor="branch">Branch</FieldLabel>
                             <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending || isEdit}>
@@ -268,11 +281,9 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                             )}
                             <FieldError>{errors.assignee}</FieldError>
                         </Field>
-                    </FieldSet>
+                </FormSection>
 
-                    <FieldSet>
-                        <FieldLegend>Schedule</FieldLegend>
-
+                <FormSection legend="Schedule">
                         {wasOneOff ? (
                             <Field>
                                 <FieldLabel>Repeats</FieldLabel>
@@ -349,14 +360,16 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                                 <FieldLabel htmlFor="active" className="font-normal">Active</FieldLabel>
                             </Field>
                         ) : null}
-                    </FieldSet>
-                </div>
+                </FormSection>
 
-                <Button type="submit" disabled={pending} className="w-fit">
-                    {pending ? <Spinner data-icon="inline-start" /> : null}
-                    {isEdit ? "Save changes" : "Create task"}
-                </Button>
-            </FieldGroup>
+                {/* the end of the reading path, under its own rule */}
+                <div className="flex justify-end border-t border-border px-4 py-4 sm:px-6">
+                    <Button type="submit" disabled={pending}>
+                        {pending ? <Spinner data-icon="inline-start" /> : null}
+                        {isEdit ? "Save changes" : "Create task"}
+                    </Button>
+                </div>
+            </div>
         </form>
     );
 }
