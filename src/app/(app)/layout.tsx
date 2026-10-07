@@ -44,12 +44,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="flex min-h-screen flex-col">
-            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-background">
-                {/* on a wide screen the brand sits over the left bar, so the switcher lines up with the page */}
+            <header
+                className={cn(
+                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-background",
+                    // the dark column runs unbroken past the top bar, so its light rule stops where the column starts
+                    canManage && "lg:border-b-0",
+                )}
+            >
+                {/* on a wide screen the brand tops the dark left bar, so the switcher lines up with the page */}
                 <div
                     className={cn(
                         "flex h-full shrink-0 items-center gap-1 pr-3",
-                        canManage ? "pl-2 lg:w-56 lg:border-r lg:border-border lg:pl-5" : "pl-4 lg:pl-6",
+                        canManage
+                            ? "pl-2 lg:w-56 lg:bg-sidebar lg:pl-5 lg:text-sidebar-foreground"
+                            : "pl-4 lg:pl-6",
                     )}
                 >
                     {canManage ? (
@@ -61,7 +69,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         StaffTrack
                     </Link>
                 </div>
-                <div className="flex min-w-0 flex-1 items-center gap-3 pr-2 lg:px-6">
+                <div className={cn("flex h-full min-w-0 flex-1 items-center gap-3 pr-2 lg:px-6", canManage && "lg:border-b lg:border-border")}>
                     {canManage ? (
                         <Suspense>
                             <BranchSwitcher branches={branches} preference={preference} />
@@ -76,7 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </header>
             <div className="flex flex-1">
                 {canManage ? (
-                    <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto border-r border-border px-3 py-5 lg:block">
+                    <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto bg-sidebar px-3 py-5 text-sidebar-foreground lg:block">
                         <SidebarNav />
                     </aside>
                 ) : null}

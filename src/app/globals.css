@@ -17,6 +17,7 @@
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -73,13 +74,15 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.45rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #16191b;
+  /* the left bar: Ledger Ink, the app's one dark region; Market Blue stays the only accent on it */
+  --sidebar: #16191b;
+  --sidebar-foreground: #e6e9e8;
+  --sidebar-muted-foreground: #949c9f;
   --sidebar-primary: #0066cc;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: #16191b;
-  --sidebar-border: #e2e5e4;
+  --sidebar-accent: #23282b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2b3134;
   --sidebar-ring: #0066cc;
 }
 
@@ -109,6 +112,7 @@
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-muted-foreground: oklch(0.708 0 0);
   --sidebar-primary: #0066cc;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: oklch(0.269 0 0);

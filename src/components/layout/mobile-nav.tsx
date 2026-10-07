@@ -7,6 +7,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { TOUCH_SIZE } from "@/lib/touch";
+import { cn } from "@/lib/utils";
 
 /**
  * Below `lg` the left bar becomes this slide-out menu. It is open only while the page it was opened
@@ -22,10 +23,20 @@ export function MobileNav() {
             <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" className={TOUCH_SIZE} />}>
                 <MenuIcon />
             </SheetTrigger>
-            <SheetContent side="left" showCloseButton={false} className="w-64 gap-0 p-0">
-                <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-                    <SheetTitle className="text-base font-semibold">StaffTrack</SheetTitle>
-                    <SheetClose render={<Button variant="ghost" size="icon" aria-label="Close menu" className={TOUCH_SIZE} />}>
+            {/* the same dark surface as the desktop left bar */}
+            <SheetContent side="left" showCloseButton={false} className="w-64 gap-0 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground">
+                <div className="flex h-14 shrink-0 items-center justify-between px-4">
+                    <SheetTitle className="text-base font-semibold text-sidebar-foreground">StaffTrack</SheetTitle>
+                    <SheetClose
+                        render={
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Close menu"
+                                className={cn("text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", TOUCH_SIZE)}
+                            />
+                        }
+                    >
                         <XIcon />
                     </SheetClose>
                 </div>

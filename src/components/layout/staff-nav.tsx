@@ -35,7 +35,7 @@ export function StaffNav() {
 
 /**
  * Staff on a phone, mid-shift: the four sections fixed at the bottom, within thumb reach. Each tab
- * is the full cell (56px tall), and the bar clears the home indicator on phones that have one.
+ * is the full cell (64px tall), and the bar clears the home indicator on phones that have one.
  */
 export function StaffTabBar() {
     const pathname = usePathname();
@@ -54,11 +54,19 @@ export function StaffTabBar() {
                                 href={href}
                                 aria-current={active ? "page" : undefined}
                                 className={cn(
-                                    "flex h-14 flex-col items-center justify-center gap-1 text-xs font-medium",
+                                    "flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium",
                                     active ? "text-primary" : "text-muted-foreground",
                                 )}
                             >
-                                <Icon aria-hidden className="size-5" />
+                                {/* the left bar's active pill, sized for a thumb: Market Blue behind the icon */}
+                                <span
+                                    className={cn(
+                                        "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
+                                        active && "bg-primary text-primary-foreground",
+                                    )}
+                                >
+                                    <Icon aria-hidden className="size-5" />
+                                </span>
                                 {label}
                             </Link>
                         </li>
