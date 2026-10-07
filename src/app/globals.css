@@ -119,7 +119,12 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+  /* a solid 2px ring for anything without its own focus style (text links, plain buttons);
+     the half-opacity default measured ~2.4:1, under WCAG 1.4.11's 3:1 */
+  :focus-visible {
+    @apply outline-2 outline-offset-2;
   }
   body {
     @apply bg-background text-foreground;

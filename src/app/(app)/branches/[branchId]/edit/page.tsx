@@ -40,7 +40,7 @@ export default async function EditBranchPage({
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">Edit {branch.name}</h1>
+            <h1 className="text-xl font-semibold">Edit {branch.name}</h1>
             <BranchForm
                 mode="edit"
                 branchId={branchId}

@@ -37,7 +37,7 @@ export default async function EditRegisterPage({
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">Edit {register.name}</h1>
+            <h1 className="text-xl font-semibold">Edit {register.name}</h1>
             <RegisterForm
                 mode="edit"
                 registerId={registerId}

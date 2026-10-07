@@ -27,7 +27,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     if (session.role !== OWNER_ROLE && session.role !== MANAGER_ROLE) {
         return (
             <div className="flex flex-col gap-6">
-                <h1 className="text-xl font-medium">Home</h1>
+                <h1 className="text-xl font-semibold">Home</h1>
                 <Suspense fallback={loading}>
                     <StaffToday userId={session.userId} branchIds={session.branchIds} />
                 </Suspense>
@@ -40,7 +40,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
     return (
         <div className="flex flex-col gap-6">
-            <h1 className="text-xl font-medium">Dashboard</h1>
+            <h1 className="text-xl font-semibold">Dashboard</h1>
             <DayNav basePath="/" date={date} today={today} />
             <Suspense key={date} fallback={loading}>
                 <BranchesToday date={date} today={today} />

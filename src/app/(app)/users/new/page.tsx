@@ -26,7 +26,7 @@ export default async function NewUserPage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">New user</h1>
+            <h1 className="text-xl font-semibold">New user</h1>
             <UserForm mode="create" roles={assignableRoles} branches={branches} canEditRoleAndStatus />
         </div>
     );

@@ -18,10 +18,6 @@ import { BranchScheduleView } from "@/types/shift";
 import type { TaskInstanceListView } from "@/types/task-instance";
 
 function ShiftList({ shifts, showBranch }: { shifts: MyShift[]; showBranch: boolean }) {
-    if (shifts.length === 0) {
-        return <p className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">No shift</p>;
-    }
-
     return (
         <ul className="divide-y divide-border rounded-lg border border-border bg-card">
             {shifts.map((shift) => {
@@ -42,6 +38,35 @@ function ShiftList({ shifts, showBranch }: { shifts: MyShift[]; showBranch: bool
     );
 }
 
+/**
+ * A label tied to the content right under it; a link, when there is one, shares the label's row.
+ * With nothing to list, the empty note takes that row too instead of a line of its own.
+ */
+function DayGroup({
+    title,
+    empty,
+    link,
+    children,
+}: {
+    title: string;
+    empty?: string;
+    link?: React.ReactNode;
+    children?: React.ReactNode;
+}) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-baseline gap-3">
+                    <h3 className="text-xs font-medium tracking-[0.02em] text-muted-foreground">{title}</h3>
+                    {empty ? <p className="text-sm text-muted-foreground">{empty}</p> : null}
+                </div>
+                {link}
+            </div>
+            {empty ? null : children}
+        </div>
+    );
+}
+
 /** One day's shifts, then that day's tasks — what a staff member checks before and on shift. */
 function DayBlock({
     id,
@@ -50,6 +75,7 @@ function DayBlock({
     shifts,
     tasks,
     showBranch,
+    tasksLink,
 }: {
     id: string;
     label: string;
@@ -57,21 +83,35 @@ function DayBlock({
     shifts: MyShift[];
     tasks: InstanceRow[];
     showBranch: boolean;
+    tasksLink?: React.ReactNode;
 }) {
     return (
-        <section aria-labelledby={id} className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-                <h2 id={id} className="text-base font-medium">
+        <section aria-labelledby={id} className="@container flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3 border-b border-border">
+                <h2 id={id} className="text-base font-semibold">
                     {label} <span className="font-normal text-muted-foreground">· {formatDay(date)}</span>
                 </h2>
                 <Link href={`/schedule?week=${mondayOf(date)}`} aria-label={`${label}'s schedule`} className={staffLinkClass}>
                     Schedule
                 </Link>
             </div>
-            <h3 className="text-xs font-medium text-muted-foreground">Shift</h3>
-            <ShiftList shifts={shifts} showBranch={showBranch} />
-            <h3 className="mt-1 text-xs font-medium text-muted-foreground">Tasks due</h3>
-            {tasks.length === 0 ? <p className="text-sm text-muted-foreground">No tasks due.</p> : <MyTaskList rows={tasks} />}
+            {shifts.length === 0 && tasks.length === 0 ? (
+                // a free day says so once, rather than two labelled blanks
+                <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">No shift and no tasks due.</p>
+                    {tasksLink}
+                </div>
+            ) : (
+                <>
+                    <DayGroup title="Shift" empty={shifts.length === 0 ? "No shift." : undefined}>
+                        <ShiftList shifts={shifts} showBranch={showBranch} />
+                    </DayGroup>
+                    <DayGroup title="Tasks due" empty={tasks.length === 0 ? "No tasks due." : undefined} link={tasksLink}>
+                        {/* two-up once the column is wide enough, so cards don't stretch across a desktop */}
+                        <MyTaskList rows={tasks} className="@3xl:grid @3xl:grid-cols-2" />
+                    </DayGroup>
+                </>
+            )}
         </section>
     );
 }
@@ -145,22 +185,38 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
     );
     const showBranch = branchIds.length > 1;
 
+    // a phone reads top to bottom; a wide screen keeps today as the main column and sets the rest beside it
     return (
-        <div className="flex max-w-2xl flex-col gap-8">
-            <BranchesFailedAlert failed={failed} consequence="shifts there are missing below" />
-            <DayBlock id="today" label="Today" date={today} shifts={shifts.today} tasks={tasks.today} showBranch={showBranch} />
-            <DayBlock id="tomorrow" label="Tomorrow" date={tomorrow} shifts={shifts.tomorrow} tasks={tasks.tomorrow} showBranch={showBranch} />
-            {/* right after the tasks it extends, not below the pay block */}
-            <Link href="/my-tasks" className={staffLinkClass}>
-                All my tasks
-            </Link>
-            <MissedTime
-                title="Missed this month"
-                minutes={missedMinutes(report)}
-                pending={report.filter((row) => row.incomplete_attendance_id !== null).length}
-                link={{ href: "/attendance", label: "Attendance" }}
-                className="rounded-lg border border-border bg-card p-4"
+        <div className="grid max-w-2xl gap-10 lg:max-w-7xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
+            {failed > 0 ? (
+                <div className="lg:col-span-full">
+                    <BranchesFailedAlert failed={failed} consequence="shifts there are missing below" />
+                </div>
+            ) : null}
+            <DayBlock
+                id="today"
+                label="Today"
+                date={today}
+                shifts={shifts.today}
+                tasks={tasks.today}
+                showBranch={showBranch}
+                // on the list it extends, which is where overdue tasks land too
+                tasksLink={
+                    <Link href="/my-tasks" className={staffLinkClass}>
+                        All my tasks
+                    </Link>
+                }
             />
+            <div className="flex flex-col gap-10">
+                <DayBlock id="tomorrow" label="Tomorrow" date={tomorrow} shifts={shifts.tomorrow} tasks={tasks.tomorrow} showBranch={showBranch} />
+                <MissedTime
+                    title="Missed this month"
+                    minutes={missedMinutes(report)}
+                    pending={report.filter((row) => row.incomplete_attendance_id !== null).length}
+                    link={{ href: "/attendance", label: "Attendance" }}
+                    className="rounded-lg border border-border bg-card p-4"
+                />
+            </div>
         </div>
     );
 }

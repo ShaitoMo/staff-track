@@ -12,11 +12,11 @@ import { cn } from "@/lib/utils";
  * shows how it ended, so a declined task doesn't just vanish. The title opens the same full-detail
  * modal as the owner/manager Instances view. Only CompleteTaskForm and the dialog are client islands.
  */
-export function MyTaskList({ rows }: { rows: InstanceRow[] }) {
+export function MyTaskList({ rows, className }: { rows: InstanceRow[]; className?: string }) {
     const today = todayDateString();
 
     return (
-        <ul className="flex flex-col gap-3">
+        <ul className={cn("flex flex-col gap-3", className)}>
             {rows.map((row) => {
                 const pending = row.status === "pending";
                 // a recurring task repeats its title daily, so an overdue copy must say so or it reads as a duplicate
@@ -37,7 +37,9 @@ export function MyTaskList({ rows }: { rows: InstanceRow[] }) {
                             <span>{row.branchName}</span>
                             <span className={cn(overdue && "text-destructive")}>Due {formatDay(row.dueDate)}</span>
                         </div>
-                        {pending ? <CompleteTaskForm instanceId={row.instanceId} /> : null}
+                        {pending ? (
+                            <CompleteTaskForm instanceId={row.instanceId} taskLabel={`${row.title}, due ${formatDay(row.dueDate)}`} />
+                        ) : null}
                         {!pending && row.photoMediaId !== null ? (
                             <PhotoLink mediaId={row.photoMediaId} className="mt-1 text-sm text-primary hover:underline" />
                         ) : null}

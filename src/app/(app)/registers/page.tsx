@@ -43,7 +43,7 @@ export default async function RegistersPage({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-medium">Registers</h1>
+                <h1 className="text-xl font-semibold">Registers</h1>
                 <Link href="/registers/new" className={buttonVariants({ size: "sm" })}>
                     Add register
                 </Link>

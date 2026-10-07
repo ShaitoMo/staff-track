@@ -52,7 +52,7 @@ export default async function RolesPage({
 
     return (
         <div className="flex flex-col gap-8">
-            <h1 className="text-xl font-medium">Roles &amp; coverage</h1>
+            <h1 className="text-xl font-semibold">Roles &amp; coverage</h1>
 
             <section aria-labelledby="roles-heading" className="flex flex-col gap-4">
                 <h2 id="roles-heading" className="text-base font-medium">Roles</h2>

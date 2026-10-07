@@ -15,7 +15,7 @@ export default async function MyTasksPage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">My tasks</h1>
+            <h1 className="text-xl font-semibold">My tasks</h1>
             {session ? (
                 <Suspense fallback={loading}>
                     <StaffTaskList userId={session.userId} />

@@ -10,8 +10,11 @@ import { ApiError } from "@/lib/api-client";
 import { completeInstance } from "@/lib/api/task-instances";
 import { MAX_PHOTO_BYTES } from "@/lib/photo-limits";
 
-/** Phone-first: take a photo, check the preview, mark the task done. The photo is the proof, so it is required. */
-export function CompleteTaskForm({ instanceId }: { instanceId: number }) {
+/**
+ * Phone-first: take a photo, check the preview, mark the task done. The photo is the proof, so it is required.
+ * `taskLabel` names the task in each button's accessible name, since a list repeats these buttons per card.
+ */
+export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number; taskLabel: string }) {
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
     const previewRef = useRef<string | null>(null);
@@ -92,16 +95,32 @@ export function CompleteTaskForm({ instanceId }: { instanceId: number }) {
             ) : null}
 
             {file === null ? (
-                <Button type="button" variant="outline" size="lg" className="h-11" disabled={pending} onClick={() => inputRef.current?.click()}>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-11"
+                    aria-label={`Take photo for ${taskLabel}`}
+                    disabled={pending}
+                    onClick={() => inputRef.current?.click()}
+                >
                     Take photo
                 </Button>
             ) : (
                 <div className="flex gap-2">
-                    <Button type="button" size="lg" className="h-11 flex-1" disabled={pending} onClick={submit}>
+                    <Button type="button" size="lg" className="h-11 flex-1" aria-label={`Mark as done: ${taskLabel}`} disabled={pending} onClick={submit}>
                         {pending ? <Spinner data-icon="inline-start" /> : null}
                         Mark as done
                     </Button>
-                    <Button type="button" variant="outline" size="lg" className="h-11" disabled={pending} onClick={() => inputRef.current?.click()}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="h-11"
+                        aria-label={`Retake photo for ${taskLabel}`}
+                        disabled={pending}
+                        onClick={() => inputRef.current?.click()}
+                    >
                         Retake
                     </Button>
                 </div>
