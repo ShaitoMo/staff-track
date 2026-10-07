@@ -46,7 +46,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex min-h-screen flex-col">
             <header
                 className={cn(
-                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-background",
+                    // Card, a step up from the Paper page, so the bar reads as its own band (no shadow: flat by default)
+                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-card",
                     // the dark column runs unbroken past the top bar, so its light rule stops where the column starts
                     canManage && "lg:border-b-0",
                 )}

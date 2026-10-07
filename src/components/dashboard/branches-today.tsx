@@ -8,6 +8,7 @@ import { fetchApi } from "@/lib/api-server";
 import { getSelectedBranchId } from "@/lib/session";
 import { mondayOf } from "@/lib/coverage-rows";
 import { BranchDay, branchDay, DayPeriod } from "@/lib/dashboard-day";
+import { NEEDS_DOT } from "@/lib/schedule-grid";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 import { CoverageGapRow } from "@/types/coverage-gap";
@@ -48,12 +49,13 @@ function problemsOf({ day, stats }: BranchSummary, attendanceIn: boolean): strin
     ].filter((problem) => problem !== null);
 }
 
-/** A labelled total; red only for what needs someone to act. `null` is a figure not known yet. */
+/** A labelled total; a red dot (not red digits) on what needs someone to act. `null` is a figure not known yet. */
 function Stat({ label, value, urgent = false }: { label: string; value: number | null; urgent?: boolean }) {
     return (
         <div className="flex flex-col gap-0.5">
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className={cn("text-lg font-semibold tabular-nums", value === null && "text-muted-foreground", urgent && value !== null && value > 0 && "text-destructive")}>
+            <dd className={cn("flex items-center gap-2 text-lg font-semibold tabular-nums", value === null && "text-muted-foreground")}>
+                {urgent && value !== null && value > 0 ? <span aria-hidden="true" className={NEEDS_DOT} /> : null}
                 {value ?? "—"}
             </dd>
         </div>
@@ -79,28 +81,32 @@ function Counts({ lines, none }: { lines: { count: number; text: string; urgent?
     );
 }
 
-/** 'Morning · 3 scheduled · Manager: Alice', and in red what's still missing there. */
+/**
+ * 'Morning · 3 scheduled · Manager: Alice', then what's still missing there, marked the way the
+ * schedule grid marks it (NEEDS_DOT). The card's red summary line already names every problem once,
+ * so nothing here repeats it in red.
+ */
 function PeriodRow({ period }: { period: DayPeriod }) {
     return (
         <li className="flex flex-col gap-0.5 py-2 first:pt-0">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <span className="font-medium">{period.name ?? "Other hours"}</span>
                 {period.staffCount === 0 ? (
-                    // the shortage line below already says who is needed; one red phrase is enough
-                    <span className="text-destructive">Nobody scheduled</span>
+                    <span className="text-muted-foreground">Nobody scheduled</span>
                 ) : (
                     <span className="text-muted-foreground">
                         <span className="tabular-nums">{period.staffCount}</span> scheduled ·{" "}
                         {period.managers.length > 0 ? (
                             <span className="text-foreground">Manager: {period.managers.join(", ")}</span>
                         ) : (
-                            <span className="text-destructive">No manager scheduled</span>
+                            "No manager scheduled"
                         )}
                     </span>
                 )}
             </div>
             {period.shortages.length > 0 ? (
-                <p className="text-destructive">
+                <p className="flex items-center gap-1.5 text-muted-foreground">
+                    <span aria-hidden="true" className={NEEDS_DOT} />
                     Short: {period.shortages.map((item) => `${item.short} ${item.roleName}`).join(", ")}
                 </p>
             ) : null}

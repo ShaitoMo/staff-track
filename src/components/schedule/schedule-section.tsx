@@ -170,7 +170,7 @@ export async function ScheduleSection({
             {roleRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     No coverage requirements yet. Set how many people each role needs on{" "}
-                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-foreground underline underline-offset-4">
+                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-primary underline-offset-4 hover:underline">
                         Roles
                     </Link>{" "}
                     to schedule by role; registers can still be filled below.

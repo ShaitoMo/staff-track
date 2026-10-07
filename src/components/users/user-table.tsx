@@ -29,7 +29,7 @@ export function UserTable({ rows }: { rows: UserRow[] }) {
                             </TableCell>
                             <TableCell className="capitalize">{row.roleName}</TableCell>
                             <TableCell>
-                                <Badge variant={row.isActive ? "outline" : "destructive"}>
+                                <Badge variant="outline" className={cn(!row.isActive && "border-dashed text-muted-foreground")}>
                                     {row.isActive ? "Active" : "Inactive"}
                                 </Badge>
                             </TableCell>

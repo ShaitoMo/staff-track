@@ -31,6 +31,7 @@ import {
     StaffMember,
 } from "@/lib/schedule-grid";
 import { TOUCH_HEIGHT } from "@/lib/touch";
+import { CHOSEN } from "@/lib/selection";
 import { cn } from "@/lib/utils";
 import { ShiftPeriodView } from "@/types/shift-period";
 
@@ -402,11 +403,11 @@ function OpenRegistersCellView({
     );
 }
 
-/** A period's heading row: its name and hours, spanning the week. */
+/** A period's heading row: its name and hours, spanning the week. No fill — today's column is the grid's one tint. */
 function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: number }) {
     return (
         <TableRow className="hover:bg-transparent">
-            <TableHead scope="colgroup" colSpan={colSpan} className="h-8 bg-muted/60 text-xs font-medium text-foreground">
+            <TableHead scope="colgroup" colSpan={colSpan} className="h-8 pt-3 text-xs font-medium text-foreground">
                 {period.name}
                 <span className="ml-2 font-mono font-normal text-muted-foreground tabular-nums">
                     {period.defaultStart}–{period.defaultEnd}
@@ -638,7 +639,7 @@ function DayView({
                             onClick={() => setSelected(index)}
                             className={cn(
                                 "relative flex min-h-12 flex-col items-center justify-center rounded-md border text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                                isSelected ? "border-foreground bg-foreground text-background" : "border-border bg-card text-foreground hover:bg-muted",
+                                isSelected ? CHOSEN : "border-border bg-card text-foreground hover:bg-muted",
                                 !isSelected && date === today && "border-foreground/40 bg-muted",
                             )}
                         >

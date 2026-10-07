@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The owner/manager sections, grouped by what they're for, on the dark sidebar tokens (globals.css);
- * the active one is a solid Market Blue pill. Shared by the desktop left bar and the
+ * the active one sits on a lighter Ledger Ink step in white. Shared by the desktop left bar and the
  * slide-out menu on narrow screens; `onCurrentPage` lets the menu close when the page already
  * showing is chosen, since that link doesn't navigate.
  */
@@ -30,14 +30,16 @@ export function SidebarNav({ onCurrentPage }: { onCurrentPage?: () => void }) {
                                         onClick={href === pathname ? onCurrentPage : undefined}
                                         aria-current={active ? "page" : undefined}
                                         className={cn(
-                                            "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium transition-colors",
+                                            // on Ledger Ink the app's blue focus outline is only 3.2:1, so it goes light here (14:1)
+                                            "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors focus-visible:outline-sidebar-foreground",
+                                            // where you are is a lighter surface and a heavier weight — never blue, which marks actions
                                             active
-                                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                                                : "text-sidebar-foreground hover:bg-sidebar-accent/60",
                                             TOUCH_HEIGHT,
                                         )}
                                     >
-                                        <Icon aria-hidden className={cn("size-4 shrink-0", active ? "text-sidebar-primary-foreground" : "text-sidebar-muted-foreground")} />
+                                        <Icon aria-hidden className={cn("size-4 shrink-0", active ? "text-sidebar-accent-foreground" : "text-sidebar-muted-foreground")} />
                                         {label}
                                     </Link>
                                 </li>

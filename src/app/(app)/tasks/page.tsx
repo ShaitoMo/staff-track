@@ -9,7 +9,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { fetchApi } from "@/lib/api-server";
 import { parseDateParam } from "@/lib/instance-rows";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
+import { CHOSEN } from "@/lib/selection";
 import { getSelectedBranchId, getSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 
 export default async function TasksPage({
@@ -39,12 +41,17 @@ export default async function TasksPage({
                 </Link>
             </div>
             <nav className="flex gap-2">
-                <Link href="/tasks" className={buttonVariants({ variant: showInstances ? "outline" : "secondary", size: "sm" })}>
+                <Link
+                    href="/tasks"
+                    aria-current={showInstances ? undefined : "page"}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), !showInstances && CHOSEN)}
+                >
                     Tasks
                 </Link>
                 <Link
                     href="/tasks?view=instances"
-                    className={buttonVariants({ variant: showInstances ? "secondary" : "outline", size: "sm" })}
+                    aria-current={showInstances ? "page" : undefined}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), showInstances && CHOSEN)}
                 >
                     Instances
                 </Link>
