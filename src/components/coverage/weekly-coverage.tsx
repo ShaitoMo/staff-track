@@ -17,14 +17,14 @@ export function WeeklyCoverage({ rows, dates }: { rows: WeeklyCoverageRow[]; dat
     }
 
     return (
-        <div className="rounded-lg border border-border">
+        <div className="rounded-lg border border-border bg-card">
             <Table>
                 <TableCaption className="sr-only">
                     People scheduled compared with people required, per role, shift period and day
                 </TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead scope="col" className="sticky left-0 z-10 bg-background">Role</TableHead>
+                        <TableHead scope="col" className="sticky left-0 z-10 bg-card">Role</TableHead>
                         {dates.map((date) => (
                             <TableHead key={date} scope="col" className="whitespace-nowrap">
                                 {formatDay(date)}
@@ -35,7 +35,7 @@ export function WeeklyCoverage({ rows, dates }: { rows: WeeklyCoverageRow[]; dat
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={`${row.roleName}-${row.periodName}`}>
-                            <TableHead scope="row" className="sticky left-0 z-10 h-auto bg-background py-2">
+                            <TableHead scope="row" className="sticky left-0 z-10 h-auto bg-card py-2">
                                 {row.roleName}
                                 <span className="block text-xs font-normal text-muted-foreground">{row.periodName}</span>
                             </TableHead>

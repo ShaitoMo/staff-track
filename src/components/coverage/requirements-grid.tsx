@@ -108,14 +108,15 @@ export function RequirementsGrid({
     rows: GridRow[];
 }) {
     return (
-        <div className="overflow-x-auto rounded-lg border border-border">
-            <Table>
+        // As wide as its few short columns, not the page: each input stays next to its role name.
+        <div className="w-fit max-w-full overflow-x-auto rounded-lg border border-border bg-card">
+            <Table className="w-auto">
                 <TableCaption className="sr-only">People required for each role in each shift period</TableCaption>
                 <TableHeader>
                     <TableRow>
                         <TableHead scope="col">Role</TableHead>
                         {periods.map((period) => (
-                            <TableHead key={period.periodId} scope="col">
+                            <TableHead key={period.periodId} scope="col" className="pr-8">
                                 <div>{period.name}</div>
                                 <div className="font-mono font-normal text-muted-foreground">
                                     {period.defaultStart}–{period.defaultEnd}

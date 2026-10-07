@@ -61,7 +61,7 @@ export default async function RolesPage({
             <h1 className="text-xl font-semibold">Roles &amp; coverage</h1>
 
             <section aria-labelledby="roles-heading" className="flex flex-col gap-4">
-                <h2 id="roles-heading" className="text-base font-medium">Roles</h2>
+                <h2 id="roles-heading" className="text-lg font-semibold">Roles</h2>
                 {isOwner ? <RoleForm /> : null}
                 {isOwner ? null : (
                     <p className="text-xs text-muted-foreground">
@@ -72,7 +72,7 @@ export default async function RolesPage({
             </section>
 
             <section aria-labelledby="coverage-heading" className="flex flex-col gap-4">
-                <h2 id="coverage-heading" className="text-base font-medium">
+                <h2 id="coverage-heading" className="text-lg font-semibold">
                     {branchName ? `Coverage for ${branchName}` : "Coverage"}
                 </h2>
                 {branches.length === 0 ? (
