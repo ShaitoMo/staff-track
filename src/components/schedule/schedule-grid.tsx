@@ -418,13 +418,15 @@ function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: numb
 }
 
 /** Sticky so the slot stays readable while the week scrolls sideways on a narrow screen. */
-function RowHeader({ title, muted = false }: { title: string; muted?: boolean }) {
+function RowHeader({ title, muted = false, capitalize = false }: { title: string; muted?: boolean; capitalize?: boolean }) {
     return (
         <TableHead
             scope="row"
             className={cn(
                 "sticky left-0 z-10 h-auto w-28 bg-card py-2 align-top whitespace-normal sm:w-auto sm:whitespace-nowrap",
                 muted && "text-xs font-normal text-muted-foreground",
+                // role names are stored lowercase; every other screen shows them capitalized
+                capitalize && "capitalize",
             )}
         >
             {title}
@@ -542,7 +544,7 @@ export function ScheduleGrid({
                                 <PeriodRow period={period} colSpan={dates.length + 1} />
                                 {rows.map((row) => (
                                     <TableRow key={`role-${row.roleId}-${row.periodId}`} className="hover:bg-transparent">
-                                        <RowHeader title={row.roleName} />
+                                        <RowHeader title={row.roleName} capitalize />
                                         {row.cells.map((cell, index) => (
                                             <TableCell key={cell.date} className={dayCell(cell.date)}>
                                                 {roleCell(row, index, openRow)}
@@ -583,7 +585,7 @@ export function ScheduleGrid({
                                         key={row.roleId}
                                         className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3"
                                     >
-                                        <span className="pt-0.5 text-sm font-medium">{row.roleName}</span>
+                                        <span className="pt-0.5 text-sm font-medium capitalize">{row.roleName}</span>
                                         {roleCell(row, index, openRow)}
                                     </li>
                                 ))}

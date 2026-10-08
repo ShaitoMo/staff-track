@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isActive, MANAGER_NAV_GROUPS } from "@/components/layout/nav-items";
@@ -14,13 +15,18 @@ import { cn } from "@/lib/utils";
  */
 export function SidebarNav({ onCurrentPage }: { onCurrentPage?: () => void }) {
     const pathname = usePathname();
+    // the bar and the phone menu can both be mounted, so each copy gets its own label ids
+    const idPrefix = useId();
 
     return (
         <nav aria-label="Sections" className="flex flex-col gap-5">
             {MANAGER_NAV_GROUPS.map((group) => (
                 <div key={group.label} className="flex flex-col gap-0.5">
-                    <h2 className="px-2.5 pb-1 text-xs font-medium tracking-[0.02em] text-sidebar-muted-foreground">{group.label}</h2>
-                    <ul className="flex flex-col gap-0.5">
+                    {/* a label, not a heading: as h2s they came before every page's h1 in the heading list */}
+                    <p id={`${idPrefix}-${group.label}`} className="px-2.5 pb-1 text-xs font-medium tracking-[0.02em] text-sidebar-muted-foreground">
+                        {group.label}
+                    </p>
+                    <ul aria-labelledby={`${idPrefix}-${group.label}`} className="flex flex-col gap-0.5">
                         {group.items.map(({ href, label, icon: Icon }) => {
                             const active = isActive(href, pathname);
                             return (

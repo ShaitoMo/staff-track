@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AccessMessage } from "@/components/layout/access-message";
 import { TaskForm } from "@/components/tasks/task-form";
 import { ApiError } from "@/lib/api-client";
@@ -7,6 +8,8 @@ import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
+
+export const metadata: Metadata = { title: "New task" };
 
 export default async function NewTaskPage() {
     let branches: Branch[];

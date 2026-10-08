@@ -6,7 +6,7 @@ import { Branch } from "@/types/branch";
 
 export function BranchTable({ branches, canEdit }: { branches: Branch[]; canEdit: boolean }) {
     return (
-        <div className="rounded-lg border border-border">
+        <div className="rounded-lg border border-border bg-card">
             <Table>
                 <TableHeader>
                     <TableRow>

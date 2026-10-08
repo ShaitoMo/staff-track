@@ -35,7 +35,7 @@ export function WeeklyCoverage({ rows, dates }: { rows: WeeklyCoverageRow[]; dat
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={`${row.roleName}-${row.periodName}`}>
-                            <TableHead scope="row" className="sticky left-0 z-10 h-auto bg-card py-2">
+                            <TableHead scope="row" className="sticky left-0 z-10 h-auto bg-card py-2 capitalize">
                                 {row.roleName}
                                 <span className="block text-xs font-normal text-muted-foreground">{row.periodName}</span>
                             </TableHead>

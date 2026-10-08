@@ -9,6 +9,7 @@ import { getSelectedBranchId } from "@/lib/session";
 import { mondayOf } from "@/lib/coverage-rows";
 import { BranchDay, branchDay, DayPeriod } from "@/lib/dashboard-day";
 import { NEEDS_DOT } from "@/lib/schedule-grid";
+import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 import { CoverageGapRow } from "@/types/coverage-gap";
@@ -147,7 +148,7 @@ function BranchCard({ branch, date, week, attendanceIn }: { branch: BranchSummar
 
             <div className="grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm">
                 <div className="flex flex-col gap-1">
-                    <Link href={`/attendance?branch=${branch.branchId}&week=${week}`} className={cn(pageLinkClass, "text-xs font-medium text-muted-foreground")}>
+                    <Link href={`/attendance?branch=${branch.branchId}&week=${week}`} className={cn(pageLinkClass, "w-fit text-xs font-medium text-muted-foreground", TOUCH_HEIGHT)}>
                         Attendance
                         <ChevronRightIcon aria-hidden className="size-3.5" />
                     </Link>
@@ -172,7 +173,7 @@ function BranchCard({ branch, date, week, attendanceIn }: { branch: BranchSummar
                 <div className="flex flex-col gap-1">
                     <Link
                         href={`/tasks?view=instances&branch=${branch.branchId}&date=${date}`}
-                        className={cn(pageLinkClass, "text-xs font-medium text-muted-foreground")}
+                        className={cn(pageLinkClass, "w-fit text-xs font-medium text-muted-foreground", TOUCH_HEIGHT)}
                     >
                         Tasks due
                         <ChevronRightIcon aria-hidden className="size-3.5" />

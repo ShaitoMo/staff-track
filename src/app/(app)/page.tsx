@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BranchesToday } from "@/components/dashboard/branches-today";
 import { StaffToday } from "@/components/dashboard/staff-today";
@@ -12,6 +13,13 @@ const loading = (
         <Spinner /> Loading…
     </div>
 );
+
+/** The tab says what the page heading says, which depends on who's looking. */
+export async function generateMetadata(): Promise<Metadata> {
+    const session = await getSession();
+    const canManage = session?.role === OWNER_ROLE || session?.role === MANAGER_ROLE;
+    return { title: canManage ? "Dashboard" : "Home" };
+}
 
 /**
  * Home: owners and managers get the day across their branches, any day via `?date=`; staff get

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AccessMessage } from "@/components/layout/access-message";
 import { buttonVariants } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
+
+export const metadata: Metadata = { title: "Branches" };
 
 export default async function BranchesPage() {
     const session = await getSession();

@@ -160,6 +160,21 @@ Modest, slightly restrained corner rounding — `--radius: 0.45rem` (~7px) as th
 - **Focus:** border shifts to `--ring` with a soft 3px ring, matching Button's focus treatment for consistency.
 - **Error state:** field-level errors use `data-invalid` on `Field` + `aria-invalid` on the control (per the shadcn convention); the login page instead uses a form-level `Alert` since a credential rejection isn't attributable to one specific field.
 
+### Pages and tables
+- **Every page names itself.** A page exports `metadata.title` (the root layout's template adds " · StaffTrack"); the title matches the page's `h1`, and Home is "Dashboard" or "Home" by role. Nothing above the `h1` is a heading — the left bar's group labels are plain text naming their lists.
+- **Skip link.** "Skip to content" is the first Tab stop on every signed-in page and moves focus to `<main id="main">`.
+- **One blue per screen holds when branches stack.** A per-branch action that's primary on one branch's page (Import file) goes outline when "All branches" stacks several, so the screen never shows a row of blue buttons.
+- **Tables sit on Card**, like every other panel: `rounded-lg border border-border bg-card`. Row actions are outline buttons (`cn(buttonVariants({ variant: "outline", size: "sm" }))` — without `cn` the base `border-transparent` wins and the outline disappears), a secondary action beside them ghost.
+- **Role names** are stored lowercase and shown capitalized wherever they stand alone (table row headers, pickers, badges); inside a sentence ("Short: 1 cashier") they stay lowercase.
+
+### Page forms
+Every create/edit page (tasks, users, branches, registers) is one `FormCard` (`src/components/layout/form-card.tsx`) on Card: `FormAlerts` on top for form-level messages, then `FormSection`s under Hairline rules — the section name in a 10rem left column from `md` up, the fields to its right — and `FormFooter` with the one primary button at the right.
+- **Width follows the fields, not a fixed cap.** A form with a couple of fields is `max-w-3xl`; one with several short pickers is `max-w-5xl`, and those pickers share a row (`lg:grid-cols-3` on the section) instead of each stretching to 500px+. A date or a three-word select never takes a full row; free text (Title, Name) may.
+- **Order reads left to right as it's filled in** — Branch, then Assign to, then Person — so a field another depends on comes first in the row.
+- **Touch:** on a coarse pointer the card's inputs and select triggers grow to 44px; a mouse keeps the dense 32px.
+- **New credentials:** a form that creates someone else's login sets `autoComplete="off"` on the phone and `new-password` on the password, so the browser doesn't fill in the signed-in manager's own.
+- The roles page's "New role" stays an inline field-plus-button: it adds one row to the table above it, not a page.
+
 ### Alerts
 - **Style:** `variant="destructive"` — `Card`-colored background, destructive-red icon and text, used for the login page's "Invalid phone or password" message. No decorative border color beyond the default.
 

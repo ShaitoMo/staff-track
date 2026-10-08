@@ -3,9 +3,10 @@
 import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
+import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
@@ -68,21 +69,24 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
     }
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="flex max-w-lg flex-col gap-6">
-            <FieldGroup>
-                {submitError && (
-                    <Alert variant="destructive">
-                        <AlertCircleIcon />
-                        <AlertDescription>{submitError}</AlertDescription>
-                    </Alert>
-                )}
+        <FormCard onSubmit={handleSubmit} className="max-w-3xl">
+            {submitError || notice ? (
+                <FormAlerts>
+                    {submitError && (
+                        <Alert variant="destructive">
+                            <AlertCircleIcon />
+                            <AlertDescription>{submitError}</AlertDescription>
+                        </Alert>
+                    )}
+                    {notice && (
+                        <Alert role="status">
+                            <AlertDescription>{notice}</AlertDescription>
+                        </Alert>
+                    )}
+                </FormAlerts>
+            ) : null}
 
-                {notice && (
-                    <Alert role="status">
-                        <AlertDescription>{notice}</AlertDescription>
-                    </Alert>
-                )}
-
+            <FormSection legend="Details" className="sm:grid-cols-2">
                 <Field data-invalid={!!errors.name || undefined}>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
                     <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
@@ -94,12 +98,14 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                     <Input id="location" value={location} disabled={pending} onChange={(e) => setLocation(e.target.value)} />
                     <FieldError>{errors.location}</FieldError>
                 </Field>
+            </FormSection>
 
-                <Button type="submit" disabled={pending} className="w-fit">
+            <FormFooter>
+                <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
                     {mode === "create" ? "Create branch" : "Save changes"}
                 </Button>
-            </FieldGroup>
-        </form>
+            </FormFooter>
+        </FormCard>
     );
 }

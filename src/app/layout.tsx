@@ -13,7 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StaffTrack",
+  // each page names itself, so a screen reader announces the page and tabs can be told apart (WCAG 2.4.2)
+  title: { default: "StaffTrack", template: "%s · StaffTrack" },
   description: "Scheduling, tasks, attendance, and coverage for StaffTrack's branches.",
 };
 

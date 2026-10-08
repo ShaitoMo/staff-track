@@ -42,8 +42,12 @@ function ImportOutcome({ result }: { result: ImportAttendanceResult }) {
     );
 }
 
-/** The clock machine's CSV/Excel export for this branch; each employee number is matched at this branch only. */
-export function ImportAttendanceDialog({ branchId }: { branchId: number }) {
+/**
+ * The clock machine's CSV/Excel export for this branch; each employee number is matched at this branch only.
+ * `quiet` makes it an outline button, for when several branches are stacked on one page and a blue
+ * one per branch would leave no single main action.
+ */
+export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: number; quiet?: boolean }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
@@ -84,7 +88,7 @@ export function ImportAttendanceDialog({ branchId }: { branchId: number }) {
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger render={<Button size="sm" className={TOUCH_HEIGHT} />}>
+            <DialogTrigger render={<Button size="sm" variant={quiet ? "outline" : "default"} className={TOUCH_HEIGHT} />}>
                 <UploadIcon data-icon="inline-start" />
                 Import file
             </DialogTrigger>

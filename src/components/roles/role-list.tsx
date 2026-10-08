@@ -29,7 +29,7 @@ export function RoleList({ roles }: { roles: RoleWithMembers[] }) {
                 <TableBody>
                     {roles.map((role) => (
                         <TableRow key={role.roleId}>
-                            <TableHead scope="row" className="h-auto py-2 pr-8 align-top">{role.name}</TableHead>
+                            <TableHead scope="row" className="h-auto py-2 pr-8 align-top capitalize">{role.name}</TableHead>
                             <TableCell className="pr-8 align-top text-right tabular-nums">{role.members.length}</TableCell>
                             <TableCell>
                                 {role.members.length === 0 ? (

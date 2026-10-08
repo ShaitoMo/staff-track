@@ -128,7 +128,7 @@ export function RequirementsGrid({
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={row.roleId}>
-                            <TableHead scope="row">{row.roleName}</TableHead>
+                            <TableHead scope="row" className="capitalize">{row.roleName}</TableHead>
                             {row.cells.map((cell, index) => (
                                 <TableCell key={cell.periodId}>
                                     <RequirementCell

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AccessMessage } from "@/components/layout/access-message";
@@ -13,6 +14,8 @@ import { CHOSEN } from "@/lib/selection";
 import { getSelectedBranchId, getSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
+
+export const metadata: Metadata = { title: "Tasks" };
 
 export default async function TasksPage({
     searchParams,

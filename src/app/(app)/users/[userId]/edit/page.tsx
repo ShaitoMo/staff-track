@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AlertCircleIcon } from "lucide-react";
 import { AccessMessage } from "@/components/layout/access-message";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,6 +11,8 @@ import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
+
+export const metadata: Metadata = { title: "Edit user" };
 
 export default async function EditUserPage({
     params,
@@ -63,7 +66,7 @@ export default async function EditUserPage({
         <div className="flex flex-col gap-4">
             <h1 className="text-xl font-semibold">Edit {targetUser.name}</h1>
             {branch_warning && (
-                <Alert variant="destructive" className="max-w-lg">
+                <Alert variant="destructive" className="max-w-5xl">
                     <AlertCircleIcon />
                     <AlertDescription>
                         The user was created, but{" "}

@@ -11,7 +11,7 @@ export interface RegisterRow {
 
 export function RegisterTable({ rows }: { rows: RegisterRow[] }) {
     return (
-        <div className="rounded-lg border border-border">
+        <div className="rounded-lg border border-border bg-card">
             <Table>
                 <TableHeader>
                     <TableRow>

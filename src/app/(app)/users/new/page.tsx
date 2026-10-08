@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AccessMessage } from "@/components/layout/access-message";
 import { UserForm } from "@/components/users/user-form";
 import { ApiError } from "@/lib/api-client";
@@ -5,6 +6,8 @@ import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
+
+export const metadata: Metadata = { title: "New user" };
 
 export default async function NewUserPage() {
     let roles: Role[];

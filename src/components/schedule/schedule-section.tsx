@@ -82,7 +82,7 @@ function GridLegend() {
                 <span aria-hidden="true" className="rounded-sm border border-foreground/15 bg-muted px-1 text-foreground">
                     Register 1
                 </span>
-                Working that register (click to change)
+                Working that register (select it to change)
             </li>
         </ul>
     );

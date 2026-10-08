@@ -14,7 +14,7 @@ export interface TaskRow {
 
 export function TaskTable({ rows }: { rows: TaskRow[] }) {
     return (
-        <div className="hidden rounded-lg border border-border md:block">
+        <div className="hidden rounded-lg border border-border bg-card md:block">
             <Table>
                 <TableHeader>
                     <TableRow>
