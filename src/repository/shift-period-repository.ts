@@ -7,6 +7,7 @@ import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-er
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 import { ShiftPeriodInactiveError } from '@/exceptions/shift-period-inactive-error'
 import { PeriodInUseError } from '@/exceptions/period-in-use-error'
+import { DuplicatePeriodNameError } from '@/exceptions/duplicate-period-name-error'
 
 /** A period whose own `defaultStart`/`defaultEnd` are still Dates — for callers (ShiftService) that
  *  need to copy them onto a shift row rather than the formatted 'HH:MM' strings ShiftPeriodView carries. */
@@ -31,6 +32,13 @@ export class ShiftPeriodRepository {
         })
 
         return periods.map(ShiftPeriodRepository.toView)
+    }
+
+    /** One period as the API shows it — for the edit page. */
+    static async getPeriodView(periodId: number): Promise<ShiftPeriodView | null> {
+        const period = await db.shiftPeriod.findUnique({ where: { periodId } })
+
+        return period ? ShiftPeriodRepository.toView(period) : null
     }
 
     static async getPeriodById(periodId: number): Promise<ShiftPeriodRecord | null> {
@@ -77,8 +85,14 @@ export class ShiftPeriodRepository {
 
             return ShiftPeriodRepository.toView(period)
         } catch (error: unknown) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-                throw new BranchNotFoundError()
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2003') {
+                    throw new BranchNotFoundError()
+                }
+                // the partial unique indexes: one name per branch, and one per chain-wide set
+                if (error.code === 'P2002') {
+                    throw new DuplicatePeriodNameError()
+                }
             }
             throw error
         }
@@ -99,8 +113,13 @@ export class ShiftPeriodRepository {
 
             return ShiftPeriodRepository.toView(period)
         } catch (error: unknown) {
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                throw new ShiftPeriodNotFoundError()
+            if (error instanceof Prisma.PrismaClientKnownRequestError) {
+                if (error.code === 'P2025') {
+                    throw new ShiftPeriodNotFoundError()
+                }
+                if (error.code === 'P2002') {
+                    throw new DuplicatePeriodNameError()
+                }
             }
             throw error
         }
