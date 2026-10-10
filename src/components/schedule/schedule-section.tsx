@@ -137,7 +137,7 @@ export async function ScheduleSection({
     const week = indexWeek(shifts, users, registers);
     const roleRows = buildRoleRows(shifts, week, roles, sortedPeriods, requirements, weekStart);
     const openRegisterRows = buildOpenRegisterRows(week, registers, sortedPeriods, weekStart);
-    const otherShifts = toOtherShifts(shifts, week);
+    const otherShifts = toOtherShifts(shifts, week, sortedPeriods);
     const today = todayDateString();
     const weekNav = showWeekNav ? (
         <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
@@ -150,7 +150,14 @@ export async function ScheduleSection({
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>No shift periods</EmptyTitle>
-                        <EmptyDescription>The schedule is filled per shift period, and this branch has none yet.</EmptyDescription>
+                        <EmptyDescription>
+                            The schedule is filled per shift period, and none is active for this branch. Add or activate one
+                            on the{" "}
+                            <Link href="/periods" className="text-primary underline-offset-4 hover:underline">
+                                Periods page
+                            </Link>
+                            .
+                        </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             </div>
@@ -192,7 +199,7 @@ export async function ScheduleSection({
                 <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">
                     <h3 id="custom-hours" className="text-sm font-medium">
                         Custom-hours shifts
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">Not tied to a period, so not counted above</span>
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">Not on an active period, so not counted above</span>
                     </h3>
                     <div className="overflow-x-auto rounded-lg border border-border bg-card sm:max-w-xl">
                         <Table>
