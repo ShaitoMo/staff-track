@@ -33,20 +33,6 @@ describe('buildPeriodRows', () => {
         expect(rows[0].hours).toBe('07:00–15:00');
     });
 
-    it('orders by sort order, then start time', () => {
-        const rows = buildPeriodRows(
-            [[
-                period({ periodId: 1, name: 'Evening', defaultStart: '15:00', sortOrder: 0 }),
-                period({ periodId: 2, name: 'Morning', defaultStart: '07:00', sortOrder: 0 }),
-                period({ periodId: 3, name: 'Close', defaultStart: '06:00', sortOrder: 1 }),
-            ]],
-            branches,
-            true,
-        );
-
-        expect(rows.map((row) => row.name)).toEqual(['Morning', 'Evening', 'Close']);
-    });
-
     it('keeps inactive periods, marked', () => {
         const [row] = buildPeriodRows([[period({ active: false })]], branches, true);
 

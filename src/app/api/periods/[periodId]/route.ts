@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthenticated, forbiddenResponse, parseJsonBody } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 import { PeriodService } from '@/services/period-service'
 import { UpdatePeriodSchema } from '@/types/shift-period'
 import { AccessTokenPayload } from '@/types/auth'
@@ -28,9 +28,9 @@ export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/periods/[periodId]'>
 ) {
-    const { periodId: periodIdParam } = await ctx.params;
+    const periodId = parseNumericId((await ctx.params).periodId);
 
-    if (!/^\d+$/.test(periodIdParam)) {
+    if (periodId === null) {
         return NextResponse.json({ error: 'Invalid periodId' }, { status: 400 });
     }
 
@@ -43,7 +43,7 @@ export async function GET(
     try {
         requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
 
-        const period = await PeriodService.getPeriodView(Number(periodIdParam));
+        const period = await PeriodService.getPeriodView(periodId);
 
         if (!period) {
             return NextResponse.json({ error: 'Period not found' }, { status: 404 });
@@ -69,13 +69,11 @@ export async function PATCH(
     req: NextRequest,
     ctx: RouteContext<'/api/periods/[periodId]'>
 ) {
-    const { periodId: periodIdParam } = await ctx.params;
+    const periodId = parseNumericId((await ctx.params).periodId);
 
-    if (!/^\d+$/.test(periodIdParam)) {
+    if (periodId === null) {
         return NextResponse.json({ error: 'Invalid periodId' }, { status: 400 });
     }
-
-    const periodId = Number(periodIdParam);
 
     const user = requireAuthenticated(req);
 
@@ -121,13 +119,11 @@ export async function DELETE(
     req: NextRequest,
     ctx: RouteContext<'/api/periods/[periodId]'>
 ) {
-    const { periodId: periodIdParam } = await ctx.params;
+    const periodId = parseNumericId((await ctx.params).periodId);
 
-    if (!/^\d+$/.test(periodIdParam)) {
+    if (periodId === null) {
         return NextResponse.json({ error: 'Invalid periodId' }, { status: 400 });
     }
-
-    const periodId = Number(periodIdParam);
 
     const user = requireAuthenticated(req);
 
