@@ -2,7 +2,7 @@ import { Prisma, Shift as ShiftRow } from "@prisma/client";
 import { db } from "@/lib/db";
 import { toDateOnlyString } from "@/types/date-only";
 import { toTimeOnlyString } from "@/types/time-only";
-import { CreateShiftInput, ShiftView, UpdateShiftInput } from "@/types/shift";
+import { BranchScheduleShift, CreateShiftInput, ShiftView, UpdateShiftInput } from "@/types/shift";
 import { UserNotFoundError } from "@/exceptions/user-not-found-error";
 import { ShiftNotFoundError } from "@/exceptions/shift-not-found-error";
 
@@ -14,6 +14,9 @@ export interface ShiftFilters {
     to?: Date;
 }
 
+/** One shift row as copy-week inserts it. */
+export type NewShiftRow = Prisma.ShiftCreateManyInput;
+
 export interface OverlapQuery {
     userId: number;
     shiftDate: Date;
@@ -22,6 +25,9 @@ export interface OverlapQuery {
     /** the shift being edited, which always overlaps itself */
     excludeShiftId?: number;
 }
+
+/** Same span question as OverlapQuery, asked of a register instead of a person. */
+export type RegisterOverlapQuery = Omit<OverlapQuery, 'userId'> & { registerId: number };
 
 export class ShiftRepository {
     static async getShiftById(shiftId: number): Promise<ShiftView | null> {
@@ -54,12 +60,12 @@ export class ShiftRepository {
     }
 
     /**
-     * The same user's shifts on the same day whose span clashes with [startTime, endTime). Both
-     * intervals are half-open (`lt`/`gt`, not `lte`/`gte`) — 09:00-17:00 then 17:00-21:00 is a
-     * normal handover, not a clash. Branch is deliberately not a filter — see
+     * The same user's (or the same register's) shifts on the same day whose span clashes with
+     * [startTime, endTime). Both intervals are half-open (`lt`/`gt`, not `lte`/`gte`) — 09:00-17:00
+     * then 17:00-21:00 is a normal handover, not a clash. Branch is deliberately not a filter — see
      * ShiftService.assertNoDoubleBooking.
      */
-    static async getOverlappingShifts(query: OverlapQuery): Promise<ShiftView[]> {
+    static async getOverlappingShifts(query: OverlapQuery | RegisterOverlapQuery): Promise<ShiftView[]> {
         const shifts = await db.shift.findMany({
             where: ShiftRepository.buildOverlapWhere(query),
             orderBy: [{ startTime: 'asc' }, { shiftId: 'asc' }],
@@ -68,11 +74,73 @@ export class ShiftRepository {
         return shifts.map(ShiftRepository.toView);
     }
 
-    private static buildOverlapWhere(query: OverlapQuery): Prisma.ShiftWhereInput {
-        const { userId, shiftDate, startTime, endTime, excludeShiftId } = query;
+    /** A branch's shifts in the window with person, role and register names joined in — one query. */
+    static async getBranchScheduleShifts(branchId: number, from: Date, to: Date): Promise<BranchScheduleShift[]> {
+        const shifts = await db.shift.findMany({
+            where: { branchId, shiftDate: { gte: from, lte: to } },
+            include: {
+                user: { select: { name: true, role: { select: { name: true } } } },
+                register: { select: { name: true } },
+            },
+            orderBy: [{ shiftDate: 'asc' }, { startTime: 'asc' }, { shiftId: 'asc' }],
+        });
+
+        return shifts.map((shift) => ({
+            shift_id: shift.shiftId,
+            user_id: shift.userId,
+            user_name: shift.user.name,
+            role_name: shift.user.role.name,
+            shift_date: toDateOnlyString(shift.shiftDate),
+            start_time: toTimeOnlyString(shift.startTime),
+            end_time: toTimeOnlyString(shift.endTime),
+            period_id: shift.periodId,
+            register_name: shift.register?.name ?? null,
+        }));
+    }
+
+    /**
+     * Copy-week's write, made safe against a second copy of the same branch and week running at
+     * once. Inside one transaction it takes a lock keyed on (branch, first day of the week), reads
+     * what these people (at any branch) and these registers already hold in the window, lets
+     * `plan` decide the rows that don't clash, and inserts them in one statement. A concurrent copy
+     * waits on the lock, then sees the first one's rows as booked, so it inserts nothing. Returns
+     * how many rows went in.
+     */
+    static async copyIntoWeek(
+        window: { branchId: number; from: Date; to: Date; userIds: number[]; registerIds: number[] },
+        plan: (booked: ShiftView[]) => NewShiftRow[],
+    ): Promise<number> {
+        const { branchId, from, to, userIds, registerIds } = window;
+        const lockKey = `copy-week:${branchId}:${toDateOnlyString(from)}`;
+
+        return db.$transaction(async (tx) => {
+            // Transaction-scoped: released at commit or rollback, so it can't leak.
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+            const booked = await tx.shift.findMany({
+                where: {
+                    OR: [{ userId: { in: userIds } }, { registerId: { in: registerIds } }],
+                    shiftDate: { gte: from, lte: to },
+                },
+            });
+            const rows = plan(booked.map(ShiftRepository.toView));
+
+            if (rows.length === 0) {
+                return 0;
+            }
+
+            const { count } = await tx.shift.createMany({ data: rows });
+
+            return count;
+        });
+    }
+
+    private static buildOverlapWhere(query: OverlapQuery | RegisterOverlapQuery): Prisma.ShiftWhereInput {
+        const { shiftDate, startTime, endTime, excludeShiftId } = query;
 
         return {
-            userId,
+            // whose time is being asked about: a person's, or a register's
+            ...('userId' in query ? { userId: query.userId } : { registerId: query.registerId }),
             shiftDate,
             startTime: { lt: endTime },
             endTime: { gt: startTime },

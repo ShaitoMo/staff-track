@@ -8,6 +8,7 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { RegisterOverlapError } from '@/exceptions/register-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
@@ -127,7 +128,7 @@ export async function PATCH(
         if (error instanceof ShiftNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
-        if (error instanceof ShiftOverlapError) {
+        if (error instanceof ShiftOverlapError || error instanceof RegisterOverlapError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof RegisterNotAtBranchError) {

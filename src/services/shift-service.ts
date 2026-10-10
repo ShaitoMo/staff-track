@@ -1,17 +1,21 @@
-import { ShiftRepository, ShiftFilters, OverlapQuery } from '@/repository/shift-repository'
+import { ShiftRepository, ShiftFilters, OverlapQuery, RegisterOverlapQuery, NewShiftRow } from '@/repository/shift-repository'
 import { ShiftPeriodRepository } from '@/repository/shift-period-repository'
 import { UserRepository } from '@/repository/user-repository'
 import { BranchRepository } from '@/repository/branch-repository'
 import { RegisterRepository } from '@/repository/register-repository'
 import { UserBranchRepository } from '@/repository/user-branch-repository'
 import {
+    BranchScheduleQueryInput,
+    BranchScheduleView,
+    CopyWeekInput,
+    CopyWeekResult,
     CreateShiftInput,
     ShiftFiltersInput,
     ShiftView,
     UpdateShiftInput,
     UserShiftFiltersInput,
 } from '@/types/shift'
-import { DateOnlySchema } from '@/types/date-only'
+import { DateOnlySchema, toDateOnlyString } from '@/types/date-only'
 import { TimeOnlySchema } from '@/types/time-only'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
@@ -19,6 +23,20 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { RegisterOverlapError } from '@/exceptions/register-overlap-error'
+import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { addDays } from '@/lib/recurrence'
+
+const DAYS_PER_WEEK = 7
+
+/** One booked span in a copy batch: 'YYYY-MM-DD' and 'HH:MM' strings, which compare correctly as text. */
+interface BookedSpan {
+    userId: number
+    registerId: number | null
+    shiftDate: string
+    startTime: string
+    endTime: string
+}
 
 export class ShiftService {
     static async getShiftById(shiftId: number): Promise<ShiftView | null> {
@@ -35,6 +53,26 @@ export class ShiftService {
         }
 
         return ShiftRepository.getShifts(repositoryFilters)
+    }
+
+    /** The week from `week_start` at one branch, names resolved, for anyone who works there. */
+    static async getBranchSchedule(branchId: number, query: BranchScheduleQueryInput): Promise<BranchScheduleView> {
+        const [branch, periods, shifts] = await Promise.all([
+            BranchRepository.getBranchById(branchId),
+            ShiftPeriodRepository.getPeriodsByBranch(branchId),
+            ShiftRepository.getBranchScheduleShifts(branchId, query.week_start, addDays(query.week_start, DAYS_PER_WEEK - 1)),
+        ])
+
+        if (!branch) {
+            throw new BranchNotFoundError()
+        }
+
+        return {
+            branch_id: branch.branchId,
+            branch_name: branch.name,
+            periods: periods.map((period) => ({ period_id: period.periodId, name: period.name })),
+            shifts,
+        }
     }
 
     static async getShiftsForUser(
@@ -64,6 +102,11 @@ export class ShiftService {
 
         await ShiftService.assertNoDoubleBooking({
             userId: data.user_id,
+            shiftDate: data.shift_date,
+            startTime: span.startTime,
+            endTime: span.endTime,
+        })
+        await ShiftService.assertRegisterFree(data.register_id, {
             shiftDate: data.shift_date,
             startTime: span.startTime,
             endTime: span.endTime,
@@ -113,11 +156,128 @@ export class ShiftService {
             })
         }
 
+        // The register, or when it's held, decides whether it's free; who holds it doesn't.
+        if (data.register_id !== undefined || data.shift_date !== undefined || data.start_time !== undefined) {
+            await ShiftService.assertRegisterFree(registerId, {
+                ...ShiftService.mergeSpan(before, data),
+                excludeShiftId: shiftId,
+            })
+        }
+
         return ShiftRepository.updateShift(shiftId, data)
     }
 
     static async deleteShift(shiftId: number): Promise<void> {
         return ShiftRepository.deleteShift(shiftId)
+    }
+
+    /**
+     * Copies a branch's previous week onto the week starting at `week_start`, each shift seven days
+     * forward. A shift is skipped, not refused, when its person is no longer active at the branch,
+     * would clash with something already booked (at any branch), or its register is already held
+     * at that time — so a second run copies nothing,
+     * even one running at the same moment (see ShiftRepository.copyIntoWeek). A shift from a period
+     * takes that period's current hours, as one added by hand would; a custom-hours shift keeps its own.
+     */
+    static async copyWeek(data: CopyWeekInput & { created_by: number }): Promise<CopyWeekResult> {
+        const targetFrom = data.week_start
+
+        const [, source, staff, periods, registers] = await Promise.all([
+            BranchRepository.assertExists(data.branch_id),
+            ShiftRepository.getShifts({
+                branchId: data.branch_id,
+                from: addDays(targetFrom, -DAYS_PER_WEEK),
+                to: addDays(targetFrom, -1),
+            }),
+            UserRepository.getAllUsers([data.branch_id]),
+            ShiftPeriodRepository.getPeriodsByBranch(data.branch_id),
+            RegisterRepository.getRegistersByBranch(data.branch_id),
+        ])
+
+        const activeStaff = new Set(staff.filter((user) => user.isActive).map((user) => user.userId))
+        // Registers can't be deleted or moved today, but if one ever leaves the branch the shift
+        // is still worth copying — just without a register, rather than failing the whole copy on the FK.
+        const branchRegisters = new Set(registers.map((register) => register.registerId))
+        const candidates = source
+            .filter((shift) => activeStaff.has(shift.user_id))
+            .map((shift) => (shift.register_id === null || branchRegisters.has(shift.register_id)
+                ? shift
+                : { ...shift, register_id: null }))
+        const userIds = [...new Set(candidates.map((shift) => shift.user_id))]
+        const registerIds = [...new Set(candidates.flatMap((shift) => (shift.register_id === null ? [] : [shift.register_id])))]
+
+        if (userIds.length === 0) {
+            return { created: 0, skipped: source.length }
+        }
+
+        const hours = new Map(periods.map((period) => [period.periodId, { start: period.defaultStart, end: period.defaultEnd }]))
+        const created = await ShiftRepository.copyIntoWeek(
+            { branchId: data.branch_id, from: targetFrom, to: addDays(targetFrom, DAYS_PER_WEEK - 1), userIds, registerIds },
+            (booked) => ShiftService.planCopy(candidates, booked, hours, data.created_by),
+        )
+
+        return { created, skipped: source.length - created }
+    }
+
+    /** The rows a copy inserts: each candidate a week later, in its period's current hours, minus anything that would clash. */
+    private static planCopy(
+        candidates: ShiftView[],
+        alreadyBooked: ShiftView[],
+        hours: Map<number, { start: string; end: string }>,
+        createdBy: number,
+    ): NewShiftRow[] {
+        const booked: BookedSpan[] = alreadyBooked.map((shift) => ({
+            userId: shift.user_id,
+            registerId: shift.register_id,
+            shiftDate: shift.shift_date,
+            startTime: shift.start_time,
+            endTime: shift.end_time,
+        }))
+        const rows: NewShiftRow[] = []
+
+        for (const shift of candidates) {
+            const shiftDate = addDays(DateOnlySchema.parse(shift.shift_date), DAYS_PER_WEEK)
+            const periodHours = shift.period_id === null ? undefined : hours.get(shift.period_id)
+            const span: BookedSpan = {
+                userId: shift.user_id,
+                registerId: shift.register_id,
+                shiftDate: toDateOnlyString(shiftDate),
+                startTime: periodHours?.start ?? shift.start_time,
+                endTime: periodHours?.end ?? shift.end_time,
+            }
+
+            if (booked.some((other) => ShiftService.spansClash(other, span))) {
+                continue
+            }
+
+            booked.push(span)
+            rows.push({
+                userId: shift.user_id,
+                branchId: shift.branch_id,
+                registerId: shift.register_id,
+                periodId: shift.period_id,
+                shiftDate,
+                startTime: TimeOnlySchema.parse(span.startTime),
+                endTime: TimeOnlySchema.parse(span.endTime),
+                createdBy,
+            })
+        }
+
+        return rows
+    }
+
+    /**
+     * Same person or same register, same day, overlapping half-open spans — the rules
+     * assertNoDoubleBooking and assertRegisterFree apply in SQL. Two shifts with no register don't share one.
+     */
+    private static spansClash(a: BookedSpan, b: BookedSpan): boolean {
+        const samePerson = a.userId === b.userId
+        const sameRegister = a.registerId !== null && a.registerId === b.registerId
+
+        return (samePerson || sameRegister)
+            && a.shiftDate === b.shiftDate
+            && a.startTime < b.endTime
+            && a.endTime > b.startTime
     }
 
     /**
@@ -197,6 +357,26 @@ export class ShiftService {
 
         if (overlapping.length > 0) {
             throw new ShiftOverlapError()
+        }
+    }
+
+    /**
+     * Refuses a second person on a register over the same hours — a register is one checkout
+     * station. A shift with no register has nothing to hold. Same read-then-write race as
+     * assertNoDoubleBooking.
+     */
+    private static async assertRegisterFree(
+        registerId: number | null | undefined,
+        span: Omit<RegisterOverlapQuery, 'registerId'>,
+    ): Promise<void> {
+        if (registerId === null || registerId === undefined) {
+            return
+        }
+
+        const overlapping = await ShiftRepository.getOverlappingShifts({ registerId, ...span })
+
+        if (overlapping.length > 0) {
+            throw new RegisterOverlapError()
         }
     }
 }

@@ -4,10 +4,10 @@ import { Prisma } from '@prisma/client';
 // so an empty stand-in keeps the suite from needing DATABASE_URL.
 jest.mock('@/lib/db', () => ({ db: {} }));
 
-import { ShiftRepository, OverlapQuery } from '@/repository/shift-repository';
+import { ShiftRepository, OverlapQuery, RegisterOverlapQuery } from '@/repository/shift-repository';
 
 /** `buildOverlapWhere` is private; element access reaches it without widening the repository API. */
-const buildOverlapWhere = (query: OverlapQuery): Prisma.ShiftWhereInput =>
+const buildOverlapWhere = (query: OverlapQuery | RegisterOverlapQuery): Prisma.ShiftWhereInput =>
     ShiftRepository['buildOverlapWhere'](query);
 
 const QUERY: OverlapQuery = {
@@ -30,6 +30,15 @@ describe('buildOverlapWhere — half-open interval', () => {
 
         expect(where.userId).toBe(QUERY.userId);
         expect(where.shiftDate).toBe(QUERY.shiftDate);
+    });
+
+    it('scopes to the register instead when asked about a register', () => {
+        const { shiftDate, startTime, endTime } = QUERY;
+        const where = buildOverlapWhere({ registerId: 4, shiftDate, startTime, endTime });
+
+        expect(where.registerId).toBe(4);
+        expect(where.userId).toBeUndefined();
+        expect(where.startTime).toEqual({ lt: QUERY.endTime });
     });
 
     it('does not exclude any shift when nothing is being edited', () => {

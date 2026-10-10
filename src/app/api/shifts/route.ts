@@ -9,6 +9,7 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { RegisterOverlapError } from '@/exceptions/register-overlap-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 import { logger } from '@/lib/logger'
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
         if (forbidden) {
             return forbidden;
         }
-        if (error instanceof ShiftOverlapError) {
+        if (error instanceof ShiftOverlapError || error instanceof RegisterOverlapError) {
             return NextResponse.json({ error: error.message }, { status: 409 })
         }
         if (error instanceof RegisterNotAtBranchError) {
