@@ -200,6 +200,7 @@ describe('copyWeek', () => {
             from: new Date('2026-09-28T00:00:00Z'),
             to: new Date('2026-10-04T00:00:00Z'),
             userIds: [7],
+            registerIds: [2],
         });
         const [row] = inserted();
         expect(row).toMatchObject({ userId: 7, registerId: 2, periodId: 3, createdBy: 9 });
@@ -223,6 +224,36 @@ describe('copyWeek', () => {
         bookedInTarget([shift({ shift_id: 5, shift_date: '2026-09-28', start_time: '16:00', end_time: '20:00' })]);
 
         await expect(copy()).resolves.toEqual({ created: 1, skipped: 1 });
+    });
+
+    it('skips a shift whose register someone else already holds at that time in the target week', async () => {
+        getShifts.mockResolvedValue([shift({})]);
+        getAllUsers.mockResolvedValue([staff(7)]);
+        bookedInTarget([shift({ shift_id: 5, user_id: 8, shift_date: '2026-09-28', start_time: '12:00', end_time: '20:00' })]);
+
+        await expect(copy()).resolves.toEqual({ created: 0, skipped: 1 });
+    });
+
+    it('copies only the first of two last-week shifts that would now share a register', async () => {
+        // a period shift moves to the period's current hours, so it can land on top of a custom-hours one
+        getPeriodsByBranch.mockResolvedValue([period(3, '12:00', '20:00')]);
+        getShifts.mockResolvedValue([
+            shift({ start_time: '09:00', end_time: '17:00', period_id: null }),
+            shift({ shift_id: 2, user_id: 8 }),
+        ]);
+        getAllUsers.mockResolvedValue([staff(7), staff(8)]);
+        const inserted = bookedInTarget([]);
+
+        await expect(copy()).resolves.toEqual({ created: 1, skipped: 1 });
+        expect(inserted().map((row) => row.userId)).toEqual([7]);
+    });
+
+    it('lets two shifts without a register overlap, as long as the people differ', async () => {
+        getShifts.mockResolvedValue([shift({ register_id: null }), shift({ shift_id: 2, user_id: 8, register_id: null })]);
+        getAllUsers.mockResolvedValue([staff(7), staff(8)]);
+        bookedInTarget([]);
+
+        await expect(copy()).resolves.toEqual({ created: 2, skipped: 0 });
     });
 
     it('treats a handover (one ends as the next starts) as no clash', async () => {

@@ -101,15 +101,16 @@ export class ShiftRepository {
     /**
      * Copy-week's write, made safe against a second copy of the same branch and week running at
      * once. Inside one transaction it takes a lock keyed on (branch, first day of the week), reads
-     * what these people already hold in the window at any branch, lets `plan` decide the rows
-     * that don't clash, and inserts them in one statement. A concurrent copy waits on the lock,
-     * then sees the first one's rows as booked, so it inserts nothing. Returns how many rows went in.
+     * what these people (at any branch) and these registers already hold in the window, lets
+     * `plan` decide the rows that don't clash, and inserts them in one statement. A concurrent copy
+     * waits on the lock, then sees the first one's rows as booked, so it inserts nothing. Returns
+     * how many rows went in.
      */
     static async copyIntoWeek(
-        window: { branchId: number; from: Date; to: Date; userIds: number[] },
+        window: { branchId: number; from: Date; to: Date; userIds: number[]; registerIds: number[] },
         plan: (booked: ShiftView[]) => NewShiftRow[],
     ): Promise<number> {
-        const { branchId, from, to, userIds } = window;
+        const { branchId, from, to, userIds, registerIds } = window;
         const lockKey = `copy-week:${branchId}:${toDateOnlyString(from)}`;
 
         return db.$transaction(async (tx) => {
@@ -117,7 +118,10 @@ export class ShiftRepository {
             await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
             const booked = await tx.shift.findMany({
-                where: { userId: { in: userIds }, shiftDate: { gte: from, lte: to } },
+                where: {
+                    OR: [{ userId: { in: userIds } }, { registerId: { in: registerIds } }],
+                    shiftDate: { gte: from, lte: to },
+                },
             });
             const rows = plan(booked.map(ShiftRepository.toView));
 

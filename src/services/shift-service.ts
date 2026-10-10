@@ -32,6 +32,7 @@ const DAYS_PER_WEEK = 7
 /** One booked span in a copy batch: 'YYYY-MM-DD' and 'HH:MM' strings, which compare correctly as text. */
 interface BookedSpan {
     userId: number
+    registerId: number | null
     shiftDate: string
     startTime: string
     endTime: string
@@ -172,8 +173,9 @@ export class ShiftService {
 
     /**
      * Copies a branch's previous week onto the week starting at `week_start`, each shift seven days
-     * forward. A shift is skipped, not refused, when its person is no longer active at the branch or
-     * would clash with something already booked (at any branch) — so a second run copies nothing,
+     * forward. A shift is skipped, not refused, when its person is no longer active at the branch,
+     * would clash with something already booked (at any branch), or its register is already held
+     * at that time — so a second run copies nothing,
      * even one running at the same moment (see ShiftRepository.copyIntoWeek). A shift from a period
      * takes that period's current hours, as one added by hand would; a custom-hours shift keeps its own.
      */
@@ -194,6 +196,7 @@ export class ShiftService {
         const activeStaff = new Set(staff.filter((user) => user.isActive).map((user) => user.userId))
         const candidates = source.filter((shift) => activeStaff.has(shift.user_id))
         const userIds = [...new Set(candidates.map((shift) => shift.user_id))]
+        const registerIds = [...new Set(candidates.flatMap((shift) => (shift.register_id === null ? [] : [shift.register_id])))]
 
         if (userIds.length === 0) {
             return { created: 0, skipped: source.length }
@@ -201,7 +204,7 @@ export class ShiftService {
 
         const hours = new Map(periods.map((period) => [period.periodId, { start: period.defaultStart, end: period.defaultEnd }]))
         const created = await ShiftRepository.copyIntoWeek(
-            { branchId: data.branch_id, from: targetFrom, to: addDays(targetFrom, DAYS_PER_WEEK - 1), userIds },
+            { branchId: data.branch_id, from: targetFrom, to: addDays(targetFrom, DAYS_PER_WEEK - 1), userIds, registerIds },
             (booked) => ShiftService.planCopy(candidates, booked, hours, data.created_by),
         )
 
@@ -217,6 +220,7 @@ export class ShiftService {
     ): NewShiftRow[] {
         const booked: BookedSpan[] = alreadyBooked.map((shift) => ({
             userId: shift.user_id,
+            registerId: shift.register_id,
             shiftDate: shift.shift_date,
             startTime: shift.start_time,
             endTime: shift.end_time,
@@ -228,6 +232,7 @@ export class ShiftService {
             const periodHours = shift.period_id === null ? undefined : hours.get(shift.period_id)
             const span: BookedSpan = {
                 userId: shift.user_id,
+                registerId: shift.register_id,
                 shiftDate: toDateOnlyString(shiftDate),
                 startTime: periodHours?.start ?? shift.start_time,
                 endTime: periodHours?.end ?? shift.end_time,
@@ -253,9 +258,15 @@ export class ShiftService {
         return rows
     }
 
-    /** Same person, same day, overlapping half-open spans — the rule ShiftRepository.buildOverlapWhere applies in SQL. */
+    /**
+     * Same person or same register, same day, overlapping half-open spans — the rules
+     * assertNoDoubleBooking and assertRegisterFree apply in SQL. Two shifts with no register don't share one.
+     */
     private static spansClash(a: BookedSpan, b: BookedSpan): boolean {
-        return a.userId === b.userId
+        const samePerson = a.userId === b.userId
+        const sameRegister = a.registerId !== null && a.registerId === b.registerId
+
+        return (samePerson || sameRegister)
             && a.shiftDate === b.shiftDate
             && a.startTime < b.endTime
             && a.endTime > b.startTime
