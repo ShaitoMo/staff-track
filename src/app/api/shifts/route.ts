@@ -12,6 +12,7 @@ import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
 import { RegisterOverlapError } from '@/exceptions/register-overlap-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
+import { ShiftPeriodInactiveError } from '@/exceptions/shift-period-inactive-error'
 import { logger } from '@/lib/logger'
 
 //GET /api/shifts?branch_id=&user_id=&register_id=&from=&to=
@@ -114,7 +115,8 @@ export async function POST(req: NextRequest) {
             error instanceof RegisterNotFoundError ||
             error instanceof UserNotAtBranchError ||
             error instanceof ShiftPeriodNotFoundError ||
-            error instanceof ShiftPeriodNotAtBranchError
+            error instanceof ShiftPeriodNotAtBranchError ||
+            error instanceof ShiftPeriodInactiveError
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

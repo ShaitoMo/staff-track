@@ -36,7 +36,11 @@ export function FormSection({ legend, className, children }: { legend: string; c
     );
 }
 
-/** The end of the reading path, under its own rule. */
+/** The end of the reading path, under its own rule. Its button grows to 44px on a touch screen, like the fields. */
 export function FormFooter({ children }: { children: React.ReactNode }) {
-    return <div className="flex justify-end border-t border-border px-4 py-4 sm:px-6">{children}</div>;
+    return (
+        <div className="flex justify-end border-t border-border px-4 py-4 sm:px-6 [@media(pointer:coarse)]:*:data-[slot=button]:h-11">
+            {children}
+        </div>
+    );
 }

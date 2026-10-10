@@ -1,10 +1,15 @@
 import { z } from 'zod'
 import { TimeOnlySchema } from '@/types/time-only'
 
+/** Where a period sits in pickers and grids; bounded so a stray value is a 400, not a Postgres int overflow. */
+const SortOrderSchema = z.number().int().min(0).max(999)
+
 // ---------- Query filters (GET /periods) ----------
 
+/** `includeInactive=true` is for the periods admin page; every other caller only sees periods that are on. */
 export const PeriodFiltersSchema = z.object({
     branchId: z.coerce.number().int().positive(),
+    includeInactive: z.literal('true').optional(),
 })
 
 export type PeriodFiltersInput = z.infer<typeof PeriodFiltersSchema>
@@ -18,10 +23,10 @@ export type PeriodFiltersInput = z.infer<typeof PeriodFiltersSchema>
  */
 export const CreatePeriodSchema = z.object({
     branchId: z.number().int().positive().nullable().optional(),
-    name: z.string().min(1).max(50),
+    name: z.string().trim().min(1).max(50),
     defaultStart: TimeOnlySchema,
     defaultEnd: TimeOnlySchema,
-    sortOrder: z.number().int().optional(),
+    sortOrder: SortOrderSchema.optional(),
 }).superRefine((data, ctx) => {
     const { defaultStart, defaultEnd } = data
 
@@ -48,10 +53,11 @@ export type CreatePeriodInput = z.infer<typeof CreatePeriodSchema>
  * together, same reason as UpdateShiftSchema's start/end pairing.
  */
 export const UpdatePeriodSchema = z.object({
-    name: z.string().min(1).max(50).optional(),
+    name: z.string().trim().min(1).max(50).optional(),
     defaultStart: TimeOnlySchema.optional(),
     defaultEnd: TimeOnlySchema.optional(),
-    sortOrder: z.number().int().optional(),
+    sortOrder: SortOrderSchema.optional(),
+    active: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
 }).superRefine((data, ctx) => {
@@ -94,4 +100,5 @@ export interface ShiftPeriodView {
     defaultStart: string
     defaultEnd: string
     sortOrder: number
+    active: boolean
 }

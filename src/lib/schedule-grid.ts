@@ -219,9 +219,15 @@ export function buildOpenRegisterRows(
     }));
 }
 
-export function toOtherShifts(shifts: ShiftView[], week: WeekIndex): OtherShift[] {
+/**
+ * Shifts the period grid doesn't show: custom hours, and shifts on a period that's no longer
+ * offered here (deactivated), which would otherwise vanish. Same rule as the staff roster.
+ */
+export function toOtherShifts(shifts: ShiftView[], week: WeekIndex, periods: Pick<ShiftPeriodView, "periodId">[]): OtherShift[] {
+    const shown = new Set(periods.map((period) => period.periodId));
+
     return shifts.flatMap((shift) =>
-        shift.period_id !== null
+        shift.period_id !== null && shown.has(shift.period_id)
             ? []
             : [{
                 shiftId: shift.shift_id,

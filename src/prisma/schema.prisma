@@ -175,6 +175,10 @@ model ShiftPeriod {
   defaultStart DateTime @map("default_start") @db.Time
   defaultEnd   DateTime @map("default_end") @db.Time
   sortOrder    Int      @default(0) @map("sort_order")
+  // "offered going forward", NOT "exists". Off hides the period from pickers, grids and coverage
+  // shortages, and refuses it for new shifts and requirements; shifts already scheduled on it keep
+  // their own copied hours. The way to retire a period something still references (delete is 409).
+  active       Boolean  @default(true)
 
   branch       Branch?               @relation(fields: [branchId], references: [branchId])
   requirements CoverageRequirement[]
