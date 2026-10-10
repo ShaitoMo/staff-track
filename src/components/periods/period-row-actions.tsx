@@ -25,7 +25,7 @@ type Confirming = "deactivate" | "delete" | null;
  * Edit, activate/deactivate, and delete. Deactivating is how a period in use is retired — it hides
  * the period from the schedule and coverage but keeps shifts already on it — so it asks first;
  * activating is harmless and goes straight through. Delete only succeeds for a period nothing
- * uses; otherwise the API's message (turn it off instead) shows under the buttons.
+ * uses; otherwise the API's message (deactivate it instead) shows under the buttons.
  */
 export function PeriodRowActions({ periodId, name, active }: { periodId: number; name: string; active: boolean }) {
     const router = useRouter();
