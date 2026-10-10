@@ -1,28 +1,24 @@
+import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AppNav } from "@/components/layout/app-nav";
-import { LogoutButton } from "@/components/layout/logout-button";
+import { AccountMenu } from "@/components/layout/account-menu";
+import { BranchSwitcher } from "@/components/layout/branch-switcher";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { StaffNav, StaffTabBar } from "@/components/layout/staff-nav";
+import { fetchApi } from "@/lib/api-server";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
-import { getSession } from "@/lib/session";
+import { getBranchPreference, getSession } from "@/lib/session";
+import { cn } from "@/lib/utils";
+import { Branch } from "@/types/branch";
+import { SafeUser } from "@/types/user";
 
-const MANAGER_NAV = [
-    { href: "/", label: "Dashboard" },
-    { href: "/users", label: "Users" },
-    { href: "/branches", label: "Branches" },
-    { href: "/registers", label: "Registers" },
-    { href: "/schedule", label: "Schedule" },
-    { href: "/attendance", label: "Attendance" },
-    { href: "/tasks", label: "Tasks" },
-    { href: "/roles", label: "Roles" },
-];
-
-/** Staff land on their today and tomorrow at "/"; the schedule and their attendance are read-only for them. */
-const STAFF_NAV = [
-    { href: "/", label: "Home" },
-    { href: "/my-tasks", label: "My tasks" },
-    { href: "/schedule", label: "Schedule" },
-    { href: "/attendance", label: "Attendance" },
-];
-
+/**
+ * The shell. Owners and managers: a top bar with the branch every page follows, and a left bar of
+ * sections (a slide-out menu below `lg`). Staff: no left bar — top-bar links from `md`, a bottom tab
+ * bar on a phone. The name and branches are a nicety: if either read fails, the bar falls back to
+ * the role and an empty switcher rather than taking the page down.
+ */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
     const session = await getSession();
 
@@ -31,19 +27,71 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
 
     const canManage = session.role === OWNER_ROLE || session.role === MANAGER_ROLE;
+    const [userResult, branchesResult, preference] = await Promise.all([
+        fetchApi<SafeUser>(`/api/users/${session.userId}`).then(
+            (user) => user,
+            () => null,
+        ),
+        canManage
+            ? fetchApi<Branch[]>("/api/branches").then(
+                  (branches) => branches,
+                  () => [],
+              )
+            : Promise.resolve([]),
+        getBranchPreference(),
+    ]);
+    const branches = branchesResult.map(({ branchId, name }) => ({ branchId, name }));
 
     return (
         <div className="flex min-h-screen flex-col">
-            <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border px-6 py-3">
-                <span className="font-heading text-base font-medium">StaffTrack</span>
-                {/* on a phone the nav takes its own row under the brand and account */}
-                <AppNav items={canManage ? MANAGER_NAV : STAFF_NAV} />
-                <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
-                    <span className="capitalize">{session.role}</span>
-                    <LogoutButton />
+            <header
+                className={cn(
+                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-background",
+                    // the dark column runs unbroken past the top bar, so its light rule stops where the column starts
+                    canManage && "lg:border-b-0",
+                )}
+            >
+                {/* on a wide screen the brand tops the dark left bar, so the switcher lines up with the page */}
+                <div
+                    className={cn(
+                        "flex h-full shrink-0 items-center gap-1 pr-3",
+                        canManage
+                            ? "pl-2 lg:w-56 lg:bg-sidebar lg:pl-5 lg:text-sidebar-foreground"
+                            : "pl-4 lg:pl-6",
+                    )}
+                >
+                    {canManage ? (
+                        <div className="lg:hidden">
+                            <MobileNav />
+                        </div>
+                    ) : null}
+                    <Link href="/" className="text-base font-semibold whitespace-nowrap">
+                        StaffTrack
+                    </Link>
+                </div>
+                <div className={cn("flex h-full min-w-0 flex-1 items-center gap-3 pr-2 lg:px-6", canManage && "lg:border-b lg:border-border")}>
+                    {canManage ? (
+                        <Suspense>
+                            <BranchSwitcher branches={branches} preference={preference} />
+                        </Suspense>
+                    ) : (
+                        <StaffNav />
+                    )}
+                    <div className="ml-auto shrink-0">
+                        <AccountMenu name={userResult?.name ?? null} role={session.role} />
+                    </div>
                 </div>
             </header>
-            <main className="flex-1 px-6 py-6">{children}</main>
+            <div className="flex flex-1">
+                {canManage ? (
+                    <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto bg-sidebar px-3 py-5 text-sidebar-foreground lg:block">
+                        <SidebarNav />
+                    </aside>
+                ) : null}
+                {/* staff pages leave room for the tab bar on a phone */}
+                <main className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6", !canManage && "pb-24 md:pb-6")}>{children}</main>
+            </div>
+            {canManage ? null : <StaffTabBar />}
         </div>
     );
 }

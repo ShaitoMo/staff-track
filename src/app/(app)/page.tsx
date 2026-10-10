@@ -17,8 +17,8 @@ const loading = (
  * Home: owners and managers get the day across their branches, any day via `?date=`; staff get
  * their today and tomorrow. The day nav sits outside the boundary so the date stays put on load.
  */
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
-    const [{ date: dateParam }, session] = await Promise.all([searchParams, getSession()]);
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ date?: string; branch?: string }> }) {
+    const [{ date: dateParam, branch }, session] = await Promise.all([searchParams, getSession()]);
 
     if (!session) {
         return null;
@@ -42,8 +42,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="flex flex-col gap-6">
             <h1 className="text-xl font-semibold">Dashboard</h1>
             <DayNav basePath="/" date={date} today={today} />
-            <Suspense key={date} fallback={loading}>
-                <BranchesToday date={date} today={today} />
+            <Suspense key={`${date}-${branch}`} fallback={loading}>
+                <BranchesToday date={date} today={today} branchParam={branch} />
             </Suspense>
         </div>
     );

@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { AccessMessage } from "@/components/layout/access-message";
-import { BranchFilter } from "@/components/layout/branch-filter";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { UserCards } from "@/components/users/user-cards";
 import { UserTable } from "@/components/users/user-table";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { OWNER_ROLE } from "@/lib/rbac";
-import { getSession } from "@/lib/session";
+import { getSelectedBranchId } from "@/lib/session";
 import { buildUserRows } from "@/lib/user-rows";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
@@ -21,23 +19,21 @@ export default async function UsersPage({
     searchParams: Promise<{ branch?: string }>;
 }) {
     const { branch } = await searchParams;
-    const session = await getSession();
-    const isOwner = session?.role === OWNER_ROLE;
-    const branchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
-    const usersPath = branchId !== undefined ? `/api/users?branch_id=${branchId}` : "/api/users";
-
+    let branchId: number | undefined;
     let users: SafeUser[];
     let roles: Role[];
     let branches: Branch[];
     let userBranches: UserBranch[];
 
     try {
-        [users, roles, branches, userBranches] = await Promise.all([
-            fetchApi<SafeUser[]>(usersPath),
+        [roles, branches, userBranches] = await Promise.all([
             fetchApi<Role[]>("/api/roles"),
             fetchApi<Branch[]>("/api/branches"),
             fetchApi<UserBranch[]>("/api/user-branches"),
         ]);
+        // the top bar's branch is checked against the branches the API scoped to this viewer first
+        branchId = await getSelectedBranchId(branch, branches);
+        users = await fetchApi<SafeUser[]>(branchId !== undefined ? `/api/users?branch_id=${branchId}` : "/api/users");
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
             return <AccessMessage title="Users" message="You don't have access to view the users list." />;
@@ -55,7 +51,6 @@ export default async function UsersPage({
                     Add user
                 </Link>
             </div>
-            {isOwner && <BranchFilter basePath="/users" branches={branches} activeBranchId={branchId} />}
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>

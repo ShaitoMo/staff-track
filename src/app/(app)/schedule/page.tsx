@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AccessMessage } from "@/components/layout/access-message";
-import { BranchFilter } from "@/components/layout/branch-filter";
+import { BranchStack } from "@/components/layout/branch-stack";
+import { WeekNav } from "@/components/layout/week-nav";
 import { ScheduleSection } from "@/components/schedule/schedule-section";
 import { StaffSchedule } from "@/components/schedule/staff-schedule";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -8,9 +9,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { mondayOf } from "@/lib/coverage-rows";
-import { parseDateParam } from "@/lib/instance-rows";
+import { parseDateParam, todayDateString } from "@/lib/instance-rows";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
-import { getSession } from "@/lib/session";
+import { getSelectedBranchId, getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 
@@ -63,35 +64,46 @@ export default async function SchedulePage({
 
     const visibleRoles = session?.role === OWNER_ROLE ? roles : roles.filter((role) => role.name !== OWNER_ROLE);
 
-    const branchId = branches.some((b) => b.branchId === requestedBranchId) ? requestedBranchId : branches[0]?.branchId;
+    const branchId = await getSelectedBranchId(branch, branches);
     const branchName = branches.find((b) => b.branchId === branchId)?.name;
 
-    return (
-        <div className="flex flex-col gap-6">
-            <h1 className="text-xl font-semibold">{branchName ? `Schedule for ${branchName}` : "Schedule"}</h1>
-            {branchId === undefined ? (
+    if (branches.length === 0) {
+        return (
+            <div className="flex flex-col gap-6">
+                <h1 className="text-xl font-semibold">Schedule</h1>
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>No branches</EmptyTitle>
                         <EmptyDescription>The schedule is set per branch, and there are no branches to show.</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
-            ) : (
-                <>
-                    {branches.length > 1 ? (
-                        <BranchFilter
-                            basePath="/schedule"
-                            branches={branches}
-                            activeBranchId={branchId}
-                            extraQuery={{ week: weekStart }}
-                            showAll={false}
-                        />
-                    ) : null}
-                    <Suspense key={`${branchId}-${weekStart}`} fallback={loading}>
-                        <ScheduleSection branchId={branchId} weekStart={weekStart} roles={visibleRoles} />
-                    </Suspense>
-                </>
-            )}
+            </div>
+        );
+    }
+
+    // "All branches" in the top bar: one week nav, then every branch's schedule
+    if (branchId === undefined) {
+        return (
+            <div className="flex flex-col gap-6">
+                <h1 className="text-xl font-semibold">Schedule</h1>
+                <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(todayDateString())} query={{}} />
+                <BranchStack branches={branches} basePath="/schedule" query={{ week: weekStart }}>
+                    {(b) => (
+                        <Suspense key={`${b.branchId}-${weekStart}`} fallback={loading}>
+                            <ScheduleSection branchId={b.branchId} weekStart={weekStart} roles={visibleRoles} showWeekNav={false} />
+                        </Suspense>
+                    )}
+                </BranchStack>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-6">
+            <h1 className="text-xl font-semibold">{`Schedule for ${branchName}`}</h1>
+            <Suspense key={`${branchId}-${weekStart}`} fallback={loading}>
+                <ScheduleSection branchId={branchId} weekStart={weekStart} roles={visibleRoles} />
+            </Suspense>
         </div>
     );
 }

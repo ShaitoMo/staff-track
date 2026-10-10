@@ -96,10 +96,13 @@ export async function ScheduleSection({
     branchId,
     weekStart,
     roles,
+    showWeekNav = true,
 }: {
     branchId: number;
     weekStart: string;
     roles: Role[];
+    /** False when the page shows one week nav over several stacked branches. */
+    showWeekNav?: boolean;
 }) {
     const weekEnd = addDays(weekStart, 6);
 
@@ -136,7 +139,9 @@ export async function ScheduleSection({
     const openRegisterRows = buildOpenRegisterRows(week, registers, sortedPeriods, weekStart);
     const otherShifts = toOtherShifts(shifts, week);
     const today = todayDateString();
-    const weekNav = <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />;
+    const weekNav = showWeekNav ? (
+        <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
+    ) : null;
 
     if (sortedPeriods.length === 0) {
         return (

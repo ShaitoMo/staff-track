@@ -6,9 +6,11 @@ import { TaskDefinitions } from "@/components/tasks/task-definitions";
 import { TaskInstances } from "@/components/tasks/task-instances";
 import { buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { fetchApi } from "@/lib/api-server";
 import { parseDateParam } from "@/lib/instance-rows";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
-import { getSession } from "@/lib/session";
+import { getSelectedBranchId, getSession } from "@/lib/session";
+import { Branch } from "@/types/branch";
 
 export default async function TasksPage({
     searchParams,
@@ -22,7 +24,9 @@ export default async function TasksPage({
         return <AccessMessage title="Tasks" message="You don't have access to view tasks." />;
     }
 
-    const branchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
+    // a failed read leaves every branch selected; the views below then show their own access message
+    const branches = await fetchApi<Branch[]>("/api/branches").catch((): Branch[] => []);
+    const branchId = await getSelectedBranchId(branch, branches);
     const showInstances = view === "instances";
     const date = parseDateParam(dateParam);
 

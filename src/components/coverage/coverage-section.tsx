@@ -8,7 +8,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { buildRequirementGrid, mondayOf, sortPeriods } from "@/lib/coverage-rows";
+import { buildRequirementGrid, formatWeekRange, mondayOf, sortPeriods } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
 import { Role } from "@/types/role";
@@ -18,10 +18,13 @@ export async function CoverageSection({
     branchId,
     weekStart,
     roles,
+    showWeekNav = true,
 }: {
     branchId: number;
     weekStart: string;
     roles: Role[];
+    /** False when the page shows one week nav over several stacked branches. */
+    showWeekNav?: boolean;
 }) {
     let requirements: CoverageRequirementView[];
     let periods: ShiftPeriodView[];
@@ -79,13 +82,17 @@ export async function CoverageSection({
 
             <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <WeekNav
-                        basePath="/roles"
-                        weekStart={weekStart}
-                        thisWeek={mondayOf(todayDateString())}
-                        query={{ branch: String(branchId) }}
-                        heading="h3"
-                    />
+                    {showWeekNav ? (
+                        <WeekNav
+                            basePath="/roles"
+                            weekStart={weekStart}
+                            thisWeek={mondayOf(todayDateString())}
+                            query={{ branch: String(branchId) }}
+                            heading="h3"
+                        />
+                    ) : (
+                        <h3 className="text-sm font-medium tabular-nums">{formatWeekRange(weekStart)}</h3>
+                    )}
                     <span className="text-xs text-muted-foreground">Counts are scheduled / required</span>
                 </div>
                 {/* Keyed by week only, so changing the week reloads just this table and leaves the grid in place. */}
