@@ -26,6 +26,9 @@ export interface OverlapQuery {
     excludeShiftId?: number;
 }
 
+/** Same span question as OverlapQuery, asked of a register instead of a person. */
+export type RegisterOverlapQuery = Omit<OverlapQuery, 'userId'> & { registerId: number };
+
 export class ShiftRepository {
     static async getShiftById(shiftId: number): Promise<ShiftView | null> {
         const shift = await db.shift.findUnique({
@@ -57,12 +60,12 @@ export class ShiftRepository {
     }
 
     /**
-     * The same user's shifts on the same day whose span clashes with [startTime, endTime). Both
-     * intervals are half-open (`lt`/`gt`, not `lte`/`gte`) — 09:00-17:00 then 17:00-21:00 is a
-     * normal handover, not a clash. Branch is deliberately not a filter — see
+     * The same user's (or the same register's) shifts on the same day whose span clashes with
+     * [startTime, endTime). Both intervals are half-open (`lt`/`gt`, not `lte`/`gte`) — 09:00-17:00
+     * then 17:00-21:00 is a normal handover, not a clash. Branch is deliberately not a filter — see
      * ShiftService.assertNoDoubleBooking.
      */
-    static async getOverlappingShifts(query: OverlapQuery): Promise<ShiftView[]> {
+    static async getOverlappingShifts(query: OverlapQuery | RegisterOverlapQuery): Promise<ShiftView[]> {
         const shifts = await db.shift.findMany({
             where: ShiftRepository.buildOverlapWhere(query),
             orderBy: [{ startTime: 'asc' }, { shiftId: 'asc' }],
@@ -128,11 +131,12 @@ export class ShiftRepository {
         });
     }
 
-    private static buildOverlapWhere(query: OverlapQuery): Prisma.ShiftWhereInput {
-        const { userId, shiftDate, startTime, endTime, excludeShiftId } = query;
+    private static buildOverlapWhere(query: OverlapQuery | RegisterOverlapQuery): Prisma.ShiftWhereInput {
+        const { shiftDate, startTime, endTime, excludeShiftId } = query;
 
         return {
-            userId,
+            // whose time is being asked about: a person's, or a register's
+            ...('userId' in query ? { userId: query.userId } : { registerId: query.registerId }),
             shiftDate,
             startTime: { lt: endTime },
             endTime: { gt: startTime },

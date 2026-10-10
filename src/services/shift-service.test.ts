@@ -17,13 +17,14 @@ jest.mock('@/repository/shift-period-repository', () => ({
 }));
 
 import { ShiftService } from '@/services/shift-service';
-import { NewShiftRow, ShiftRepository, OverlapQuery } from '@/repository/shift-repository';
+import { NewShiftRow, ShiftRepository, OverlapQuery, RegisterOverlapQuery } from '@/repository/shift-repository';
 import { ShiftPeriodRepository } from '@/repository/shift-period-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { ShiftView } from '@/types/shift';
 import { ShiftPeriodView } from '@/types/shift-period';
 import { SafeUser } from '@/types/user';
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error';
+import { RegisterOverlapError } from '@/exceptions/register-overlap-error';
 
 const getOverlappingShifts = ShiftRepository.getOverlappingShifts as jest.MockedFunction<
     typeof ShiftRepository.getOverlappingShifts
@@ -38,6 +39,12 @@ const getPeriodsByBranch = ShiftPeriodRepository.getPeriodsByBranch as jest.Mock
 /** `assertNoDoubleBooking` is private; element access reaches it without widening the service API. */
 const assertNoDoubleBooking = (query: OverlapQuery): Promise<void> =>
     ShiftService['assertNoDoubleBooking'](query);
+
+/** `assertRegisterFree` is private; element access reaches it without widening the service API. */
+const assertRegisterFree = (
+    registerId: number | null | undefined,
+    span: Omit<RegisterOverlapQuery, 'registerId'>,
+): Promise<void> => ShiftService['assertRegisterFree'](registerId, span);
 
 /** `mergeSpan` is private; element access reaches it without widening the service API. */
 const mergeSpan = (
@@ -75,6 +82,29 @@ describe('assertNoDoubleBooking', () => {
         await assertNoDoubleBooking(QUERY);
 
         expect(getOverlappingShifts).toHaveBeenCalledWith(QUERY);
+    });
+});
+
+describe('assertRegisterFree', () => {
+    const SPAN = { shiftDate: QUERY.shiftDate, startTime: QUERY.startTime, endTime: QUERY.endTime };
+
+    it('refuses when another shift holds the register at an overlapping time', async () => {
+        getOverlappingShifts.mockResolvedValue([{ shift_id: 1 } as ShiftView]);
+
+        await expect(assertRegisterFree(4, SPAN)).rejects.toThrow(RegisterOverlapError);
+        expect(getOverlappingShifts).toHaveBeenCalledWith({ registerId: 4, ...SPAN });
+    });
+
+    it('passes when the register is free', async () => {
+        getOverlappingShifts.mockResolvedValue([]);
+
+        await expect(assertRegisterFree(4, SPAN)).resolves.toBeUndefined();
+    });
+
+    it('skips the lookup for a shift with no register', async () => {
+        await expect(assertRegisterFree(null, SPAN)).resolves.toBeUndefined();
+        await expect(assertRegisterFree(undefined, SPAN)).resolves.toBeUndefined();
+        expect(getOverlappingShifts).not.toHaveBeenCalled();
     });
 });
 

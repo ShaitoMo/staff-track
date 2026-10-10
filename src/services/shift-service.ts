@@ -1,4 +1,4 @@
-import { ShiftRepository, ShiftFilters, OverlapQuery, NewShiftRow } from '@/repository/shift-repository'
+import { ShiftRepository, ShiftFilters, OverlapQuery, RegisterOverlapQuery, NewShiftRow } from '@/repository/shift-repository'
 import { ShiftPeriodRepository } from '@/repository/shift-period-repository'
 import { UserRepository } from '@/repository/user-repository'
 import { BranchRepository } from '@/repository/branch-repository'
@@ -23,6 +23,7 @@ import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { RegisterNotAtBranchError } from '@/exceptions/register-not-at-branch-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftOverlapError } from '@/exceptions/shift-overlap-error'
+import { RegisterOverlapError } from '@/exceptions/register-overlap-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { addDays } from '@/lib/recurrence'
 
@@ -104,6 +105,11 @@ export class ShiftService {
             startTime: span.startTime,
             endTime: span.endTime,
         })
+        await ShiftService.assertRegisterFree(data.register_id, {
+            shiftDate: data.shift_date,
+            startTime: span.startTime,
+            endTime: span.endTime,
+        })
 
         return ShiftRepository.createShift(data, span)
     }
@@ -144,6 +150,14 @@ export class ShiftService {
         if (data.user_id !== undefined || data.shift_date !== undefined || data.start_time !== undefined) {
             await ShiftService.assertNoDoubleBooking({
                 userId,
+                ...ShiftService.mergeSpan(before, data),
+                excludeShiftId: shiftId,
+            })
+        }
+
+        // The register, or when it's held, decides whether it's free; who holds it doesn't.
+        if (data.register_id !== undefined || data.shift_date !== undefined || data.start_time !== undefined) {
+            await ShiftService.assertRegisterFree(registerId, {
                 ...ShiftService.mergeSpan(before, data),
                 excludeShiftId: shiftId,
             })
@@ -324,6 +338,26 @@ export class ShiftService {
 
         if (overlapping.length > 0) {
             throw new ShiftOverlapError()
+        }
+    }
+
+    /**
+     * Refuses a second person on a register over the same hours — a register is one checkout
+     * station. A shift with no register has nothing to hold. Same read-then-write race as
+     * assertNoDoubleBooking.
+     */
+    private static async assertRegisterFree(
+        registerId: number | null | undefined,
+        span: Omit<RegisterOverlapQuery, 'registerId'>,
+    ): Promise<void> {
+        if (registerId === null || registerId === undefined) {
+            return
+        }
+
+        const overlapping = await ShiftRepository.getOverlappingShifts({ registerId, ...span })
+
+        if (overlapping.length > 0) {
+            throw new RegisterOverlapError()
         }
     }
 }
