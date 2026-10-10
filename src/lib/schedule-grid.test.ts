@@ -196,9 +196,16 @@ describe('toOtherShifts / toStaff', () => {
     it('lists only custom-hours shifts as other shifts', () => {
         const shifts = [shift(1, ali.userId, WEEK, null), shift(2, sara.userId, WEEK, morning.periodId)];
 
-        expect(toOtherShifts(shifts, indexWeek(shifts, users, []))).toEqual([
+        expect(toOtherShifts(shifts, indexWeek(shifts, users, []), [morning])).toEqual([
             { shiftId: 1, name: 'Ali', date: WEEK, startTime: '08:00', endTime: '16:00' },
         ]);
+    });
+
+    it("keeps a shift on a deactivated period, which the grid no longer shows, instead of losing it", () => {
+        const shifts = [shift(1, ali.userId, WEEK, evening.periodId), shift(2, sara.userId, WEEK, morning.periodId)];
+
+        // only Morning is still on
+        expect(toOtherShifts(shifts, indexWeek(shifts, users, []), [morning]).map((other) => other.shiftId)).toEqual([1]);
     });
 
     it('offers only active people, sorted by name', () => {
