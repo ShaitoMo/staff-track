@@ -2,6 +2,7 @@ import {
     compareScheduleWithAttendance,
     scheduledInstant,
     EARLY_ARRIVAL_WINDOW_MINUTES,
+    LATE_DEPARTURE_WINDOW_MINUTES,
     LATE_GRACE_MINUTES,
 } from '@/lib/schedule-vs-actual';
 import { AttendanceView } from '@/types/attendance';
@@ -55,6 +56,9 @@ function punch(
         ...overrides,
     };
 }
+
+/** 11:00 on the fixture day — the morning shift is under way, so an open punch is still current. */
+const MID_SHIFT = new Date('2026-07-01T08:00:00Z');
 
 const morning = () => shift({ start_time: '09:00', end_time: '17:00' });
 const evening = () => shift({ start_time: '17:00', end_time: '21:00' });
@@ -168,11 +172,81 @@ describe('compareScheduleWithAttendance - flags', () => {
         const [row] = compareScheduleWithAttendance(
             [shift()],
             [punch('2026-07-01T06:00:00Z', null)],
+            MID_SHIFT,
         );
 
         expect(row.flag).toBe('on_time');
         expect(row.actual_clock_out).toBeNull();
         expect(row.early_leave_minutes).toBeNull();
+        expect(row.incomplete_attendance_id).toBeNull();
+    });
+
+    it('flags a punch still open after the shift ended as missing_clock_out, keeping the lateness', () => {
+        const [row] = compareScheduleWithAttendance(
+            [shift()],
+            [punch('2026-07-01T06:20:00Z', null, { attendance_id: 7 })],
+            new Date('2026-07-01T14:00:00Z'),
+        );
+
+        expect(row).toMatchObject({
+            flag: 'missing_clock_out',
+            incomplete_attendance_id: 7,
+            late_minutes: 20,
+            early_leave_minutes: null,
+            // the flag hides it, but the arrival was still late
+            is_late: true,
+            left_early: false,
+        });
+    });
+
+    it('marks a shift both late and left early, though its flag says only late', () => {
+        const [row] = compareScheduleWithAttendance([shift()], [punch('2026-07-01T06:12:00Z', '2026-07-01T13:40:00Z')]);
+
+        expect(row).toMatchObject({ flag: 'late', is_late: true, left_early: true });
+    });
+
+    it('flags a clock-out with no clock-in as missing_clock_in, with no arrival to judge', () => {
+        const [row] = compareScheduleWithAttendance(
+            [shift()],
+            [punch('2026-07-01T06:00:00Z', '2026-07-01T14:00:00Z', { attendance_id: 7, clock_in: null })],
+        );
+
+        expect(row).toMatchObject({
+            flag: 'missing_clock_in',
+            incomplete_attendance_id: 7,
+            actual_clock_in: null,
+            late_minutes: null,
+            early_leave_minutes: 0,
+        });
+        expect(row.actual_clock_out).toEqual(new Date('2026-07-01T14:00:00Z'));
+    });
+
+    it('still knows the arrival when only the punch after lunch is missing its clock-in', () => {
+        const [row] = compareScheduleWithAttendance(
+            [shift()],
+            [
+                punch('2026-07-01T06:10:00Z', '2026-07-01T09:00:00Z'),
+                punch('2026-07-01T06:00:00Z', '2026-07-01T14:00:00Z', { attendance_id: 9, clock_in: null }),
+            ],
+        );
+
+        expect(row).toMatchObject({ flag: 'missing_clock_in', incomplete_attendance_id: 9, late_minutes: 10 });
+        expect(row.actual_clock_in).toEqual(new Date('2026-07-01T06:10:00Z'));
+    });
+});
+
+describe('compareScheduleWithAttendance - clock-out with no clock-in', () => {
+    const outOnly = (clockOut: string) => punch('2026-07-01T00:00:00Z', clockOut, { clock_in: null });
+
+    it('matches only a clock-out between the shift start and the late-departure window', () => {
+        const endAt = scheduledInstant('2026-07-01', '17:00').getTime();
+        const justInside = new Date(endAt + LATE_DEPARTURE_WINDOW_MINUTES * 60 * 1000).toISOString();
+        const justOutside = new Date(endAt + (LATE_DEPARTURE_WINDOW_MINUTES + 1) * 60 * 1000).toISOString();
+
+        expect(compareScheduleWithAttendance([shift()], [outOnly(justInside)])[0].flag).toBe('missing_clock_in');
+        expect(compareScheduleWithAttendance([shift()], [outOnly(justOutside)])[0].flag).toBe('no_show');
+        // at the start itself nobody has worked any of the shift yet
+        expect(compareScheduleWithAttendance([shift()], [outOnly('2026-07-01T06:00:00Z')])[0].flag).toBe('no_show');
     });
 });
 
@@ -257,10 +331,10 @@ describe('compareScheduleWithAttendance - matching', () => {
         const justOutside = new Date(justInside.getTime() - 60 * 1000);
 
         expect(
-            compareScheduleWithAttendance([shift()], [punch(justInside.toISOString(), null)])[0].flag,
+            compareScheduleWithAttendance([shift()], [punch(justInside.toISOString(), null)], MID_SHIFT)[0].flag,
         ).toBe('on_time');
         expect(
-            compareScheduleWithAttendance([shift()], [punch(justOutside.toISOString(), null)])[0].flag,
+            compareScheduleWithAttendance([shift()], [punch(justOutside.toISOString(), null)], MID_SHIFT)[0].flag,
         ).toBe('no_show');
     });
 
@@ -355,5 +429,48 @@ describe('compareScheduleWithAttendance - a split day on one punch', () => {
         );
 
         expect(rows.map((row) => row.flag)).toEqual(['on_time', 'on_time']);
+    });
+});
+
+describe('compareScheduleWithAttendance - one owner per lone clock-out', () => {
+    it('gives a lone clock-out to the shift it falls inside, not the one before it too', () => {
+        // 17:00-21:00 evening right after a fully punched 09:00-17:00 morning; 18:00 clock-out only
+        const rows = compareScheduleWithAttendance(
+            [morning(), evening()],
+            [
+                punch('2026-07-01T06:00:00Z', '2026-07-01T14:00:00Z'),
+                punch('2026-07-01T00:00:00Z', '2026-07-01T15:00:00Z', { attendance_id: 9, clock_in: null }),
+            ],
+        );
+
+        expect(rows.map((row) => row.flag)).toEqual(['on_time', 'missing_clock_in']);
+        expect(rows[0].incomplete_attendance_id).toBeNull();
+        expect(rows[1].incomplete_attendance_id).toBe(9);
+    });
+
+    it('gives a lone clock-out between two shifts to the one it could have left late from', () => {
+        // 09:00-12:00 and 12:30-17:00; a clock-out at 12:20 is after the first ended and before the
+        // second began, so only the first could own it
+        const first = shift({ start_time: '09:00', end_time: '12:00' });
+        const second = shift({ start_time: '12:30', end_time: '17:00' });
+        const rows = compareScheduleWithAttendance(
+            [first, second],
+            [punch('2026-07-01T00:00:00Z', '2026-07-01T09:20:00Z', { clock_in: null })],
+        );
+
+        expect(rows.map((row) => row.flag)).toEqual(['missing_clock_in', 'no_show']);
+    });
+
+    it('does not report a later clock-in as the arrival when the first punch is missing its clock-in', () => {
+        // missed clock-in before lunch (out at 12:00), then a full punch 13:00-17:00
+        const [row] = compareScheduleWithAttendance(
+            [shift()],
+            [
+                punch('2026-07-01T00:00:00Z', '2026-07-01T09:00:00Z', { clock_in: null }),
+                punch('2026-07-01T10:00:00Z', '2026-07-01T14:00:00Z'),
+            ],
+        );
+
+        expect(row).toMatchObject({ flag: 'missing_clock_in', actual_clock_in: null, late_minutes: null });
     });
 });

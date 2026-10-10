@@ -33,6 +33,8 @@ async function main() {
   await prisma.attendance.deleteMany();
   await prisma.importBatch.deleteMany();
   await prisma.shift.deleteMany();
+  await prisma.coverageRequirement.deleteMany();
+  await prisma.shiftPeriod.deleteMany();
   await prisma.register.deleteMany();
   await prisma.userBranch.deleteMany();
   await prisma.user.deleteMany();
@@ -189,6 +191,94 @@ async function main() {
         importBatchId: null,
       },
     ],
+  });
+
+  // ---------- Attendance test week (Mon 28 Sep – Sun 4 Oct 2026) ----------
+  // A full scheduled week to import src/prisma/samples/main-branch-week-2026-09-28.csv against, at
+  // Main Branch. Nothing in this week is clocked in yet except Bob's Monday, entered by hand, so the
+  // import has one punch to report as already recorded. The comment on each worker's shifts says
+  // what the report should show once the file is in. The file also carries two rows that must
+  // come back as errors (an unreadable date, a Downtown employee number) and one unscheduled punch
+  // (Frank, Tuesday) that imports but has no shift to show on.
+  // Expected import result: 22 punches read, 20 added, 1 already recorded, 2 row errors.
+  // Expected report: 10 on time, 5 late, 2 left early, 1 missing clock-in, 1 missing clock-out, 2 no-show.
+  const morning = await prisma.shiftPeriod.create({
+    data: { name: "Morning", defaultStart: time("08:00"), defaultEnd: time("16:00"), sortOrder: 1 },
+  });
+  const evening = await prisma.shiftPeriod.create({
+    data: { name: "Evening", defaultStart: time("16:00"), defaultEnd: time("23:00"), sortOrder: 2 },
+  });
+
+  await prisma.coverageRequirement.createMany({
+    data: [
+      { branchId: mainBranch.branchId, roleId: managerRole.roleId, periodId: morning.periodId, requiredCount: 1 },
+      { branchId: mainBranch.branchId, roleId: cashierRole.roleId, periodId: morning.periodId, requiredCount: 1 },
+      { branchId: mainBranch.branchId, roleId: cashierRole.roleId, periodId: evening.periodId, requiredCount: 1 },
+      { branchId: mainBranch.branchId, roleId: stockerRole.roleId, periodId: morning.periodId, requiredCount: 1 },
+      { branchId: downtownBranch.branchId, roleId: managerRole.roleId, periodId: morning.periodId, requiredCount: 1 },
+      { branchId: downtownBranch.branchId, roleId: cashierRole.roleId, periodId: morning.periodId, requiredCount: 1 },
+    ],
+  });
+
+  const MON = 0, TUE = 1, WED = 2, THU = 3, FRI = 4, SAT = 5, SUN = 6;
+  const testDay = (offset: number) => new Date(Date.UTC(2026, 8, 28 + offset));
+  const periodShift = (
+    worker: { userId: number },
+    branchId: number,
+    period: { periodId: number; defaultStart: Date; defaultEnd: Date },
+    offset: number,
+    registerId: number | null = null,
+  ) => ({
+    userId: worker.userId,
+    branchId,
+    registerId,
+    periodId: period.periodId,
+    shiftDate: testDay(offset),
+    startTime: period.defaultStart,
+    endTime: period.defaultEnd,
+    createdBy: branchId === mainBranch.branchId ? alice.userId : diana.userId,
+  });
+  const main = mainBranch.branchId;
+  const downtown = downtownBranch.branchId;
+
+  await prisma.shift.createMany({
+    data: [
+      // Alice: on time, on time, 20 late, no-show, left 30 early
+      ...[MON, TUE, WED, THU, FRI].map((d) => periodShift(alice, main, morning, d)),
+      // Bob: on time (manual), on time across a lunch break, 45 late, missing clock-out, on time, late + left early
+      ...[MON, TUE, WED, THU, FRI, SAT].map((d) => periodShift(bob, main, morning, d, mainRegister1.registerId)),
+      // Carol: on time, 30 late, on time past midnight, missing clock-in (out at 23:00), left 60 early
+      ...[MON, TUE, WED, THU, FRI].map((d) => periodShift(carol, main, evening, d, mainRegister2.registerId)),
+      // Carol's Sunday morning: on time
+      periodShift(carol, main, morning, SUN, mainRegister2.registerId),
+      // Frank: on time, no-show, 6 late (just past the 5-minute grace)
+      ...[MON, WED, FRI].map((d) => periodShift(frank, main, morning, d)),
+      // Frank's Saturday is custom hours, not a period: on time
+      {
+        userId: frank.userId,
+        branchId: main,
+        registerId: null,
+        periodId: null,
+        shiftDate: testDay(SAT),
+        startTime: time("06:00"),
+        endTime: time("12:00"),
+        createdBy: alice.userId,
+      },
+      // Downtown is scheduled but the sample file has no punches for it: every shift reads no-show
+      ...[MON, TUE, WED, THU, FRI].map((d) => periodShift(diana, downtown, morning, d)),
+      ...[MON, TUE, WED, THU, FRI].map((d) => periodShift(ethan, downtown, morning, d, downtownRegister1.registerId)),
+    ],
+  });
+
+  // the one punch already in, so the CSV's identical Monday row for Bob comes back as skipped
+  await prisma.attendance.create({
+    data: {
+      userId: bob.userId,
+      branchId: main,
+      clockIn: punch("2026-09-28", "08:03"),
+      clockOut: punch("2026-09-28", "16:00"),
+      source: AttendanceSource.manual,
+    },
   });
 
   // ---------- Tasks ----------

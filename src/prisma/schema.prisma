@@ -219,8 +219,8 @@ model Attendance {
   attendanceId  Int              @id @default(autoincrement()) @map("attendance_id")
   userId        Int              @map("user_id")
   branchId      Int              @map("branch_id")
-  clockIn       DateTime         @map("clock_in") @db.Timestamptz
-  clockOut      DateTime?        @map("clock_out") @db.Timestamptz
+  clockIn       DateTime?        @map("clock_in") @db.Timestamptz // NULL: the machine logged a clock-out with no clock-in
+  clockOut      DateTime?        @map("clock_out") @db.Timestamptz // NULL: still clocked in, or never clocked out
   source        AttendanceSource @default(csv_import)
   importBatchId Int?             @map("import_batch_id") // NULL when source = manual
 
@@ -228,8 +228,11 @@ model Attendance {
   branch      Branch       @relation(fields: [branchId], references: [branchId])
   importBatch ImportBatch? @relation(fields: [importBatchId], references: [batchId])
 
-  // re-uploading the same CSV must not duplicate rows
+  // re-uploading the same CSV must not duplicate rows. Either end identifies a punch (NULLs never
+  // collide), so a clock-out-only row stays a no-op on re-import even after it has been fixed.
+  // At least one end is always set: a CHECK in the migration, which Prisma can't express.
   @@unique([userId, clockIn])
+  @@unique([userId, clockOut])
   @@map("attendance")
 }
 

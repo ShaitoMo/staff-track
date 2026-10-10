@@ -43,8 +43,15 @@ export interface ParsedPunch {
     row: number;
     machineEmployeeId: string;
     name: string;
-    clockIn: Date;
+    /** Null when the row has a clock-out with no clock-in; imported anyway, to be fixed by hand. */
+    clockIn: Date | null;
     clockOut: Date | null;
+    /**
+     * Only with no clock-in: the same reading the next morning. The machine stamps a pair on the
+     * day its shift started, so a lone 12:30 AM clock-out may belong after midnight — only the
+     * schedule can tell, which the import service checks.
+     */
+    clockOutNextDay?: Date;
 }
 
 export interface ImportRowError {
@@ -181,10 +188,22 @@ function readRow(
             continue;
         }
 
+        // a missed clock-in still says the person was there; import it and let the report flag it
         if (!inText) {
-            errors.push({
+            const clockOut = parseTime(outText);
+
+            if (!clockOut) {
+                errors.push({ row: rowNumber, message: `Unreadable time in pair ${index + 1}: '${outText}'` });
+                continue;
+            }
+
+            punches.push({
                 row: rowNumber,
-                message: `Clock Out ${index + 1} has no matching clock-in`,
+                machineEmployeeId,
+                name,
+                clockIn: null,
+                clockOut: toInstant(date, clockOut),
+                clockOutNextDay: toInstant({ ...date, day: date.day + 1 }, clockOut),
             });
             continue;
         }

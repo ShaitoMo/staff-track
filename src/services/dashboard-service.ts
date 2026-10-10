@@ -64,11 +64,14 @@ export class DashboardService {
             range: { from: toDateOnlyString(from), to: toDateOnlyString(to) },
             attendance: {
                 no_shows: rows.filter((row) => row.flag === 'no_show').length,
-                // Each row carries a single flag (schedule-vs-actual's flagFor checks late before
-                // early leave), so a shift that is both late and left early is only ever counted
-                // here, never in early_departures.
-                late_arrivals: rows.filter((row) => row.flag === 'late').length,
-                early_departures: rows.filter((row) => row.flag === 'left_early').length,
+                // Read is_late / left_early, not the flag: a punch missing an end outranks lateness
+                // in the flag, yet a late arrival who forgot to clock out was still late. A shift both
+                // late and left early counts in both, as the attendance page does.
+                late_arrivals: rows.filter((row) => row.is_late).length,
+                early_departures: rows.filter((row) => row.left_early).length,
+                incomplete_punches: rows.filter(
+                    (row) => row.flag === 'missing_clock_in' || row.flag === 'missing_clock_out',
+                ).length,
             },
             tasks: {
                 pending: instances.filter((instance) => instance.status === 'pending').length,
