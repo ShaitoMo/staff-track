@@ -1,6 +1,9 @@
 import { z } from 'zod'
 import { TimeOnlySchema } from '@/types/time-only'
 
+/** Where a period sits in pickers and grids; bounded so a stray value is a 400, not a Postgres int overflow. */
+const SortOrderSchema = z.number().int().min(0).max(999)
+
 // ---------- Query filters (GET /periods) ----------
 
 /** `includeInactive=true` is for the periods admin page; every other caller only sees periods that are on. */
@@ -23,7 +26,7 @@ export const CreatePeriodSchema = z.object({
     name: z.string().trim().min(1).max(50),
     defaultStart: TimeOnlySchema,
     defaultEnd: TimeOnlySchema,
-    sortOrder: z.number().int().optional(),
+    sortOrder: SortOrderSchema.optional(),
 }).superRefine((data, ctx) => {
     const { defaultStart, defaultEnd } = data
 
@@ -53,7 +56,7 @@ export const UpdatePeriodSchema = z.object({
     name: z.string().trim().min(1).max(50).optional(),
     defaultStart: TimeOnlySchema.optional(),
     defaultEnd: TimeOnlySchema.optional(),
-    sortOrder: z.number().int().optional(),
+    sortOrder: SortOrderSchema.optional(),
     active: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',

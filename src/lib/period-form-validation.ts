@@ -24,6 +24,7 @@ const FIELD_MESSAGES = {
     name: "Name is required and can be at most 50 characters.",
     defaultStart: "Pick a start time.",
     defaultEnd: "Pick an end time after the start.",
+    sortOrder: "Order must be a whole number from 0 to 999.",
 } as const;
 
 /** "" is 0; anything else must be a whole number. */
@@ -45,23 +46,26 @@ export function validatePeriodForm(input: PeriodFormInput): PeriodFormErrors {
         errors.branch = "Pick a branch, or all branches.";
     }
 
+    const sortOrder = parseSortOrder(input.sortOrder);
     const result = CreatePeriodSchema.safeParse({
         name: input.name,
         defaultStart: input.defaultStart,
         defaultEnd: input.defaultEnd,
+        sortOrder: sortOrder ?? undefined,
     });
 
     if (!result.success) {
         for (const issue of result.error.issues) {
             const field = issue.path[0];
-            if (field === "name" || field === "defaultStart" || field === "defaultEnd") {
+            if (field === "name" || field === "defaultStart" || field === "defaultEnd" || field === "sortOrder") {
                 errors[field] = FIELD_MESSAGES[field];
             }
         }
     }
 
-    if (parseSortOrder(input.sortOrder) === null) {
-        errors.sortOrder = "Order must be a whole number.";
+    // not a number at all never reaches the schema, so flag it here
+    if (sortOrder === null) {
+        errors.sortOrder = FIELD_MESSAGES.sortOrder;
     }
 
     return errors;
