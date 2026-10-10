@@ -26,9 +26,12 @@ describe('validatePeriodForm', () => {
         expect(validatePeriodForm({ ...valid, defaultEnd }).defaultEnd).toBeDefined();
     });
 
-    it('rejects an order that is not a whole number', () => {
-        expect(validatePeriodForm({ ...valid, sortOrder: '1.5' }).sortOrder).toBeDefined();
-        expect(validatePeriodForm({ ...valid, sortOrder: 'first' }).sortOrder).toBeDefined();
+    it.each(['1.5', 'first', '-1', '1000', '99999999999'])('rejects the order %p', (sortOrder) => {
+        expect(validatePeriodForm({ ...valid, sortOrder }).sortOrder).toBeDefined();
+    });
+
+    it.each(['', '0', '999'])('accepts the order %p', (sortOrder) => {
+        expect(validatePeriodForm({ ...valid, sortOrder }).sortOrder).toBeUndefined();
     });
 });
 
