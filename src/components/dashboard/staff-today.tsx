@@ -137,13 +137,14 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
     const tomorrow = addDays(today, 1);
     const weeks = [...new Set([mondayOf(today), mondayOf(tomorrow)])];
 
-    let scheduleResults: PromiseSettledResult<BranchScheduleView[]>[];
+    let schedules: BranchScheduleView[][];
+    let failed: number;
     let pending: TaskInstanceListView[];
     let roles: Role[];
     let report: ScheduleVsActualRow[];
 
     try {
-        [scheduleResults, [pending, roles, report]] = await Promise.all([
+        const [scheduleResults, reads] = await Promise.all([
             // settled per branch, so the alert counts branches, not reads
             Promise.allSettled(
                 branchIds.map((branchId) =>
@@ -159,6 +160,9 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
                 fetchApi<ScheduleVsActualRow[]>(`/api/users/${userId}/schedule-vs-actual?from=${monthStart(today)}&to=${today}`),
             ]),
         ]);
+        [pending, roles, report] = reads;
+        // inside the try: when every branch fails, its error gets the same alert as the reads above
+        ({ values: schedules, failed } = settledOrThrow(scheduleResults));
     } catch (error) {
         // the session outlives an account removed or locked within the token's 10 minutes
         if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
@@ -172,7 +176,6 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
         throw error;
     }
 
-    const { values: schedules, failed } = settledOrThrow(scheduleResults);
     const shifts = splitByDay(
         myShifts(schedules.flat(), userId).filter((shift) => shift.date >= today && shift.date <= tomorrow),
         (shift) => shift.date,

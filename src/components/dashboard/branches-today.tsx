@@ -219,18 +219,29 @@ export async function BranchesToday({ date, today }: { date: string; today: stri
         );
     }
 
-    const { values, failed } = settledOrThrow(
-        await Promise.allSettled(
-            branches.map(async (branch): Promise<BranchSummary> => {
-                const [schedule, stats, gaps] = await Promise.all([
-                    fetchApi<BranchScheduleView>(`/api/branches/${branch.branchId}/schedule?week_start=${week}`),
-                    fetchApi<DashboardResponse>(`/api/dashboard?branch_id=${branch.branchId}&from=${date}&to=${date}`),
-                    fetchApi<CoverageGapRow[]>(`/api/branches/${branch.branchId}/coverage?weekStart=${week}`),
-                ]);
-                return { branchId: branch.branchId, name: branch.name, day: branchDay(schedule, date, gaps, roles), stats };
-            }),
-        ),
-    );
+    let values: BranchSummary[];
+    let failed: number;
+
+    try {
+        ({ values, failed } = settledOrThrow(
+            await Promise.allSettled(
+                branches.map(async (branch): Promise<BranchSummary> => {
+                    const [schedule, stats, gaps] = await Promise.all([
+                        fetchApi<BranchScheduleView>(`/api/branches/${branch.branchId}/schedule?week_start=${week}`),
+                        fetchApi<DashboardResponse>(`/api/dashboard?branch_id=${branch.branchId}&from=${date}&to=${date}`),
+                        fetchApi<CoverageGapRow[]>(`/api/branches/${branch.branchId}/coverage?weekStart=${week}`),
+                    ]);
+                    return { branchId: branch.branchId, name: branch.name, day: branchDay(schedule, date, gaps, roles), stats };
+                }),
+            ),
+        ));
+    } catch (error) {
+        // every branch failed, likely on the same lapsed role as above: same message, not the error boundary
+        if (error instanceof ApiError && error.status === 403) {
+            return <AccessMessage title="Dashboard" message="You don't have access to the dashboard." />;
+        }
+        throw error;
+    }
     // stable, so branches keep their own order within each group
     const summaries = values.toSorted(
         (a, b) => Number(problemsOf(b, attendanceIn).length > 0) - Number(problemsOf(a, attendanceIn).length > 0),
