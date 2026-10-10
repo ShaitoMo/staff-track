@@ -80,6 +80,9 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
      * Re-checks every field against the freshest values and replaces `errors` wholesale. Only
      * matters once a failed submit has shown errors at all — before that, staying silent is
      * correct (don't scold a field the user hasn't tried yet).
+     *
+     * Every change handler must pass the value it just set in `next`: `setX(v)` hasn't landed by
+     * the time this runs, so the state variable still holds the old value.
      */
     function revalidate(next: Partial<{
         title: string; description: string; branchId: number | null; assigneeKind: AssigneeKind;
