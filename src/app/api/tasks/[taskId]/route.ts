@@ -68,6 +68,16 @@ export async function PATCH(
         return user;
     }
 
+    try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+    } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
+        throw error
+    }
+
     let body
     try {
         body = await req.json();
@@ -86,8 +96,6 @@ export async function PATCH(
     }
 
     try {
-        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
-
         const existing = await TaskService.getTaskById(taskId);
 
         if (!existing) {
