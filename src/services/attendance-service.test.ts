@@ -72,6 +72,23 @@ describe('AttendanceService.placeLoneClockOuts', () => {
         expect(placed.clockOut).toEqual(new Date('2026-09-30T21:30:00Z'));
     });
 
+    it('reads shifts from the day before the earliest lone clock-out through the latest one', async () => {
+        getShifts.mockResolvedValue([]);
+
+        await placeLoneClockOuts([
+            // 00:30 on 1 Oct and 23:00 on 3 Oct, Beirut
+            lone('2026-09-30T21:30:00Z', '2026-10-01T21:30:00Z'),
+            lone('2026-10-03T20:00:00Z', '2026-10-04T20:00:00Z'),
+        ]);
+
+        // `to` is the latest punch's own day; getShifts includes it (lte), so that evening's shift is read
+        expect(getShifts).toHaveBeenCalledWith({
+            branchId: 1,
+            from: new Date('2026-09-30T00:00:00Z'),
+            to: new Date('2026-10-03T00:00:00Z'),
+        });
+    });
+
     it('reads no shifts when the file has no lone clock-outs', async () => {
         const complete: LonePunch = {
             userId: 1,

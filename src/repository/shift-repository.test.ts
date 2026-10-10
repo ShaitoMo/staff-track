@@ -2,8 +2,9 @@ import { Prisma } from '@prisma/client';
 
 // The module builds a PrismaPg adapter at import time; the tests below never reach the database,
 // so an empty stand-in keeps the suite from needing DATABASE_URL.
-jest.mock('@/lib/db', () => ({ db: {} }));
+jest.mock('@/lib/db', () => ({ db: { shift: { findMany: jest.fn() } } }));
 
+import { db } from '@/lib/db';
 import { ShiftRepository, OverlapQuery, RegisterOverlapQuery } from '@/repository/shift-repository';
 
 /** `buildOverlapWhere` is private; element access reaches it without widening the repository API. */
@@ -49,5 +50,18 @@ describe('buildOverlapWhere — half-open interval', () => {
         const where = buildOverlapWhere({ ...QUERY, excludeShiftId: 42 });
 
         expect(where.shiftId).toEqual({ not: 42 });
+    });
+});
+
+describe('getShifts — date window', () => {
+    it('includes both ends, so a shift on the `to` day is returned', async () => {
+        const findMany = db.shift.findMany as jest.Mock;
+        findMany.mockResolvedValue([]);
+        const from = new Date('2026-09-30T00:00:00Z');
+        const to = new Date('2026-10-03T00:00:00Z');
+
+        await ShiftRepository.getShifts({ branchId: 1, from, to });
+
+        expect(findMany.mock.calls[0][0].where.shiftDate).toEqual({ gte: from, lte: to });
     });
 });
