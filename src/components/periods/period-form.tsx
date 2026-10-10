@@ -23,11 +23,29 @@ import { Branch } from "@/types/branch";
 
 const CHAIN_WIDE = "chain-wide";
 
+/** Each field's control id, in reading order: the first one with an error takes focus on submit. */
+const FIELD_IDS: Record<keyof PeriodFormErrors, string> = {
+    branch: "branch",
+    name: "name",
+    defaultStart: "default-start",
+    defaultEnd: "default-end",
+    sortOrder: "sort-order",
+};
+
+/** Marks a control invalid and points it at its error, so a screen reader reads both on focus. */
+function invalidProps(errors: PeriodFormErrors, field: keyof PeriodFormErrors, describedBy?: string) {
+    const error = errors[field];
+    const ids = [describedBy, error ? `${FIELD_IDS[field]}-error` : undefined].filter(Boolean).join(" ");
+    return { "aria-invalid": !!error || undefined, "aria-describedby": ids || undefined };
+}
+
 interface PeriodFormProps {
     mode: "create" | "edit";
     branches: Branch[];
     /** Only the owner may create a chain-wide period, so only they are offered it. */
     canPickChainWide: boolean;
+    /** The branch the switcher has selected, so a new period starts there. */
+    defaultBranchId?: number;
     periodId?: number;
     initialValues?: {
         branch: PeriodBranchChoice;
@@ -38,9 +56,9 @@ interface PeriodFormProps {
     };
 }
 
-export function PeriodForm({ mode, branches, canPickChainWide, periodId, initialValues }: PeriodFormProps) {
+export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, periodId, initialValues }: PeriodFormProps) {
     const router = useRouter();
-    const [branch, setBranch] = useState<PeriodBranchChoice>(initialValues?.branch ?? null);
+    const [branch, setBranch] = useState<PeriodBranchChoice>(initialValues?.branch ?? defaultBranchId ?? null);
     const [name, setName] = useState(initialValues?.name ?? "");
     const [defaultStart, setDefaultStart] = useState(initialValues?.defaultStart ?? "");
     const [defaultEnd, setDefaultEnd] = useState(initialValues?.defaultEnd ?? "");
@@ -55,7 +73,11 @@ export function PeriodForm({ mode, branches, canPickChainWide, periodId, initial
 
         const validationErrors = validatePeriodForm({ branch, name, defaultStart, defaultEnd, sortOrder });
         setErrors(validationErrors);
-        if (!isPeriodFormValid(validationErrors)) return;
+        if (!isPeriodFormValid(validationErrors)) {
+            const first = (Object.keys(FIELD_IDS) as (keyof PeriodFormErrors)[]).find((field) => validationErrors[field]);
+            if (first) document.getElementById(FIELD_IDS[first])?.focus();
+            return;
+        }
 
         const fields = { name, defaultStart, defaultEnd, sortOrder: parseSortOrder(sortOrder)! };
 
@@ -99,7 +121,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, periodId, initial
                         onValueChange={(value) => setBranch(value === CHAIN_WIDE ? CHAIN_WIDE : Number(value))}
                         disabled={pending || mode === "edit"}
                     >
-                        <SelectTrigger id="branch" className="w-full">
+                        <SelectTrigger id="branch" className="w-full" {...invalidProps(errors, "branch")}>
                             <SelectValue placeholder="Select a branch">{branchLabel}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -113,13 +135,20 @@ export function PeriodForm({ mode, branches, canPickChainWide, periodId, initial
                             ))}
                         </SelectContent>
                     </Select>
-                    <FieldError>{errors.branch}</FieldError>
+                    <FieldError id="branch-error">{errors.branch}</FieldError>
                 </Field>
 
                 <Field data-invalid={!!errors.name || undefined}>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
-                    <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
-                    <FieldError>{errors.name}</FieldError>
+                    <Input
+                        id="name"
+                        value={name}
+                        maxLength={50}
+                        disabled={pending}
+                        onChange={(e) => setName(e.target.value)}
+                        {...invalidProps(errors, "name")}
+                    />
+                    <FieldError id="name-error">{errors.name}</FieldError>
                 </Field>
             </FormSection>
 
@@ -132,8 +161,9 @@ export function PeriodForm({ mode, branches, canPickChainWide, periodId, initial
                         value={defaultStart}
                         disabled={pending}
                         onChange={(e) => setDefaultStart(e.target.value)}
+                        {...invalidProps(errors, "defaultStart")}
                     />
-                    <FieldError>{errors.defaultStart}</FieldError>
+                    <FieldError id="default-start-error">{errors.defaultStart}</FieldError>
                 </Field>
 
                 <Field data-invalid={!!errors.defaultEnd || undefined}>
@@ -144,8 +174,9 @@ export function PeriodForm({ mode, branches, canPickChainWide, periodId, initial
                         value={defaultEnd}
                         disabled={pending}
                         onChange={(e) => setDefaultEnd(e.target.value)}
+                        {...invalidProps(errors, "defaultEnd")}
                     />
-                    <FieldError>{errors.defaultEnd}</FieldError>
+                    <FieldError id="default-end-error">{errors.defaultEnd}</FieldError>
                 </Field>
 
                 <Field data-invalid={!!errors.sortOrder || undefined}>
@@ -157,9 +188,10 @@ export function PeriodForm({ mode, branches, canPickChainWide, periodId, initial
                         value={sortOrder}
                         disabled={pending}
                         onChange={(e) => setSortOrder(e.target.value)}
+                        {...invalidProps(errors, "sortOrder", "sort-order-description")}
                     />
-                    <FieldDescription>Lower comes first on the schedule.</FieldDescription>
-                    <FieldError>{errors.sortOrder}</FieldError>
+                    <FieldDescription id="sort-order-description">Lower comes first on the schedule.</FieldDescription>
+                    <FieldError id="sort-order-error">{errors.sortOrder}</FieldError>
                 </Field>
             </FormSection>
 

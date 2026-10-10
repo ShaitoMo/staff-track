@@ -171,7 +171,7 @@ Modest, slightly restrained corner rounding — `--radius: 0.45rem` (~7px) as th
 Every create/edit page (tasks, users, branches, registers, periods) is one `FormCard` (`src/components/layout/form-card.tsx`) on Card: `FormAlerts` on top for form-level messages, then `FormSection`s under Hairline rules — the section name in a 10rem left column from `md` up, the fields to its right — and `FormFooter` with the one primary button at the right.
 - **Width follows the fields, not a fixed cap.** A form with a couple of fields is `max-w-3xl`; one with several short pickers is `max-w-5xl`, and those pickers share a row (`lg:grid-cols-3` on the section) instead of each stretching to 500px+. A date or a three-word select never takes a full row; free text (Title, Name) may.
 - **Order reads left to right as it's filled in** — Branch, then Assign to, then Person — so a field another depends on comes first in the row.
-- **Touch:** on a coarse pointer the card's inputs and select triggers grow to 44px; a mouse keeps the dense 32px.
+- **Touch:** on a coarse pointer the card's inputs, select triggers and footer button grow to 44px; a mouse keeps the dense 32px.
 - **New credentials:** a form that creates someone else's login sets `autoComplete="off"` on the phone and `new-password` on the password, so the browser doesn't fill in the signed-in manager's own.
 - The roles page's "New role" stays an inline field-plus-button: it adds one row to the table above it, not a page.
 

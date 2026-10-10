@@ -16,6 +16,11 @@ describe('validatePeriodForm', () => {
         expect(validatePeriodForm({ ...valid, name }).name).toBeDefined();
     });
 
+    it('tells a missing name from one that is too long', () => {
+        expect(validatePeriodForm({ ...valid, name: ' ' }).name).toBe('Enter a name.');
+        expect(validatePeriodForm({ ...valid, name: 'a'.repeat(51) }).name).toBe('Name can be at most 50 characters.');
+    });
+
     it('requires both times', () => {
         const errors = validatePeriodForm({ ...valid, defaultStart: '', defaultEnd: '' });
         expect(errors.defaultStart).toBeDefined();

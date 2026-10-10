@@ -76,7 +76,7 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                         onValueChange={(value) => setBranchId(Number(value))}
                         disabled={pending || mode === "edit"}
                     >
-                        <SelectTrigger id="branch" className="w-full">
+                        <SelectTrigger id="branch" className="w-full" aria-invalid={!!errors.branchId || undefined}>
                             <SelectValue placeholder="Select a branch">
                                 {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
                             </SelectValue>
@@ -94,7 +94,13 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
 
                 <Field data-invalid={!!errors.name || undefined}>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
-                    <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
+                    <Input
+                        id="name"
+                        value={name}
+                        disabled={pending}
+                        aria-invalid={!!errors.name || undefined}
+                        onChange={(e) => setName(e.target.value)}
+                    />
                     <FieldError>{errors.name}</FieldError>
                 </Field>
             </FormSection>
