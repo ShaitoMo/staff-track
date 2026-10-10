@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useMemo, useSyncExternalStore, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronsUpDownIcon, StoreIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,8 @@ export function BranchSwitcher({ branches, preference }: { branches: { branchId:
     const [pending, startTransition] = useTransition();
     const saved = useSyncExternalStore(noSubscription, readBranchCookie, () => preference);
 
-    const branchIds = branches.map((branch) => branch.branchId);
+    // memoized: it's an effect dependency below, and a fresh array each render would rerun the effect every time
+    const branchIds = useMemo(() => branches.map((branch) => branch.branchId), [branches]);
     const requested = searchParams.get("branch");
     const selectedId = resolveBranchId(requested, saved, branchIds);
     const selectedName = branches.find((branch) => branch.branchId === selectedId)?.name ?? "All branches";
