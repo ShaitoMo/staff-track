@@ -1,18 +1,27 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { AccessMessage } from "@/components/layout/access-message";
 import { InstanceFilters } from "@/components/tasks/instance-filters";
 import { TaskDefinitions } from "@/components/tasks/task-definitions";
 import { TaskInstances } from "@/components/tasks/task-instances";
 import { buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { parseDateParam } from "@/lib/instance-rows";
+import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
+import { getSession } from "@/lib/session";
 
 export default async function TasksPage({
     searchParams,
 }: {
     searchParams: Promise<{ view?: string; branch?: string; date?: string }>;
 }) {
-    const { view, branch, date: dateParam } = await searchParams;
+    const [{ view, branch, date: dateParam }, session] = await Promise.all([searchParams, getSession()]);
+
+    // staff would otherwise see the management chrome (Add task, view tabs) above the inner 403
+    if (session?.role !== OWNER_ROLE && session?.role !== MANAGER_ROLE) {
+        return <AccessMessage title="Tasks" message="You don't have access to view tasks." />;
+    }
+
     const branchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
     const showInstances = view === "instances";
     const date = parseDateParam(dateParam);
