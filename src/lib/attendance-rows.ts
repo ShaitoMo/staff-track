@@ -3,10 +3,11 @@ import { scheduledInstant } from "@/lib/schedule-vs-actual";
 import type { AttendanceFlag, ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 
 /**
- * The report's flag, plus `upcoming`: the API calls any shift without punches a no-show, but one
- * that hasn't started yet hasn't been missed.
+ * The report's flag, plus two softer readings of its no-show: the API calls any shift without
+ * punches a no-show, but one that hasn't started yet (`upcoming`) or is still running
+ * (`not_in_yet` — late, or a punch that hasn't synced) hasn't been missed yet.
  */
-export type AttendanceStatus = AttendanceFlag | "upcoming";
+export type AttendanceStatus = AttendanceFlag | "not_in_yet" | "upcoming";
 
 /** In the order a manager reads them: what went right, what went wrong, then what's still ahead. */
 export const STATUS_ORDER: AttendanceStatus[] = [
@@ -16,6 +17,7 @@ export const STATUS_ORDER: AttendanceStatus[] = [
     "missing_clock_in",
     "missing_clock_out",
     "no_show",
+    "not_in_yet",
     "upcoming",
 ];
 
@@ -26,6 +28,7 @@ export const STATUS_LABELS: Record<AttendanceStatus, string> = {
     missing_clock_in: "Missing clock-in",
     missing_clock_out: "Missing clock-out",
     no_show: "No-show",
+    not_in_yet: "Not in yet",
     upcoming: "Upcoming",
 };
 
@@ -163,8 +166,12 @@ export function buildAttendanceRows(
         );
 }
 
+/** A no-show only counts once the shift is over; before its end, no punch just means not here yet. */
 function statusOf(row: ScheduleVsActualRow, now: Date): AttendanceStatus {
-    return row.flag === "no_show" && scheduledInstant(row.shift_date, row.scheduled_start) > now ? "upcoming" : row.flag;
+    if (row.flag !== "no_show") return row.flag;
+    if (scheduledInstant(row.shift_date, row.scheduled_start) > now) return "upcoming";
+    if (scheduledInstant(row.shift_date, row.scheduled_end) > now) return "not_in_yet";
+    return "no_show";
 }
 
 function fixFor(row: ScheduleVsActualRow): AttendanceRow["fix"] {

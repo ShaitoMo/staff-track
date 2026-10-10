@@ -66,6 +66,7 @@ describe('summarizeStatuses', () => {
             missing_clock_in: 0,
             missing_clock_out: 1,
             no_show: 0,
+            not_in_yet: 0,
             upcoming: 1,
         });
     });
@@ -119,17 +120,20 @@ describe('buildAttendanceRows status', () => {
     // Mon 12 Jan 2026, 10:00 in Beirut (+02:00)
     const now = new Date('2026-01-12T08:00:00.000Z');
 
-    it('calls a punchless shift that has not started yet upcoming, not a no-show', () => {
-        const [started, ahead] = buildAttendanceRows(
+    it('reads a punchless shift by the clock: upcoming, then not in yet, then a no-show once it ends', () => {
+        const [over, running, ahead] = buildAttendanceRows(
             [
-                row({ shift_id: 1, scheduled_start: '09:00' }),
-                row({ shift_id: 2, scheduled_start: '11:00' }),
+                row({ shift_id: 1, scheduled_start: '06:00', scheduled_end: '10:00' }),
+                row({ shift_id: 2, scheduled_start: '09:00', scheduled_end: '17:00' }),
+                row({ shift_id: 3, scheduled_start: '11:00', scheduled_end: '19:00' }),
             ],
             [],
             now,
         );
 
-        expect(started.status).toBe('no_show');
+        // ended exactly now: the shift is over, so the absence counts
+        expect(over.status).toBe('no_show');
+        expect(running.status).toBe('not_in_yet');
         expect(ahead.status).toBe('upcoming');
     });
 

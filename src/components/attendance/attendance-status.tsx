@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 // Status is functional colour, never Market Blue (DESIGN.md). Loudness follows how much a status
 // asks of the reader: on time is the quietest thing on the page, a slip gets a plain outline, a
-// shift still ahead a dashed one, and red is kept for what needs a manager — a no-show, or a
-// punch missing an end.
+// shift still ahead (or running with nobody in yet) a dashed one, and red is kept for what needs a
+// manager — a no-show, or a punch missing an end.
 const STATUS_STYLES: Record<AttendanceStatus, { variant: "outline" | "destructive" | "ghost"; className?: string }> = {
     on_time: { variant: "ghost", className: "px-0 font-normal text-muted-foreground" },
     late: { variant: "outline" },
@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<AttendanceStatus, { variant: "outline" | "destructiv
     missing_clock_in: { variant: "destructive" },
     missing_clock_out: { variant: "destructive" },
     no_show: { variant: "destructive" },
+    not_in_yet: { variant: "outline", className: "border-dashed font-normal text-muted-foreground" },
     upcoming: { variant: "outline", className: "border-dashed font-normal text-muted-foreground" },
 };
 
