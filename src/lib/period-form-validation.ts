@@ -20,8 +20,10 @@ export interface PeriodFormErrors {
     sortOrder?: string;
 }
 
+const NAME_TOO_LONG = "Name can be at most 50 characters.";
+
 const FIELD_MESSAGES = {
-    name: "Name is required and can be at most 50 characters.",
+    name: "Enter a name.",
     defaultStart: "Pick a start time.",
     defaultEnd: "Pick an end time after the start.",
     sortOrder: "Order must be a whole number from 0 to 999.",
@@ -58,7 +60,7 @@ export function validatePeriodForm(input: PeriodFormInput): PeriodFormErrors {
         for (const issue of result.error.issues) {
             const field = issue.path[0];
             if (field === "name" || field === "defaultStart" || field === "defaultEnd" || field === "sortOrder") {
-                errors[field] = FIELD_MESSAGES[field];
+                errors[field] = field === "name" && issue.code === "too_big" ? NAME_TOO_LONG : FIELD_MESSAGES[field];
             }
         }
     }

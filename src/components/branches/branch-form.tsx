@@ -89,13 +89,25 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
             <FormSection legend="Details" className="sm:grid-cols-2">
                 <Field data-invalid={!!errors.name || undefined}>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
-                    <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
+                    <Input
+                        id="name"
+                        value={name}
+                        disabled={pending}
+                        aria-invalid={!!errors.name || undefined}
+                        onChange={(e) => setName(e.target.value)}
+                    />
                     <FieldError>{errors.name}</FieldError>
                 </Field>
 
                 <Field data-invalid={!!errors.location || undefined}>
                     <FieldLabel htmlFor="location">Location (optional)</FieldLabel>
-                    <Input id="location" value={location} disabled={pending} onChange={(e) => setLocation(e.target.value)} />
+                    <Input
+                        id="location"
+                        value={location}
+                        disabled={pending}
+                        aria-invalid={!!errors.location || undefined}
+                        onChange={(e) => setLocation(e.target.value)}
+                    />
                     <FieldError>{errors.location}</FieldError>
                 </Field>
             </FormSection>
