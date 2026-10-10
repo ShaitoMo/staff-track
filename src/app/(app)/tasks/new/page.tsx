@@ -32,7 +32,7 @@ export default async function NewTaskPage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">New task</h1>
+            <h1 className="text-xl font-semibold">New task</h1>
             <TaskForm
                 branches={branches}
                 roles={assignableRoles}

@@ -45,7 +45,7 @@ export default async function EditTaskPage({ params }: { params: Promise<{ taskI
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">Edit task</h1>
+            <h1 className="text-xl font-semibold">Edit task</h1>
             <TaskForm
                 mode="edit"
                 taskId={task.task_id}

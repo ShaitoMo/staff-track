@@ -5,6 +5,7 @@ import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
 
 const MANAGER_NAV = [
+    { href: "/", label: "Dashboard" },
     { href: "/users", label: "Users" },
     { href: "/branches", label: "Branches" },
     { href: "/registers", label: "Registers" },
@@ -14,9 +15,10 @@ const MANAGER_NAV = [
     { href: "/roles", label: "Roles" },
 ];
 
-/** Staff land on their tasks at "/"; the schedule and their attendance are read-only for them. */
+/** Staff land on their today and tomorrow at "/"; the schedule and their attendance are read-only for them. */
 const STAFF_NAV = [
-    { href: "/", label: "My tasks" },
+    { href: "/", label: "Home" },
+    { href: "/my-tasks", label: "My tasks" },
     { href: "/schedule", label: "Schedule" },
     { href: "/attendance", label: "Attendance" },
 ];

@@ -36,7 +36,7 @@ export default async function AttendancePage({
     if (session && session.role !== OWNER_ROLE && session.role !== MANAGER_ROLE) {
         return (
             <div className="flex flex-col gap-6">
-                <h1 className="text-xl font-medium">My attendance</h1>
+                <h1 className="text-xl font-semibold">My attendance</h1>
                 <WeekNav basePath="/attendance" weekStart={weekStart} thisWeek={mondayOf(todayDateString())} query={{}} />
                 <Suspense key={weekStart} fallback={loading}>
                     <MyAttendance userId={session.userId} weekStart={weekStart} />
@@ -62,7 +62,7 @@ export default async function AttendancePage({
 
     return (
         <div className="flex flex-col gap-6">
-            <h1 className="text-xl font-medium">{branchName ? `Attendance for ${branchName}` : "Attendance"}</h1>
+            <h1 className="text-xl font-semibold">{branchName ? `Attendance for ${branchName}` : "Attendance"}</h1>
             {branchId === undefined ? (
                 <Empty>
                     <EmptyHeader>

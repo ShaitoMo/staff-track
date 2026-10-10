@@ -18,7 +18,7 @@ export default async function NewRegisterPage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">New register</h1>
+            <h1 className="text-xl font-semibold">New register</h1>
             <RegisterForm mode="create" branches={branches} />
         </div>
     );

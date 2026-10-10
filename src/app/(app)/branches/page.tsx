@@ -27,7 +27,7 @@ export default async function BranchesPage() {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-medium">Branches</h1>
+                <h1 className="text-xl font-semibold">Branches</h1>
                 {isOwner && (
                     <Link href="/branches/new" className={buttonVariants({ size: "sm" })}>
                         Add branch

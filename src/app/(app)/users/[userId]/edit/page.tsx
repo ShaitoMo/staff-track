@@ -61,7 +61,7 @@ export default async function EditUserPage({
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-medium">Edit {targetUser.name}</h1>
+            <h1 className="text-xl font-semibold">Edit {targetUser.name}</h1>
             {branch_warning && (
                 <Alert variant="destructive" className="max-w-lg">
                     <AlertCircleIcon />

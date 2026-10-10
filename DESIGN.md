@@ -83,6 +83,8 @@ Restrained strategy: a neutral slate palette carries the whole system; one accen
 ### Semantic (functional, not brand)
 Destructive, warning, success/verified, and informational states use shadcn's default semantic palette (e.g. destructive `oklch(0.577 0.245 27.325)`, used on the login page's error `Alert`) rather than custom values — these communicate system status, not brand character, and don't count against the one-accent restraint. (Success/verified reads as green per convention — distinct from the Market Blue brand accent, not a competitor to it.)
 
+One adjustment: the destructive `Badge` (e.g. "Overdue", "Declined") sets its text in `color-mix(in oklch, var(--destructive) 85%, black)`, because the plain token on its own 10% tint measured 4.0:1 at 12px on a white card; the darker shade clears AA's 4.5:1 at 5.7:1 on a card and 5.4:1 on the `#f8fafa` page background. Dark mode keeps the plain token.
+
 ### Named Rules
 **The One Accent Rule.** Market Blue appears only on the primary action per view and on interactive/focus state. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.
 
@@ -94,7 +96,7 @@ Destructive, warning, success/verified, and informational states use shadcn's de
 **Character:** A plain, highly legible grotesque built for interfaces, not editorial display — chosen because it's already the project's font and because Operate-mode surfaces are better served by a workhorse face than an expressive one.
 
 ### Hierarchy
-- **Display** (600, 20px, 1.25 line-height): card titles, page/section titles (e.g. the login card's "StaffTrack" title).
+- **Display** (600, 20px, 1.25 line-height): card titles and every page's `h1` (`text-xl font-semibold`), e.g. the login card's "StaffTrack" title.
 - **Body** (400, 14px, 1.5 line-height): default UI text, form labels, descriptions, table cells.
 - **Label** (500, 12px, 1.35 line-height, 0.02em tracking): table headers, field labels, status chips.
 
@@ -107,7 +109,9 @@ A persistent header (currently: app name, role, log out) plus a content area is 
 
 The login page is a single centered `Card` (`max-w-sm`) on the bare `Paper` background — deliberately the simplest possible surface, since it's the one screen with no navigation and no session yet.
 
-Staff-facing screens (shift list, task list/detail, task completion — not yet built) drop the sidebar for a single-column, mobile-first layout with larger touch targets and one primary action per screen — these are used standing up, on a phone, mid-shift, not at a desk.
+Staff-facing screens drop the sidebar for a single-column, mobile-first layout with larger touch targets and one primary action per screen — these are used standing up, on a phone, mid-shift, not at a desk.
+
+The staff Home (`src/components/dashboard/staff-today.tsx`) is the reference: Today, then Tomorrow, then "Missed this month" on a phone. At `lg` it becomes Today as the main column with Tomorrow and Missed time in a 20–22rem side column (same DOM order, so focus order is unchanged), and Today's task cards go two-up once that column clears `@3xl` (a container query, so the shared task list stays single-column elsewhere). Within a day, a group label sits tight above its content (`gap-1.5`) and groups separate more widely; an empty group puts its note on the label's row, and a fully empty day collapses to one line.
 
 ## Elevation & Depth
 
@@ -126,6 +130,8 @@ Modest, slightly restrained corner rounding — `--radius: 0.45rem` (~7px) as th
 - **Shape:** `rounded-lg` at the button-group level, `md` radius (0.36rem) at most individual sizes.
 - **Primary** (`variant="default"`): `bg-primary` / `text-primary-foreground` — Market Blue fill, white text. Used for exactly one action per view (e.g. "Sign in").
 - **Hover / Focus:** hover fades to `bg-primary/80`; focus shows a `--ring` (Market Blue) 3px ring via `focus-visible:ring-3 focus-visible:ring-ring/50`.
+- **Everything else's focus:** text links and plain buttons with no focus style of their own get a solid 2px Market Blue outline with a 2px offset (`:focus-visible` in `globals.css`'s base layer, `outline-ring` at full opacity). The former half-opacity default measured ~2.4:1, under WCAG 1.4.11's 3:1; the solid outline is 5.3:1 on Paper. Components that set `outline-none` keep their own ring.
+- **Repeated actions:** when a list repeats the same button per item (e.g. "Take photo" on each task card), its `aria-label` starts with the visible text and adds the item ("Take photo for Restock shelves, due Sun 4 Oct").
 - **Outline / Secondary / Ghost / Destructive:** available (`src/components/ui/button.tsx`) for lower-emphasis and dangerous actions; not yet used in shipped UI beyond `Logout` (`variant="outline"`).
 - **Pending state:** no built-in loading prop — compose `Spinner` (`data-icon="inline-start"`) + `disabled`, as done on the login button.
 

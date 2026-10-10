@@ -33,7 +33,7 @@ export default async function SchedulePage({
     if (session && session.role !== OWNER_ROLE && session.role !== MANAGER_ROLE) {
         return (
             <div className="flex flex-col gap-6">
-                <h1 className="text-xl font-medium">Schedule</h1>
+                <h1 className="text-xl font-semibold">Schedule</h1>
                 <Suspense key={`${branch}-${weekStart}`} fallback={loading}>
                     <StaffSchedule
                         userId={session.userId}
@@ -68,7 +68,7 @@ export default async function SchedulePage({
 
     return (
         <div className="flex flex-col gap-6">
-            <h1 className="text-xl font-medium">{branchName ? `Schedule for ${branchName}` : "Schedule"}</h1>
+            <h1 className="text-xl font-semibold">{branchName ? `Schedule for ${branchName}` : "Schedule"}</h1>
             {branchId === undefined ? (
                 <Empty>
                     <EmptyHeader>

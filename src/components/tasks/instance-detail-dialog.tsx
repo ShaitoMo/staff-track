@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PhotoLink } from "@/components/tasks/photo-link";
 import { StatusBadge } from "@/components/tasks/status-badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { formatDay } from "@/lib/coverage-rows";
 import type { InstanceRow } from "@/lib/instance-rows";
 
 function DetailField({ label, children }: { label: string; children: ReactNode }) {
@@ -47,14 +48,14 @@ export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow
                         <DetailField label="Assigned to"><span className="capitalize">{row.assignee}</span></DetailField>
                         <DetailField label="Schedule">{row.schedule}</DetailField>
                         <DetailField label="Due">
-                            <span className="font-mono">{row.dueDate}</span>
+                            {formatDay(row.dueDate)}
                         </DetailField>
                     </div>
                     {row.completedByName !== null ? (
                         <DetailField label="Completed by">
                             <span>{row.completedByName}</span>
                             {row.completedDate !== null ? (
-                                <span className="text-muted-foreground"> on {row.completedDate}</span>
+                                <span className="text-muted-foreground"> on {formatDay(row.completedDate)}</span>
                             ) : null}
                             {row.photoMediaId !== null ? (
                                 <>
@@ -68,7 +69,7 @@ export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow
                         <DetailField label={row.status === "rejected" ? "Declined by" : "Approved by"}>
                             <span>{row.reviewedByName}</span>
                             {row.reviewedDate !== null ? (
-                                <span className="text-muted-foreground"> on {row.reviewedDate}</span>
+                                <span className="text-muted-foreground"> on {formatDay(row.reviewedDate)}</span>
                             ) : null}
                         </DetailField>
                     ) : null}
