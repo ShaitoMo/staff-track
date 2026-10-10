@@ -83,7 +83,7 @@ Restrained strategy: a neutral slate palette carries the whole system; one accen
 ### Semantic (functional, not brand)
 Destructive, warning, success/verified, and informational states use shadcn's default semantic palette (e.g. destructive `oklch(0.577 0.245 27.325)`, used on the login page's error `Alert`) rather than custom values — these communicate system status, not brand character, and don't count against the one-accent restraint. (Success/verified reads as green per convention — distinct from the Market Blue brand accent, not a competitor to it.)
 
-One adjustment: the destructive `Badge` (e.g. "Overdue", "Declined") sets its text in `color-mix(in oklch, var(--destructive) 85%, black)`, because the plain token on its own 10% tint measured 4.0:1 at 12px; the darker shade clears AA at 5.7:1. Dark mode keeps the plain token.
+One adjustment: the destructive `Badge` (e.g. "Overdue", "Declined") sets its text in `color-mix(in oklch, var(--destructive) 85%, black)`, because the plain token on its own 10% tint measured 4.0:1 at 12px on a white card; the darker shade clears AA's 4.5:1 at 5.7:1 on a card and 5.4:1 on the `#f8fafa` page background. Dark mode keeps the plain token.
 
 ### Named Rules
 **The One Accent Rule.** Market Blue appears only on the primary action per view and on interactive/focus state. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.
