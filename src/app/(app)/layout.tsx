@@ -32,6 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         <Link href="/tasks" className="text-sm font-medium text-foreground hover:text-primary">
                             Tasks
                         </Link>
+                        <Link href="/roles" className="text-sm font-medium text-foreground hover:text-primary">
+                            Roles
+                        </Link>
                     </nav>
                 ) : null}
                 <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
