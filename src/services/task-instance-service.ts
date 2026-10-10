@@ -65,6 +65,7 @@ export class TaskInstanceService {
             status: filters.status,
             dueFrom: filters.due_from,
             dueTo: filters.due_to,
+            completedFrom: filters.completed_from,
             assignedToUser,
         });
     }

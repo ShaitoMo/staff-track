@@ -30,6 +30,11 @@ describe('UserTaskInstanceFiltersSchema — due_from/due_to must not be backward
         expect(accepts(UserTaskInstanceFiltersSchema.safeParse({ due_to: '2026-08-01' }))).toBe(true);
     });
 
+    it('accepts completed_from on its own and rejects a malformed one', () => {
+        expect(accepts(UserTaskInstanceFiltersSchema.safeParse({ completed_from: '2026-08-01' }))).toBe(true);
+        expect(accepts(UserTaskInstanceFiltersSchema.safeParse({ completed_from: 'last week' }))).toBe(false);
+    });
+
     it('accepts no filters at all', () => {
         expect(accepts(UserTaskInstanceFiltersSchema.safeParse({}))).toBe(true);
     });

@@ -9,21 +9,18 @@ const RECENT_DAYS = 7;
 
 /** A staff member's task list: what's left to do, and how the last week's work turned out. */
 export async function StaffDashboard({ userId }: { userId: number }) {
-    // the endpoint takes one status, so "recently done" is the past week's instances minus the pending ones
+    // "recently done" goes by when the work was finished, so a late task completed today still shows
     const [pending, recent, roles] = await Promise.all([
         fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?status=pending`),
-        fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?due_from=${daysAgoDateString(RECENT_DAYS)}`),
+        fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?completed_from=${daysAgoDateString(RECENT_DAYS)}`),
         fetchApi<Role[]>("/api/roles"),
     ]);
 
     const pendingRows = buildInstanceRows(pending, roles, userId);
 
     // buildInstanceRows sorts by branch then title; re-sort to the newest-first order this list wants
-    const doneRows = buildInstanceRows(
-        recent.filter((instance) => instance.status !== "pending"),
-        roles,
-        userId,
-    ).toSorted((a, b) => b.dueDate.localeCompare(a.dueDate));
+    const doneRows = buildInstanceRows(recent, roles, userId)
+        .toSorted((a, b) => (b.completedDate ?? "").localeCompare(a.completedDate ?? ""));
 
     return (
         <div className="flex flex-col gap-6">

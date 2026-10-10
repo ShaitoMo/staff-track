@@ -7,10 +7,10 @@ import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { logger } from '@/lib/logger'
 
 /**
- * GET /api/users/:userId/tasks?status=&due_from=&due_to=
+ * GET /api/users/:userId/tasks?status=&due_from=&due_to=&completed_from=
  *
  * A worker's task list: instances of tasks assigned to them personally, plus unclaimed
- * instances of tasks targeting their role at a branch they work at. Both date bounds are
+ * instances of tasks targeting their role at a branch they work at. All date bounds are
  * optional and inclusive.
  */
 export async function GET(
@@ -37,6 +37,7 @@ export async function GET(
         status: searchParams.get('status') ?? undefined,
         due_from: searchParams.get('due_from') ?? undefined,
         due_to: searchParams.get('due_to') ?? undefined,
+        completed_from: searchParams.get('completed_from') ?? undefined,
     })
 
     if (!validationResult.success) {

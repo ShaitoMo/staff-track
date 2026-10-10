@@ -21,11 +21,13 @@ export type TaskInstanceFiltersInput = z.infer<typeof TaskInstanceFiltersSchema>
 /**
  * GET /api/users/:userId/tasks — the user comes from the path, so only the date window and
  * status survive from TaskInstanceFiltersSchema; due_from/due_to bound due_date inclusively,
- * mirroring UserShiftFiltersSchema's from/to.
+ * mirroring UserShiftFiltersSchema's from/to. completed_from keeps instances completed on or
+ * after that day, whatever their due date — what a "recently done" list means.
  */
 export const UserTaskInstanceFiltersSchema = z.object({
     due_from: DateOnlySchema.optional(),
     due_to: DateOnlySchema.optional(),
+    completed_from: DateOnlySchema.optional(),
     status: z.enum(TASK_STATUSES).optional(),
 }).superRefine((data, ctx) => {
     const { due_from: dueFrom, due_to: dueTo } = data;
