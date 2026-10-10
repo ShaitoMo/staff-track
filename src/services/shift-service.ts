@@ -177,7 +177,8 @@ export class ShiftService {
      * would clash with something already booked (at any branch), or its register is already held
      * at that time — so a second run copies nothing,
      * even one running at the same moment (see ShiftRepository.copyIntoWeek). A shift from a period
-     * takes that period's current hours, as one added by hand would; a custom-hours shift keeps its own.
+     * takes that period's current hours, as one added by hand would; a custom-hours shift keeps its own,
+     * and so does one whose period has since been turned off — copied as custom hours, not onto it.
      */
     static async copyWeek(data: CopyWeekInput & { created_by: number }): Promise<CopyWeekResult> {
         const targetFrom = data.week_start
@@ -255,7 +256,8 @@ export class ShiftService {
                 userId: shift.user_id,
                 branchId: shift.branch_id,
                 registerId: shift.register_id,
-                periodId: shift.period_id,
+                // `hours` only holds periods that are on, so a turned-off period's shift lands as custom hours
+                periodId: periodHours === undefined ? null : shift.period_id,
                 shiftDate,
                 startTime: TimeOnlySchema.parse(span.startTime),
                 endTime: TimeOnlySchema.parse(span.endTime),

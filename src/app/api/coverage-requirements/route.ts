@@ -7,6 +7,7 @@ import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
+import { ShiftPeriodInactiveError } from '@/exceptions/shift-period-inactive-error'
 import { DuplicateCoverageRequirementError } from '@/exceptions/duplicate-coverage-requirement-error'
 import { logger } from '@/lib/logger'
 
@@ -102,7 +103,8 @@ export async function POST(req: NextRequest) {
             error instanceof BranchNotFoundError ||
             error instanceof RoleNotFoundError ||
             error instanceof ShiftPeriodNotFoundError ||
-            error instanceof ShiftPeriodNotAtBranchError
+            error instanceof ShiftPeriodNotAtBranchError ||
+            error instanceof ShiftPeriodInactiveError
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

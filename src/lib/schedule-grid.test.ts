@@ -21,7 +21,7 @@ const cashier = { roleId: 1, name: 'Cashier' };
 const stocker = { roleId: 2, name: 'Stocker' };
 
 function period(periodId: number, name: string): ShiftPeriodView {
-    return { periodId, branchId: 1, name, defaultStart: '08:00', defaultEnd: '16:00', sortOrder: periodId };
+    return { periodId, branchId: 1, name, defaultStart: '08:00', defaultEnd: '16:00', sortOrder: periodId, active: true };
 }
 
 const morning = period(10, 'Morning');
