@@ -47,8 +47,12 @@ afterEach(() => {
 });
 
 describe('DashboardService.getDashboard no-shows', () => {
-    it('counts only shifts that have started — a later shift that day has not been missed yet', async () => {
-        getShifts.mockResolvedValue([shift(1, '08:00', '16:00'), shift(2, '16:00', '23:00')]);
+    it('counts only shifts that have ended — one still running or still ahead has not been missed yet', async () => {
+        getShifts.mockResolvedValue([
+            shift(1, '06:00', '12:00'), // ended exactly now
+            shift(2, '08:00', '16:00'), // running: the attendance page shows "not in yet"
+            shift(3, '16:00', '23:00'), // ahead: "upcoming"
+        ]);
 
         const dashboard = await DashboardService.getDashboard({ branch_id: 1 });
 

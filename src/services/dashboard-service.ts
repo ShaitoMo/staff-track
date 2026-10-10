@@ -45,10 +45,10 @@ export class DashboardService {
 
         const now = new Date();
         const rows = compareScheduleWithAttendance(shifts, punches, now);
-        // The report calls any shift without punches a no-show; one that hasn't started yet hasn't
-        // been missed — the attendance page shows it as upcoming — so it isn't counted here.
+        // The report calls any shift without punches a no-show; one that hasn't ended yet hasn't
+        // been missed — the attendance page shows it as upcoming or not in yet — so it isn't counted here.
         const noShows = rows.filter(
-            (row) => row.flag === 'no_show' && scheduledInstant(row.shift_date, row.scheduled_start) <= now,
+            (row) => row.flag === 'no_show' && scheduledInstant(row.shift_date, row.scheduled_end) <= now,
         );
 
         const coverageBranchIds = branchId !== undefined
