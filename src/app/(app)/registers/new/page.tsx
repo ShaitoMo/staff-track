@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { AccessMessage } from "@/components/layout/access-message";
 import { RegisterForm } from "@/components/registers/register-form";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { Branch } from "@/types/branch";
+
+export const metadata: Metadata = { title: "New register" };
 
 export default async function NewRegisterPage() {
     let branches: Branch[];

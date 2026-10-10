@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AccessMessage } from "@/components/layout/access-message";
 import { RegisterRow, RegisterTable } from "@/components/registers/register-table";
@@ -8,6 +9,8 @@ import { fetchApi } from "@/lib/api-server";
 import { getSelectedBranchId } from "@/lib/session";
 import { Branch } from "@/types/branch";
 import { Register } from "@/types/register";
+
+export const metadata: Metadata = { title: "Registers" };
 
 export default async function RegistersPage({
     searchParams,

@@ -33,7 +33,7 @@ export function MobileNav() {
                                 variant="ghost"
                                 size="icon"
                                 aria-label="Close menu"
-                                className={cn("text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", TOUCH_SIZE)}
+                                className={cn("text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-sidebar-foreground/60", TOUCH_SIZE)}
                             />
                         }
                     >

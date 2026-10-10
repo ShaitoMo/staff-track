@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AccessMessage } from "@/components/layout/access-message";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
+
+export const metadata: Metadata = { title: "Users" };
 
 export default async function UsersPage({
     searchParams,

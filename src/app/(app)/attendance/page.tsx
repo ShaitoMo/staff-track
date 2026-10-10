@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AttendanceSection } from "@/components/attendance/attendance-section";
 import { MyAttendance } from "@/components/attendance/my-attendance";
@@ -21,6 +22,8 @@ const loading = (
 );
 
 const noAccess = <AccessMessage title="Attendance" message="You don't have access to attendance." />;
+
+export const metadata: Metadata = { title: "Attendance" };
 
 export default async function AttendancePage({
     searchParams,

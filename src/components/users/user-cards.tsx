@@ -16,7 +16,7 @@ export function UserCards({ rows }: { rows: UserRow[] }) {
                                 <div className="font-medium">{row.name}</div>
                                 <div className="font-mono text-xs text-muted-foreground">{row.phone}</div>
                             </div>
-                            <Badge variant={row.isActive ? "outline" : "destructive"}>
+                            <Badge variant="outline" className={cn(!row.isActive && "border-dashed text-muted-foreground")}>
                                 {row.isActive ? "Active" : "Inactive"}
                             </Badge>
                         </div>

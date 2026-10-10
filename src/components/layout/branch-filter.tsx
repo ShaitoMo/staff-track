@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { CHOSEN } from "@/lib/selection";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 
@@ -33,7 +34,7 @@ export function BranchFilter({
                 <Link
                     href={hrefFor(basePath, extraQuery)}
                     aria-current={activeBranchId === undefined ? "true" : undefined}
-                    className={cn(buttonVariants({ variant: activeBranchId === undefined ? "default" : "outline", size: "sm" }))}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), activeBranchId === undefined && CHOSEN)}
                 >
                     All branches
                 </Link>
@@ -43,7 +44,7 @@ export function BranchFilter({
                     key={branch.branchId}
                     href={hrefFor(basePath, extraQuery, branch.branchId)}
                     aria-current={activeBranchId === branch.branchId ? "true" : undefined}
-                    className={cn(buttonVariants({ variant: activeBranchId === branch.branchId ? "default" : "outline", size: "sm" }))}
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), activeBranchId === branch.branchId && CHOSEN)}
                 >
                     {branch.name}
                 </Link>

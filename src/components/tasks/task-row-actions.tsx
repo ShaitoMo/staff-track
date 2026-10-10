@@ -17,6 +17,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { updateTask } from "@/lib/api/tasks";
+import { cn } from "@/lib/utils";
 
 /**
  * Edit, and "delete" in the only sense the project allows: deactivate. Deactivating keeps the
@@ -46,7 +47,7 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
     return (
         <div className="flex flex-col items-end gap-1">
             <div className="flex gap-2">
-                <Link href={`/tasks/${taskId}/edit`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                <Link href={`/tasks/${taskId}/edit`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                     Edit
                 </Link>
                 <Button

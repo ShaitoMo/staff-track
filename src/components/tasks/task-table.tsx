@@ -1,6 +1,7 @@
 import { TaskRowActions } from "@/components/tasks/task-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export interface TaskRow {
     taskId: number;
@@ -13,7 +14,7 @@ export interface TaskRow {
 
 export function TaskTable({ rows }: { rows: TaskRow[] }) {
     return (
-        <div className="hidden rounded-lg border border-border md:block">
+        <div className="hidden rounded-lg border border-border bg-card md:block">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -35,7 +36,9 @@ export function TaskTable({ rows }: { rows: TaskRow[] }) {
                             <TableCell className="capitalize">{row.assignee}</TableCell>
                             <TableCell>{row.schedule}</TableCell>
                             <TableCell>
-                                <Badge variant={row.active ? "secondary" : "outline"}>{row.active ? "Active" : "Inactive"}</Badge>
+                                <Badge variant="outline" className={cn(!row.active && "border-dashed text-muted-foreground")}>
+                                    {row.active ? "Active" : "Inactive"}
+                                </Badge>
                             </TableCell>
                             <TableCell className="text-right">
                                 <TaskRowActions taskId={row.taskId} title={row.title} active={row.active} />

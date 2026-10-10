@@ -3,10 +3,11 @@
 import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
+import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -166,28 +167,32 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
     }
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="flex max-w-lg flex-col gap-6">
-            <FieldGroup>
-                {submitError && (
-                    <Alert variant="destructive">
-                        <AlertCircleIcon />
-                        <AlertDescription>{submitError}</AlertDescription>
-                    </Alert>
-                )}
-                {branchWarnings.length > 0 && (
-                    <Alert variant="destructive">
-                        <AlertCircleIcon />
-                        <AlertDescription>
-                            The user was saved, but some branch changes didn&apos;t go through:
-                            <ul className="ml-4 list-disc">
-                                {branchWarnings.map((warning) => (
-                                    <li key={warning}>{warning}</li>
-                                ))}
-                            </ul>
-                        </AlertDescription>
-                    </Alert>
-                )}
+        <FormCard onSubmit={handleSubmit} className="max-w-5xl">
+            {submitError || branchWarnings.length > 0 ? (
+                <FormAlerts>
+                    {submitError && (
+                        <Alert variant="destructive">
+                            <AlertCircleIcon />
+                            <AlertDescription>{submitError}</AlertDescription>
+                        </Alert>
+                    )}
+                    {branchWarnings.length > 0 && (
+                        <Alert variant="destructive">
+                            <AlertCircleIcon />
+                            <AlertDescription>
+                                The user was saved, but some branch changes didn&apos;t go through:
+                                <ul className="ml-4 list-disc">
+                                    {branchWarnings.map((warning) => (
+                                        <li key={warning}>{warning}</li>
+                                    ))}
+                                </ul>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </FormAlerts>
+            ) : null}
 
+            <FormSection legend="Person" className="sm:grid-cols-2 lg:grid-cols-3">
                 <Field data-invalid={!!errors.name || undefined}>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
                     <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
@@ -196,7 +201,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
 
                 <Field data-invalid={!!errors.phone || undefined}>
                     <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                    <Input id="phone" type="tel" value={phone} disabled={pending} onChange={(e) => setPhone(e.target.value)} />
+                    <Input id="phone" type="tel" autoComplete="off" value={phone} disabled={pending} onChange={(e) => setPhone(e.target.value)} />
                     <FieldError>{errors.phone}</FieldError>
                 </Field>
 
@@ -206,6 +211,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                         <Input
                             id="password"
                             type="password"
+                            autoComplete="new-password"
                             value={password}
                             disabled={pending}
                             onChange={(e) => setPassword(e.target.value)}
@@ -213,7 +219,9 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                         <FieldError>{errors.password}</FieldError>
                     </Field>
                 )}
+            </FormSection>
 
+            <FormSection legend="Access" className="sm:grid-cols-2 lg:grid-cols-3">
                 <Field data-invalid={!!errors.roleId || undefined}>
                     <FieldLabel htmlFor="role">Role</FieldLabel>
                     <Select
@@ -223,12 +231,15 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                     >
                         <SelectTrigger id="role" className="w-full">
                             <SelectValue placeholder="Select a role">
-                                {(value: string) => roles.find((role) => String(role.roleId) === value)?.name ?? "Select a role"}
+                                {(value: string) => {
+                                    const name = roles.find((role) => String(role.roleId) === value)?.name;
+                                    return name !== undefined ? <span className="capitalize">{name}</span> : "Select a role";
+                                }}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {roles.map((role) => (
-                                <SelectItem key={role.roleId} value={String(role.roleId)}>
+                                <SelectItem key={role.roleId} value={String(role.roleId)} className="capitalize">
                                     {role.name}
                                 </SelectItem>
                             ))}
@@ -238,7 +249,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                 </Field>
 
                 {mode === "edit" && (
-                    <Field orientation="horizontal">
+                    <Field orientation="horizontal" className="col-span-full">
                         <Checkbox
                             id="isActive"
                             checked={isActive}
@@ -248,45 +259,46 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                         <FieldLabel htmlFor="isActive" className="font-normal">Active</FieldLabel>
                     </Field>
                 )}
+            </FormSection>
 
-                <FieldSet>
-                    <FieldLegend variant="label">Branches</FieldLegend>
-                    <FieldGroup className="gap-3">
-                        {branches.map((branch) => {
-                            const selection = branchSelections[branch.branchId];
-                            return (
-                                <div key={branch.branchId} className="flex flex-col gap-2">
-                                    <Field orientation="horizontal">
-                                        <Checkbox
-                                            id={`branch-${branch.branchId}`}
-                                            checked={selection?.selected ?? false}
-                                            disabled={pending}
-                                            onCheckedChange={(checked) => toggleBranch(branch.branchId, checked === true)}
-                                        />
-                                        <FieldLabel htmlFor={`branch-${branch.branchId}`} className="font-normal">
-                                            {branch.name}
-                                        </FieldLabel>
-                                    </Field>
-                                    {selection?.selected && (
-                                        <Input
-                                            placeholder="Machine employee ID (optional)"
-                                            value={selection.machineEmployeeId}
-                                            disabled={pending}
-                                            onChange={(e) => setMachineEmployeeId(branch.branchId, e.target.value)}
-                                            className="ml-6 w-auto"
-                                        />
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </FieldGroup>
-                </FieldSet>
+            {/* a branch's machine ID sits on its own row, beside it, once the branch is ticked */}
+            <FormSection legend="Branches" className="gap-y-3">
+                {branches.map((branch) => {
+                    const selection = branchSelections[branch.branchId];
+                    return (
+                        <div key={branch.branchId} className="grid min-h-8 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,14rem)_minmax(0,18rem)]">
+                            <Field orientation="horizontal">
+                                <Checkbox
+                                    id={`branch-${branch.branchId}`}
+                                    checked={selection?.selected ?? false}
+                                    disabled={pending}
+                                    onCheckedChange={(checked) => toggleBranch(branch.branchId, checked === true)}
+                                />
+                                <FieldLabel htmlFor={`branch-${branch.branchId}`} className="font-normal">
+                                    {branch.name}
+                                </FieldLabel>
+                            </Field>
+                            {selection?.selected && (
+                                <Input
+                                    aria-label={`Machine employee ID at ${branch.name} (optional)`}
+                                    placeholder="Machine employee ID (optional)"
+                                    value={selection.machineEmployeeId}
+                                    disabled={pending}
+                                    onChange={(e) => setMachineEmployeeId(branch.branchId, e.target.value)}
+                                    className="ml-6 w-auto sm:ml-0"
+                                />
+                            )}
+                        </div>
+                    );
+                })}
+            </FormSection>
 
-                <Button type="submit" disabled={pending} className="w-fit">
+            <FormFooter>
+                <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
                     {mode === "create" ? "Create user" : "Save changes"}
                 </Button>
-            </FieldGroup>
-        </form>
+            </FormFooter>
+        </FormCard>
     );
 }

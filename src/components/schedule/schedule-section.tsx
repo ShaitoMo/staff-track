@@ -13,7 +13,7 @@ import {
     buildOpenRegisterRows,
     buildRoleRows,
     indexWeek,
-    NEEDS_TINT,
+    NEEDS_DOT,
     rolesOnRegisters,
     slotsForClient,
     summarizeWeek,
@@ -71,7 +71,7 @@ function GridLegend() {
     return (
         <ul aria-label="Legend" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <li className="flex items-center gap-1.5">
-                <LegendSwatch className={cn(NEEDS_TINT, "border-destructive/40")} />
+                <span aria-hidden="true" className={NEEDS_DOT} />
                 Needs people (the cell says how many)
             </li>
             <li className="flex items-center gap-1.5">
@@ -82,7 +82,7 @@ function GridLegend() {
                 <span aria-hidden="true" className="rounded-sm border border-foreground/15 bg-muted px-1 text-foreground">
                     Register 1
                 </span>
-                Working that register (click to change)
+                Working that register (select it to change)
             </li>
         </ul>
     );
@@ -170,7 +170,7 @@ export async function ScheduleSection({
             {roleRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     No coverage requirements yet. Set how many people each role needs on{" "}
-                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-foreground underline underline-offset-4">
+                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-primary underline-offset-4 hover:underline">
                         Roles
                     </Link>{" "}
                     to schedule by role; registers can still be filled below.

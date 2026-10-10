@@ -21,7 +21,7 @@ import { ApiError } from "@/lib/api-client";
 import { copyWeek, createShift, deleteShift, setShiftRegister } from "@/lib/api/shifts";
 import { addDays, formatDay } from "@/lib/coverage-rows";
 import {
-    NEEDS_TINT,
+    NEEDS_DOT,
     OpenRegisterCell,
     OpenRegisterRow,
     RegisterSeat,
@@ -31,6 +31,7 @@ import {
     StaffMember,
 } from "@/lib/schedule-grid";
 import { TOUCH_HEIGHT } from "@/lib/touch";
+import { CHOSEN } from "@/lib/selection";
 import { cn } from "@/lib/utils";
 import { ShiftPeriodView } from "@/types/shift-period";
 
@@ -284,7 +285,8 @@ function RoleCellView({
         <CellShell pending={pending} error={error}>
             {/* A met slot shows only its people; the number appears only when someone is still needed. */}
             {cell.shortfall > 0 ? (
-                <span className="text-xs font-medium text-destructive">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <span aria-hidden="true" className={NEEDS_DOT} />
                     Needs {cell.shortfall}
                     <span className="sr-only"> more of {cell.required}</span>
                 </span>
@@ -368,7 +370,7 @@ function OpenRegistersCellView({
         <CellShell pending={pending} error={error}>
             {cell.open.map((seat) => (
                 <div key={seat.registerId} className="flex flex-wrap items-center gap-x-1">
-                    <span className="text-xs font-medium text-destructive">{seat.name}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{seat.name}</span>
                     <PersonPicker
                         placeholder="Assign"
                         label={`Assign someone to ${seat.name}, ${periodLabel}, ${day}`}
@@ -401,11 +403,11 @@ function OpenRegistersCellView({
     );
 }
 
-/** A period's heading row: its name and hours, spanning the week. */
+/** A period's heading row: its name and hours, spanning the week. No fill — today's column is the grid's one tint. */
 function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: number }) {
     return (
         <TableRow className="hover:bg-transparent">
-            <TableHead scope="colgroup" colSpan={colSpan} className="h-8 bg-muted/60 text-xs font-medium text-foreground">
+            <TableHead scope="colgroup" colSpan={colSpan} className="h-8 pt-3 text-xs font-medium text-foreground">
                 {period.name}
                 <span className="ml-2 font-mono font-normal text-muted-foreground tabular-nums">
                     {period.defaultStart}–{period.defaultEnd}
@@ -416,13 +418,15 @@ function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: numb
 }
 
 /** Sticky so the slot stays readable while the week scrolls sideways on a narrow screen. */
-function RowHeader({ title, muted = false }: { title: string; muted?: boolean }) {
+function RowHeader({ title, muted = false, capitalize = false }: { title: string; muted?: boolean; capitalize?: boolean }) {
     return (
         <TableHead
             scope="row"
             className={cn(
                 "sticky left-0 z-10 h-auto w-28 bg-card py-2 align-top whitespace-normal sm:w-auto sm:whitespace-nowrap",
                 muted && "text-xs font-normal text-muted-foreground",
+                // role names are stored lowercase; every other screen shows them capitalized
+                capitalize && "capitalize",
             )}
         >
             {title}
@@ -506,10 +510,9 @@ export function ScheduleGrid({
         />
     );
 
-    // A slot still needing someone is tinted (see the legend); otherwise today's column carries a
-    // light tint top to bottom, so it stays findable deep in the grid.
-    const dayCell = (date: string, needsSomeone: boolean) =>
-        cn("align-top", needsSomeone ? NEEDS_TINT : date === today && "bg-muted");
+    // Today's column carries a light tint top to bottom, so it stays findable deep in the grid; a slot
+    // still needing someone says so with its own dot (NEEDS_DOT), not a fill.
+    const dayCell = (date: string) => cn("align-top", date === today && "bg-muted");
 
     return (
         <div>
@@ -541,9 +544,9 @@ export function ScheduleGrid({
                                 <PeriodRow period={period} colSpan={dates.length + 1} />
                                 {rows.map((row) => (
                                     <TableRow key={`role-${row.roleId}-${row.periodId}`} className="hover:bg-transparent">
-                                        <RowHeader title={row.roleName} />
+                                        <RowHeader title={row.roleName} capitalize />
                                         {row.cells.map((cell, index) => (
-                                            <TableCell key={cell.date} className={dayCell(cell.date, roleNeeds(row, index))}>
+                                            <TableCell key={cell.date} className={dayCell(cell.date)}>
                                                 {roleCell(row, index, openRow)}
                                             </TableCell>
                                         ))}
@@ -553,7 +556,7 @@ export function ScheduleGrid({
                                     <TableRow className="hover:bg-transparent">
                                         <RowHeader title="Open registers" muted />
                                         {openRow.cells.map((cell, index) => (
-                                            <TableCell key={cell.date} className={dayCell(cell.date, openNeeds(openRow, index))}>
+                                            <TableCell key={cell.date} className={dayCell(cell.date)}>
                                                 {openCell(period, openRow, index)}
                                             </TableCell>
                                         ))}
@@ -580,14 +583,14 @@ export function ScheduleGrid({
                                 {rows.map((row) => (
                                     <li
                                         key={row.roleId}
-                                        className={cn("grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3", roleNeeds(row, index) && NEEDS_TINT)}
+                                        className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3"
                                     >
-                                        <span className="pt-0.5 text-sm font-medium">{row.roleName}</span>
+                                        <span className="pt-0.5 text-sm font-medium capitalize">{row.roleName}</span>
                                         {roleCell(row, index, openRow)}
                                     </li>
                                 ))}
                                 {openRow ? (
-                                    <li className={cn("grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3", openNeeds(openRow, index) && NEEDS_TINT)}>
+                                    <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3">
                                         <span className="pt-0.5 text-xs text-muted-foreground">Open registers</span>
                                         {openNeeds(openRow, index) ? (
                                             openCell(period, openRow, index)
@@ -638,14 +641,14 @@ function DayView({
                             onClick={() => setSelected(index)}
                             className={cn(
                                 "relative flex min-h-12 flex-col items-center justify-center rounded-md border text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                                isSelected ? "border-foreground bg-foreground text-background" : "border-border bg-card text-foreground hover:bg-muted",
+                                isSelected ? CHOSEN : "border-border bg-card text-foreground hover:bg-muted",
                                 !isSelected && date === today && "border-foreground/40 bg-muted",
                             )}
                         >
                             <span className={cn(!isSelected && "text-muted-foreground")}>{weekday}</span>
                             <span className="text-sm font-medium tabular-nums">{day}</span>
                             {dayNeeds[index] ? (
-                                <span aria-hidden="true" className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive" />
+                                <span aria-hidden="true" className={cn(NEEDS_DOT, "absolute top-1 right-1")} />
                             ) : null}
                         </button>
                     );
@@ -699,7 +702,7 @@ export function CopyWeekButton({ branchId, weekStart }: { branchId: number; week
             <p role="status" className={cn("text-xs empty:hidden", message?.isError ? "text-destructive" : "text-muted-foreground")}>
                 {message?.text}
             </p>
-            <Button size="sm" onClick={() => setConfirming(true)} disabled={pending} className={TOUCH_HEIGHT}>
+            <Button variant="outline" size="sm" onClick={() => setConfirming(true)} disabled={pending} className={TOUCH_HEIGHT}>
                 {pending ? <Spinner data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
                 Copy previous week
             </Button>
