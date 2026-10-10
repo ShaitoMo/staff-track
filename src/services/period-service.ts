@@ -9,6 +9,10 @@ export class PeriodService {
         return ShiftPeriodRepository.getPeriodsByBranch(branchId, includeInactive)
     }
 
+    static async getPeriodView(periodId: number): Promise<ShiftPeriodView | null> {
+        return ShiftPeriodRepository.getPeriodView(periodId)
+    }
+
     /** Minimal read — used by route guards to resolve a period's branch (null = chain-wide) before an edit. */
     static async getPeriodById(periodId: number): Promise<ShiftPeriodRecord | null> {
         return ShiftPeriodRepository.getPeriodById(periodId)
