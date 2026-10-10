@@ -5,7 +5,7 @@ import {
 } from '@/repository/task-instance-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
-import { deletePhoto, savePhoto } from '@/lib/storage';
+import { createPhotoUploadUrl, deletePhoto, verifyUploadedPhoto } from '@/lib/storage';
 import { assertTransition } from '@/lib/task-status';
 import { MANAGER_ROLE, OWNER_ROLE } from '@/lib/rbac';
 import {
@@ -17,6 +17,7 @@ import {
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error';
 import { NotAssignedToTaskError, NotBranchManagerError, SelfReviewError } from '@/exceptions/forbidden-error';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
+import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error';
 import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 
 type InstanceForWrite = NonNullable<
@@ -101,36 +102,59 @@ export class TaskInstanceService {
     }
 
     /**
-     * Completion: permission and status are settled before the photo is written, so a request that
-     * was never going to succeed leaves no orphan file behind. The photo is then saved to storage;
-     * if the database write that follows fails, the file is deleted rather than left orphaned.
+     * Step one of completion: the same permission and status checks as completeInstance run before
+     * an upload URL is handed out, so nobody can put files in the bucket for a task they can't complete.
+     */
+    static async createPhotoUpload(params: {
+        instanceId: number;
+        userId: number;
+    }): Promise<{ key: string; uploadUrl: string }> {
+        const { instanceId, userId } = params;
+
+        const instance = await TaskInstanceService.loadForWrite(instanceId);
+
+        await TaskInstanceService.assertMayComplete(instance, userId);
+        assertTransition(instance.status, 'completed');
+
+        return createPhotoUploadUrl(instanceId);
+    }
+
+    /**
+     * Step two: the photo is already in the bucket under `photoKey`. Permission and status are
+     * checked again (they may have changed since the upload URL was issued), then the key is
+     * verified to be this instance's and really uploaded. If the database write fails, the
+     * object is deleted rather than left orphaned.
      */
     static async completeInstance(params: {
         instanceId: number;
         completedBy: number;
-        photo: File;
+        photoKey: string;
     }): Promise<TaskInstanceDetailView> {
-        const { instanceId, completedBy, photo } = params;
+        const { instanceId, completedBy, photoKey } = params;
 
         const instance = await TaskInstanceService.loadForWrite(instanceId);
 
         await TaskInstanceService.assertMayComplete(instance, completedBy);
         assertTransition(instance.status, 'completed');
 
-        const filePath = await savePhoto(photo, instanceId);
+        await verifyUploadedPhoto(photoKey, instanceId);
 
         try {
             return await TaskInstanceRepository.completeInstance({
                 instanceId,
                 completedBy,
-                filePath,
+                filePath: photoKey,
                 // the server clock is the only accepted source: neither the request body nor the
                 // photo's EXIF data can be trusted to say when the work actually happened
                 completedAt: new Date(),
             });
         } catch (error) {
-            // the write already happened; if the DB update fails, don't leave it behind unreferenced
-            await deletePhoto(filePath);
+            // the upload already happened; if the DB update fails, don't leave it behind unreferenced.
+            // Except on a lost race: a concurrent request with the same key (a retry, a second tab)
+            // may be the one that won, and its media row now points at this object.
+            if (!(error instanceof InvalidStatusTransitionError)) {
+                await deletePhoto(photoKey);
+            }
             throw error;
         }
     }

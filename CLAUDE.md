@@ -52,6 +52,14 @@ type from `.next/types/`. Running `tsc --noEmit` against a fresh checkout (no `.
 `Cannot find name 'RouteContext'` on every dynamic route — run `npm run build` or `npm run dev` at least
 once first to generate those types.
 
+**Photo storage:** task completion photos live in a private Cloudflare R2 bucket, reached via its S3
+API (`src/lib/storage.ts`). Copy `.env.example` to `.env` and set the four `R2_*` vars from an R2 API
+token with Object Read & Write on the bucket. The browser uploads straight to R2 with a signed URL, so
+the bucket needs a CORS rule allowing `PUT` (and `GET`) with header `Content-Type` from each app origin
+(`http://localhost:3000`, production) — without it every upload fails with "The photo didn't upload".
+`media.file_path` holds the object key, not a URL; `GET /api/media/:id/file` checks access, then
+redirects to a short-lived signed URL.
+
 **Standalone scripts** (outside the Next.js request lifecycle, e.g. one-off scripts or `src/jobs/*`) must
 `import "dotenv/config"` before importing anything that touches `src/lib/db.ts`, or `DATABASE_URL` is
 undefined and Postgres auth fails with an opaque SASL error.

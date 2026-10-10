@@ -375,7 +375,7 @@ async function main() {
   await prisma.media.create({
     data: {
       taskInstanceId: restockInstance.instanceId,
-      filePath: "/uploads/restock-shelves-2026-07-21.jpg",
+      filePath: "task-instances/seed/restock-shelves-2026-07-21.jpg",
       uploadedBy: bob.userId,
     },
   });
@@ -410,7 +410,7 @@ async function main() {
   await prisma.media.create({
     data: {
       taskInstanceId: awaitingReview.instanceId,
-      filePath: "/uploads/clean-registers-today.jpg",
+      filePath: "task-instances/seed/clean-registers-today.jpg",
       uploadedBy: frank.userId,
     },
   });

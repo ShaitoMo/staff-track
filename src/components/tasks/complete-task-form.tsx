@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, CameraIcon, ImageIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api-client";
 import { completeInstance } from "@/lib/api/task-instances";
+import { compressPhoto, UnreadablePhotoError } from "@/lib/compress-photo";
 import { MAX_PHOTO_BYTES } from "@/lib/photo-limits";
 
 /**
@@ -16,11 +17,14 @@ import { MAX_PHOTO_BYTES } from "@/lib/photo-limits";
  */
 export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number; taskLabel: string }) {
     const router = useRouter();
-    const inputRef = useRef<HTMLInputElement>(null);
+    const cameraRef = useRef<HTMLInputElement>(null);
+    const libraryRef = useRef<HTMLInputElement>(null);
     const previewRef = useRef<string | null>(null);
-    const [file, setFile] = useState<File | null>(null);
+    const [file, setFile] = useState<Blob | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // which picker's photo is being compressed: its button shows the spinner, and both stay disabled
+    const [compressing, setCompressing] = useState<"camera" | "library" | null>(null);
     const [pending, startTransition] = useTransition();
 
     // an object URL holds the photo in memory until it is revoked
@@ -34,24 +38,45 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
         setPreviewUrl(next);
     }
 
-    function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    async function handleFileChange(source: "camera" | "library", event: React.ChangeEvent<HTMLInputElement>) {
         const chosen = event.target.files?.[0] ?? null;
+        // let the same photo be picked again after an error
+        event.target.value = "";
         setError(null);
 
         if (chosen === null) return;
 
-        // an empty type is let through: some phones leave it blank for HEIC, and the server sniffs the file
+        // an empty type is let through: some phones leave it blank for HEIC, and compressPhoto decodes it or refuses
         if (chosen.type !== "" && !chosen.type.startsWith("image/")) {
             setError("That file isn't a photo.");
             return;
         }
-        if (chosen.size > MAX_PHOTO_BYTES) {
-            setError(`That photo is over ${MAX_PHOTO_BYTES / (1024 * 1024)} MB. Try a lower-resolution one.`);
+
+        // the compressed JPEG is what gets previewed and uploaded, so the preview shows exactly what is sent
+        let compressed: Blob;
+        setCompressing(source);
+        try {
+            compressed = await compressPhoto(chosen);
+        } catch (caught) {
+            setError(caught instanceof UnreadablePhotoError ? caught.message : "Couldn't read that photo.");
+            return;
+        } finally {
+            setCompressing(null);
+        }
+        if (compressed.size > MAX_PHOTO_BYTES) {
+            setError(`That photo is over ${MAX_PHOTO_BYTES / (1024 * 1024)} MB even after shrinking it. Try another one.`);
             return;
         }
 
-        setFile(chosen);
-        replacePreview(URL.createObjectURL(chosen));
+        setFile(compressed);
+        replacePreview(URL.createObjectURL(compressed));
+    }
+
+    // back to the Take / Choose choice, so a retake can come from either the camera or the gallery
+    function retake() {
+        setError(null);
+        setFile(null);
+        replacePreview(null);
     }
 
     function submit() {
@@ -72,14 +97,24 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
         <div className="mt-3 flex flex-col gap-3">
             {/* capture is a hint: it opens the camera on a phone and the file picker on a desktop */}
             <input
-                ref={inputRef}
+                ref={cameraRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
                 hidden
                 aria-hidden="true"
                 tabIndex={-1}
-                onChange={handleFileChange}
+                onChange={(event) => handleFileChange("camera", event)}
+            />
+            {/* no capture: the phone's gallery / the desktop file picker, for a photo taken earlier */}
+            <input
+                ref={libraryRef}
+                type="file"
+                accept="image/*"
+                hidden
+                aria-hidden="true"
+                tabIndex={-1}
+                onChange={(event) => handleFileChange("library", event)}
             />
 
             {previewUrl !== null ? (
@@ -95,17 +130,32 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
             ) : null}
 
             {file === null ? (
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-11"
-                    aria-label={`Take photo for ${taskLabel}`}
-                    disabled={pending}
-                    onClick={() => inputRef.current?.click()}
-                >
-                    Take photo
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="h-11 flex-1"
+                        aria-label={`Take photo for ${taskLabel}`}
+                        disabled={compressing !== null}
+                        onClick={() => cameraRef.current?.click()}
+                    >
+                        {compressing === "camera" ? <Spinner data-icon="inline-start" /> : <CameraIcon data-icon="inline-start" />}
+                        Take photo
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="h-11 flex-1"
+                        aria-label={`Choose photo for ${taskLabel}`}
+                        disabled={compressing !== null}
+                        onClick={() => libraryRef.current?.click()}
+                    >
+                        {compressing === "library" ? <Spinner data-icon="inline-start" /> : <ImageIcon data-icon="inline-start" />}
+                        Choose photo
+                    </Button>
+                </div>
             ) : (
                 <div className="flex gap-2">
                     <Button type="button" size="lg" className="h-11 flex-1" aria-label={`Mark as done: ${taskLabel}`} disabled={pending} onClick={submit}>
@@ -119,7 +169,7 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
                         className="h-11"
                         aria-label={`Retake photo for ${taskLabel}`}
                         disabled={pending}
-                        onClick={() => inputRef.current?.click()}
+                        onClick={retake}
                     >
                         Retake
                     </Button>

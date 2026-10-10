@@ -1,27 +1,27 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
+import { logger } from '@/lib/logger';
 
 /**
- * Uploads live outside `public/`, so photo proof is not served as a static asset to anyone who
- * guesses a filename. They are served only by GET /api/media/:mediaId/file, which checks who is
- * asking (via readPhoto below).
+ * Photos live in a private Cloudflare R2 bucket, reached through its S3-compatible API. The bucket
+ * is never public: the browser uploads with a short-lived signed PUT URL, and a photo is viewed only
+ * through GET /api/media/:mediaId/file, which checks who is asking and then hands out a short-lived
+ * signed GET URL. media.file_path holds the object key, not a URL.
  */
-const UPLOAD_ROOT = path.join(process.cwd(), 'uploads');
 
-/** The types we accept, and the extension each is stored under. */
-const ALLOWED_MIME_TYPES: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-    'image/heic': 'heic',
-};
+/** The browser compresses every photo to JPEG before upload, so that is the only type stored. */
+const PHOTO_CONTENT_TYPE = 'image/jpeg';
 
-/** The inverse of ALLOWED_MIME_TYPES: what to tell the browser a stored file is, from its extension. */
-const MIME_BY_EXTENSION: Record<string, string> = Object.fromEntries(
-    Object.entries(ALLOWED_MIME_TYPES).map(([mimeType, extension]) => [extension, mimeType]),
-);
+/**
+ * A signed PUT URL can be reused until it expires, so the upload URL is kept just long enough for one
+ * upload: that narrows the window to overwrite a photo after verifyUploadedPhoto has passed it.
+ */
+const UPLOAD_URL_TTL_SECONDS = 60;
+
+/** How long a signed view URL stays valid. */
+const VIEW_URL_TTL_SECONDS = 5 * 60;
 
 export class InvalidPhotoError extends Error {
     constructor(message: string) {
@@ -30,114 +30,106 @@ export class InvalidPhotoError extends Error {
     }
 }
 
-export class PhotoNotFoundError extends Error {
-    constructor() {
-        super('Photo file not found');
-        this.name = 'PhotoNotFoundError';
+function requireEnv(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`${name} is not set`);
     }
+    return value;
+}
+
+let client: S3Client | null = null;
+
+/** Built on first use, so importing this module (e.g. in tests) does not require the R2 env vars. */
+function r2(): S3Client {
+    client ??= new S3Client({
+        region: 'auto',
+        endpoint: `https://${requireEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
+        credentials: {
+            accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
+            secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY'),
+        },
+    });
+    return client;
+}
+
+function bucket(): string {
+    return requireEnv('R2_BUCKET');
+}
+
+function keyPrefix(instanceId: number): string {
+    return `task-instances/${instanceId}/`;
 }
 
 /**
- * Confirms the upload's own bytes match the type it claims, since `file.type` is reported by the
- * client and is not proof of what was actually sent.
+ * A signed URL the browser PUTs the compressed photo to. The key is generated here, never taken from
+ * the client. R2 does not enforce the signed content type on the PUT, so verifyUploadedPhoto is
+ * what actually guarantees a stored photo is a JPEG.
  */
-function matchesDeclaredType(buffer: Buffer, mimeType: string): boolean {
-    switch (mimeType) {
-        case 'image/jpeg':
-            return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-        case 'image/png':
-            return (
-                buffer.length >= 8 &&
-                buffer[0] === 0x89 &&
-                buffer[1] === 0x50 &&
-                buffer[2] === 0x4e &&
-                buffer[3] === 0x47 &&
-                buffer[4] === 0x0d &&
-                buffer[5] === 0x0a &&
-                buffer[6] === 0x1a &&
-                buffer[7] === 0x0a
-            );
-        case 'image/webp':
-            return (
-                buffer.length >= 12 &&
-                buffer.toString('ascii', 0, 4) === 'RIFF' &&
-                buffer.toString('ascii', 8, 12) === 'WEBP'
-            );
-        case 'image/heic':
-            // ISO base media file format: a 4-byte box size followed by an 'ftyp' box type
-            return buffer.length >= 8 && buffer.toString('ascii', 4, 8) === 'ftyp';
-        default:
-            return false;
-    }
+export async function createPhotoUploadUrl(instanceId: number): Promise<{ key: string; uploadUrl: string }> {
+    const key = `${keyPrefix(instanceId)}${randomUUID()}.jpg`;
+    const uploadUrl = await getSignedUrl(
+        r2(),
+        new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: PHOTO_CONTENT_TYPE }),
+        { expiresIn: UPLOAD_URL_TTL_SECONDS },
+    );
+
+    return { key, uploadUrl };
 }
 
 /**
- * Writes an uploaded photo to disk and returns the path recorded in media.file_path.
- *
- * The name is generated, never taken from the upload: a client-supplied filename could contain
- * path separators and escape the upload directory.
+ * Confirms a key the client claims to have uploaded belongs to this instance and really is in the
+ * bucket as a JPEG within the size limit. A signed PUT cannot cap the body size, so an oversized
+ * upload is caught here and deleted.
  */
-export async function savePhoto(file: File, instanceId: number): Promise<string> {
-    const extension = ALLOWED_MIME_TYPES[file.type];
-
-    if (!extension) {
-        throw new InvalidPhotoError(
-            `Unsupported photo type '${file.type || 'unknown'}'. Allowed: ${Object.keys(ALLOWED_MIME_TYPES).join(', ')}`,
-        );
+export async function verifyUploadedPhoto(key: string, instanceId: number): Promise<void> {
+    if (!key.startsWith(keyPrefix(instanceId))) {
+        throw new InvalidPhotoError('That photo does not belong to this task');
     }
 
-    if (file.size === 0) {
-        throw new InvalidPhotoError('Photo is empty');
-    }
-
-    if (file.size > MAX_PHOTO_BYTES) {
-        throw new InvalidPhotoError(`Photo exceeds the ${MAX_PHOTO_BYTES / (1024 * 1024)}MB limit`);
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    if (!matchesDeclaredType(buffer, file.type)) {
-        throw new InvalidPhotoError(`File content does not match the declared type '${file.type}'`);
-    }
-
-    await mkdir(UPLOAD_ROOT, { recursive: true });
-
-    const fileName = `instance-${instanceId}-${Date.now()}-${randomUUID()}.${extension}`;
-
-    await writeFile(path.join(UPLOAD_ROOT, fileName), buffer);
-
-    // stored as a URL-style path, matching the existing media rows
-    return `/uploads/${fileName}`;
-}
-
-/**
- * Reads a stored photo back for serving. Only the file name of `filePath` is used, so a stored
- * or forged value like '../../secret' cannot leave the upload directory; the content type comes
- * from the extension, and a file whose extension we never write is treated as not found.
- */
-export async function readPhoto(filePath: string): Promise<{ data: Buffer; contentType: string }> {
-    const fileName = path.basename(filePath);
-    const contentType = MIME_BY_EXTENSION[path.extname(fileName).slice(1).toLowerCase()];
-
-    if (!contentType) {
-        throw new PhotoNotFoundError();
-    }
-
+    let head;
     try {
-        return { data: await readFile(path.join(UPLOAD_ROOT, fileName)), contentType };
+        head = await r2().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            throw new PhotoNotFoundError();
+        if ((error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
+            throw new InvalidPhotoError('The photo was not uploaded');
         }
         throw error;
     }
+
+    const size = head.ContentLength ?? 0;
+
+    if (head.ContentType !== PHOTO_CONTENT_TYPE || size === 0 || size > MAX_PHOTO_BYTES) {
+        await deletePhoto(key);
+        throw new InvalidPhotoError(
+            `Photo must be a JPEG of at most ${MAX_PHOTO_BYTES / (1024 * 1024)}MB`,
+        );
+    }
 }
 
-/** Best-effort cleanup for a photo that was written to disk but never made it into the database. */
-export async function deletePhoto(filePath: string): Promise<void> {
+/**
+ * A short-lived signed URL to view a stored photo. Call only after the caller's access is checked.
+ * The response type is forced to JPEG, so even an object overwritten after verification can never
+ * be served as HTML or anything else the browser would act on.
+ */
+export async function getPhotoViewUrl(key: string): Promise<string> {
+    return getSignedUrl(
+        r2(),
+        new GetObjectCommand({
+            Bucket: bucket(),
+            Key: key,
+            ResponseContentType: PHOTO_CONTENT_TYPE,
+            ResponseContentDisposition: 'inline',
+        }),
+        { expiresIn: VIEW_URL_TTL_SECONDS },
+    );
+}
+
+/** Best-effort cleanup for a photo that was uploaded but never made it into the database. */
+export async function deletePhoto(key: string): Promise<void> {
     try {
-        await unlink(path.join(UPLOAD_ROOT, path.basename(filePath)));
+        await r2().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
     } catch (error) {
-        console.error(`Failed to clean up orphaned photo '${filePath}'`, error);
+        logger.error({ err: error, key }, 'Failed to clean up orphaned photo');
     }
 }
