@@ -1,5 +1,6 @@
 import { Prisma, TaskStatus } from '@prisma/client';
 import { db } from '@/lib/db';
+import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error';
 import { toDateOnlyString } from '@/types/date-only';
 import { TaskInstanceDetailView, TaskInstanceListView } from '@/types/task-instance';
 
@@ -35,10 +36,13 @@ const instanceInclude = {
             branchId: true,
             assignedTo: true,
             assignedRoleId: true,
+            recurrence: true,
             branch: { select: { name: true } },
             assignee: { select: { userId: true, name: true } },
         },
     },
+    completer: { select: { name: true } },
+    reviewer: { select: { name: true } },
     media: { orderBy: { serverTimestamp: 'desc' } },
 } satisfies Prisma.TaskInstanceInclude;
 
@@ -99,7 +103,13 @@ export class TaskInstanceRepository {
         });
     }
 
-    /** Records a completion: the media row and the status change land together or not at all. */
+    /**
+     * Records a completion: the media row and the status change land together or not at all.
+     *
+     * The status change is conditional on the row still being pending. The service checked that
+     * a moment ago, but two requests can both pass that check; only one can win this write, and
+     * the loser's transaction rolls back (taking its media row with it) with a 409-mapped error.
+     */
     static async completeInstance(params: {
         instanceId: number;
         completedBy: number;
@@ -109,6 +119,15 @@ export class TaskInstanceRepository {
         const { instanceId, completedBy, filePath, completedAt } = params;
 
         return db.$transaction(async (tx) => {
+            const claimed = await tx.taskInstance.updateMany({
+                where: { instanceId, status: TaskStatus.pending },
+                data: { status: TaskStatus.completed, completedBy, completedAt },
+            });
+
+            if (claimed.count === 0) {
+                throw await TaskInstanceRepository.lostRace(tx, instanceId, TaskStatus.completed);
+            }
+
             await tx.media.create({
                 data: {
                     taskInstanceId: instanceId,
@@ -118,9 +137,8 @@ export class TaskInstanceRepository {
                 },
             });
 
-            const instance = await tx.taskInstance.update({
+            const instance = await tx.taskInstance.findUniqueOrThrow({
                 where: { instanceId },
-                data: { status: TaskStatus.completed, completedBy, completedAt },
                 include: instanceInclude,
             });
 
@@ -128,6 +146,7 @@ export class TaskInstanceRepository {
         });
     }
 
+    /** Conditional on `completed` for the same reason as completeInstance: approve racing decline, or a double click, must not both land. */
     static async reviewInstance(params: {
         instanceId: number;
         decision: typeof TaskStatus.verified | typeof TaskStatus.rejected;
@@ -136,13 +155,34 @@ export class TaskInstanceRepository {
     }): Promise<TaskInstanceDetailView> {
         const { instanceId, decision, reviewedBy, reviewedAt } = params;
 
-        const instance = await db.taskInstance.update({
-            where: { instanceId },
-            data: { status: decision, reviewedBy, reviewedAt },
-            include: instanceInclude,
-        });
+        return db.$transaction(async (tx) => {
+            const claimed = await tx.taskInstance.updateMany({
+                where: { instanceId, status: TaskStatus.completed },
+                data: { status: decision, reviewedBy, reviewedAt },
+            });
 
-        return TaskInstanceRepository.toView(instance);
+            if (claimed.count === 0) {
+                throw await TaskInstanceRepository.lostRace(tx, instanceId, decision);
+            }
+
+            const instance = await tx.taskInstance.findUniqueOrThrow({
+                where: { instanceId },
+                include: instanceInclude,
+            });
+
+            return TaskInstanceRepository.toView(instance);
+        });
+    }
+
+    /** The error for a conditional write that matched nothing: someone else changed the status first, so report what it is now. */
+    private static async lostRace(
+        tx: Prisma.TransactionClient,
+        instanceId: number,
+        attempted: TaskStatus,
+    ): Promise<InvalidStatusTransitionError> {
+        const current = await tx.taskInstance.findUnique({ where: { instanceId }, select: { status: true } });
+
+        return new InvalidStatusTransitionError(current?.status ?? TaskStatus.pending, attempted);
     }
 
     /**
@@ -218,6 +258,7 @@ export class TaskInstanceRepository {
 
         return result.count;
     }
+
     private static buildWhere(filters: TaskInstanceFilters): Prisma.TaskInstanceWhereInput {
         const { branchId, dueDate, dueFrom, dueTo, status, assignedToUser } = filters;
 
@@ -249,6 +290,7 @@ export class TaskInstanceRepository {
             ],
         };
     }
+
     private static toView(instance: InstanceWithJoins): TaskInstanceDetailView {
         return {
             instance_id: instance.instanceId,
@@ -256,8 +298,10 @@ export class TaskInstanceRepository {
             due_date: toDateOnlyString(instance.dueDate),
             status: instance.status,
             completed_by: instance.completedBy,
+            completed_by_name: instance.completer?.name ?? null,
             completed_at: instance.completedAt,
             reviewed_by: instance.reviewedBy,
+            reviewed_by_name: instance.reviewer?.name ?? null,
             reviewed_at: instance.reviewedAt,
             task: {
                 task_id: instance.task.taskId,
@@ -267,6 +311,7 @@ export class TaskInstanceRepository {
                 branch_name: instance.task.branch.name,
                 assigned_to: instance.task.assignedTo,
                 assigned_role_id: instance.task.assignedRoleId,
+                recurrence: instance.task.recurrence,
             },
             assignee: instance.task.assignee
                 ? { user_id: instance.task.assignee.userId, name: instance.task.assignee.name }

@@ -32,7 +32,7 @@ export async function GET(
             return NextResponse.json({ error: 'Task instance not found' }, { status: 404 })
         }
 
-        requireTaskInstanceAccess(user, instance.task.branch_id, instance.assignee?.user_id)
+        await requireTaskInstanceAccess(user, instance)
 
         const media = await MediaService.getMediaForInstance(instanceId);
         return NextResponse.json(media, { status: 200 });

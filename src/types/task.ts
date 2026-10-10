@@ -156,3 +156,9 @@ export const CreateTaskSchema = z.object({
 
 /** assigned_by is session-derived — the route merges it in after CreateTaskSchema validates the rest. */
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema> & { assigned_by: number };
+
+/** What a client sends to POST /api/tasks: `due_date` is still the 'YYYY-MM-DD' string, not the parsed Date. */
+export type CreateTaskBody = z.input<typeof CreateTaskSchema>;
+
+/** A Task as it arrives over JSON — TaskSchema types created_at as a Date for the service layer, but the wire carries an ISO string. */
+export type TaskWire = Omit<Task, 'created_at'> & { created_at: string };

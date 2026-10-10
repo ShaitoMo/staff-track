@@ -29,13 +29,14 @@ export async function GET(
     }
 
     try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+
         const task = await TaskService.getTaskById(taskId);
 
         if (!task) {
             return NextResponse.json({ error: 'Task not found' }, { status: 404 });
         }
 
-        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
         requireBranchAccess(user, task.branch_id)
 
         return NextResponse.json(task, { status: 200 });
@@ -67,10 +68,14 @@ export async function PATCH(
         return user;
     }
 
-    const existing = await TaskService.getTaskById(taskId);
-
-    if (!existing) {
-        return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    try {
+        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+    } catch (error) {
+        const forbidden = forbiddenResponse(error);
+        if (forbidden) {
+            return forbidden;
+        }
+        throw error
     }
 
     let body
@@ -80,17 +85,7 @@ export async function PATCH(
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { title, description, assigned_to, assigned_role_id, is_recurring, recurrence, active } = body;
-
-    const validationResult = UpdateTaskSchema.safeParse({
-        title,
-        description,
-        assigned_to,
-        assigned_role_id,
-        is_recurring,
-        recurrence,
-        active,
-    });
+    const validationResult = UpdateTaskSchema.safeParse(body);
 
     if (!validationResult.success) {
         const errors = validationResult.error.issues.map(issue => ({
@@ -101,7 +96,12 @@ export async function PATCH(
     }
 
     try {
-        requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
+        const existing = await TaskService.getTaskById(taskId);
+
+        if (!existing) {
+            return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+        }
+
         requireBranchAccess(user, existing.branch_id)
         const task = await TaskService.updateTask(taskId, validationResult.data);
         return NextResponse.json(task, { status: 200 });

@@ -4,7 +4,7 @@ import { TaskInstanceService } from '@/services/task-instance-service'
 import { requireTaskInstanceAccess } from '@/lib/rbac'
 import { logger } from '@/lib/logger'
 
-/** GET /api/task-instances/:instanceId — owner unrestricted, manager their branches, staff only if directly assigned by name (narrower than the list's role-matching). */
+/** GET /api/task-instances/:instanceId — owner unrestricted, manager their branches; staff if assigned by name, if they completed it, or if it targets their role at a branch they work at (see requireTaskInstanceAccess). */
 export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]'>
@@ -28,7 +28,7 @@ export async function GET(
             return NextResponse.json({ error: 'Task instance not found' }, { status: 404 });
         }
 
-        requireTaskInstanceAccess(user, instance.task.branch_id, instance.assignee?.user_id)
+        await requireTaskInstanceAccess(user, instance)
 
         return NextResponse.json(instance, { status: 200 });
     } catch (error) {
