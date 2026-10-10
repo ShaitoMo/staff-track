@@ -8,6 +8,7 @@ import {
     ScanBarcode,
     ShieldCheck,
     Store,
+    Timer,
     Users,
     type LucideIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ export const MANAGER_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
             { href: "/users", label: "Users", icon: Users },
             { href: "/branches", label: "Branches", icon: Store },
             { href: "/registers", label: "Registers", icon: ScanBarcode },
+            { href: "/periods", label: "Periods", icon: Timer },
             { href: "/roles", label: "Roles & coverage", icon: ShieldCheck },
         ],
     },
