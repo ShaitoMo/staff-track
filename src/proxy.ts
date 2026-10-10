@@ -38,7 +38,11 @@ export async function proxy(request: NextRequest) {
     let refreshedToken: string | null = null
 
     if (!user) {
-        refreshedToken = await tryRefresh(request)
+        try {
+            refreshedToken = await tryRefresh(request)
+        } catch {
+            return refreshUnavailable(request)
+        }
         user = refreshedToken ? await verifyAccessToken(refreshedToken) : null
     }
 
@@ -66,7 +70,11 @@ export async function proxy(request: NextRequest) {
     return res
 }
 
-/** Mints a new access token from the refresh cookie once the short-lived access cookie has lapsed; null means log in again. */
+/**
+ * Mints a new access token from the refresh cookie once the short-lived access cookie has lapsed.
+ * Null means log in again; any other failure (a DB blip) is rethrown, since the refresh token may
+ * still be good and sending the user to /login would throw away a valid session.
+ */
 async function tryRefresh(request: NextRequest): Promise<string | null> {
     const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value
 
@@ -77,11 +85,22 @@ async function tryRefresh(request: NextRequest): Promise<string | null> {
     try {
         return await AuthService.refresh(refreshToken)
     } catch (error) {
-        if (!(error instanceof InvalidRefreshTokenError)) {
-            logger.error({ err: error }, 'Failed to refresh session in proxy')
+        if (error instanceof InvalidRefreshTokenError) {
+            return null
         }
-        return null
+        logger.error({ err: error }, 'Failed to refresh session in proxy')
+        throw error
     }
+}
+
+/** A temporary 503 that leaves both cookies alone, so the next request simply tries the refresh again. */
+function refreshUnavailable(request: NextRequest): NextResponse {
+    const message = 'Service temporarily unavailable, please try again'
+
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: message }, { status: 503 })
+    }
+    return new NextResponse(message, { status: 503 })
 }
 
 export const config = {
