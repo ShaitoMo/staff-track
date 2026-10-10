@@ -3,10 +3,10 @@ import { BranchRepository } from '@/repository/branch-repository'
 import { CreatePeriodInput, ShiftPeriodView, UpdatePeriodInput } from '@/types/shift-period'
 
 export class PeriodService {
-    /** Periods available to a branch: its own, plus every chain-wide one. */
-    static async getPeriodsByBranch(branchId: number): Promise<ShiftPeriodView[]> {
+    /** Periods available to a branch: its own, plus every chain-wide one; only those that are on, unless `includeInactive`. */
+    static async getPeriodsByBranch(branchId: number, includeInactive = false): Promise<ShiftPeriodView[]> {
         await BranchRepository.assertExists(branchId)
-        return ShiftPeriodRepository.getPeriodsByBranch(branchId)
+        return ShiftPeriodRepository.getPeriodsByBranch(branchId, includeInactive)
     }
 
     /** Minimal read — used by route guards to resolve a period's branch (null = chain-wide) before an edit. */

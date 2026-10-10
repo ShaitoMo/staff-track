@@ -3,8 +3,10 @@ import { TimeOnlySchema } from '@/types/time-only'
 
 // ---------- Query filters (GET /periods) ----------
 
+/** `includeInactive=true` is for the periods admin page; every other caller only sees periods that are on. */
 export const PeriodFiltersSchema = z.object({
     branchId: z.coerce.number().int().positive(),
+    includeInactive: z.literal('true').optional(),
 })
 
 export type PeriodFiltersInput = z.infer<typeof PeriodFiltersSchema>
@@ -52,6 +54,7 @@ export const UpdatePeriodSchema = z.object({
     defaultStart: TimeOnlySchema.optional(),
     defaultEnd: TimeOnlySchema.optional(),
     sortOrder: z.number().int().optional(),
+    active: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
 }).superRefine((data, ctx) => {
@@ -94,4 +97,5 @@ export interface ShiftPeriodView {
     defaultStart: string
     defaultEnd: string
     sortOrder: number
+    active: boolean
 }

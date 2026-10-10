@@ -7,16 +7,18 @@ import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { logger } from '@/lib/logger'
 
 /**
- * GET /api/periods?branchId=
+ * GET /api/periods?branchId=&includeInactive=true
  *
  * Periods available to a branch: its own plus every chain-wide one, ordered the way a picker
- * should list them (sort_order, then name).
+ * should list them (sort_order, then name). Only periods that are on, unless `includeInactive=true`
+ * (the periods page, which is where they are turned back on).
  */
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
 
     const validationResult = PeriodFiltersSchema.safeParse({
         branchId: searchParams.get('branchId') ?? undefined,
+        includeInactive: searchParams.get('includeInactive') ?? undefined,
     })
 
     if (!validationResult.success) {
@@ -36,7 +38,8 @@ export async function GET(req: NextRequest) {
     try {
         requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
         requireBranchAccess(user, validationResult.data.branchId)
-        const periods = await PeriodService.getPeriodsByBranch(validationResult.data.branchId)
+        const { branchId, includeInactive } = validationResult.data
+        const periods = await PeriodService.getPeriodsByBranch(branchId, includeInactive === 'true')
         return NextResponse.json(periods, { status: 200 })
     } catch (error) {
         const forbidden = forbiddenResponse(error);

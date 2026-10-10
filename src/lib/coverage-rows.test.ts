@@ -15,7 +15,7 @@ const cashier = { roleId: 1, name: 'Cashier' };
 const baker = { roleId: 2, name: 'Baker' };
 
 function period(periodId: number, name: string, sortOrder: number, defaultStart = '08:00'): ShiftPeriodView {
-    return { periodId, branchId: 1, name, defaultStart, defaultEnd: '16:00', sortOrder };
+    return { periodId, branchId: 1, name, defaultStart, defaultEnd: '16:00', sortOrder, active: true };
 }
 
 const morning = period(10, 'Morning', 1);

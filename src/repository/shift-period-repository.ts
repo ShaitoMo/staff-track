@@ -5,6 +5,7 @@ import { toTimeOnlyString } from '@/types/time-only'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-error'
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
+import { ShiftPeriodInactiveError } from '@/exceptions/shift-period-inactive-error'
 import { PeriodInUseError } from '@/exceptions/period-in-use-error'
 
 /** A period whose own `defaultStart`/`defaultEnd` are still Dates — for callers (ShiftService) that
@@ -14,13 +15,18 @@ export interface ShiftPeriodRecord {
     branchId: number | null
     defaultStart: Date
     defaultEnd: Date
+    active: boolean
 }
 
 export class ShiftPeriodRepository {
-    /** Periods available to a branch: its own, plus every chain-wide one. */
-    static async getPeriodsByBranch(branchId: number): Promise<ShiftPeriodView[]> {
+    /**
+     * Periods available to a branch: its own, plus every chain-wide one. Only periods that are on,
+     * unless `includeInactive` — that is the one switch that hides a turned-off period from the
+     * schedule, coverage, the dashboard and copy-week alike.
+     */
+    static async getPeriodsByBranch(branchId: number, includeInactive = false): Promise<ShiftPeriodView[]> {
         const periods = await db.shiftPeriod.findMany({
-            where: { OR: [{ branchId }, { branchId: null }] },
+            where: ShiftPeriodRepository.buildBranchWhere(branchId, includeInactive),
             orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
         })
 
@@ -30,14 +36,14 @@ export class ShiftPeriodRepository {
     static async getPeriodById(periodId: number): Promise<ShiftPeriodRecord | null> {
         return db.shiftPeriod.findUnique({
             where: { periodId },
-            select: { periodId: true, branchId: true, defaultStart: true, defaultEnd: true },
+            select: { periodId: true, branchId: true, defaultStart: true, defaultEnd: true, active: true },
         })
     }
 
     /**
      * A period that exists but is scoped to another branch cannot supply hours for a shift or
      * requirement at this one — a NULL branchId on the period is the chain-wide default and
-     * matches every branch.
+     * matches every branch. A turned-off period can't be newly used anywhere.
      */
     static async assertAtBranch(periodId: number, branchId: number): Promise<ShiftPeriodRecord> {
         const period = await ShiftPeriodRepository.getPeriodById(periodId)
@@ -48,6 +54,10 @@ export class ShiftPeriodRepository {
 
         if (period.branchId !== null && period.branchId !== branchId) {
             throw new ShiftPeriodNotAtBranchError()
+        }
+
+        if (!period.active) {
+            throw new ShiftPeriodInactiveError()
         }
 
         return period
@@ -83,6 +93,7 @@ export class ShiftPeriodRepository {
                     defaultStart: data.defaultStart,
                     defaultEnd: data.defaultEnd,
                     sortOrder: data.sortOrder,
+                    active: data.active,
                 },
             })
 
@@ -112,6 +123,13 @@ export class ShiftPeriodRepository {
         }
     }
 
+    private static buildBranchWhere(branchId: number, includeInactive: boolean): Prisma.ShiftPeriodWhereInput {
+        return {
+            OR: [{ branchId }, { branchId: null }],
+            ...(includeInactive ? {} : { active: true }),
+        }
+    }
+
     private static toView(period: ShiftPeriodRow): ShiftPeriodView {
         return {
             periodId: period.periodId,
@@ -120,6 +138,7 @@ export class ShiftPeriodRepository {
             defaultStart: toTimeOnlyString(period.defaultStart),
             defaultEnd: toTimeOnlyString(period.defaultEnd),
             sortOrder: period.sortOrder,
+            active: period.active,
         }
     }
 }
