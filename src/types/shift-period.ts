@@ -20,7 +20,7 @@ export type PeriodFiltersInput = z.infer<typeof PeriodFiltersSchema>
  */
 export const CreatePeriodSchema = z.object({
     branchId: z.number().int().positive().nullable().optional(),
-    name: z.string().min(1).max(50),
+    name: z.string().trim().min(1).max(50),
     defaultStart: TimeOnlySchema,
     defaultEnd: TimeOnlySchema,
     sortOrder: z.number().int().optional(),
@@ -50,7 +50,7 @@ export type CreatePeriodInput = z.infer<typeof CreatePeriodSchema>
  * together, same reason as UpdateShiftSchema's start/end pairing.
  */
 export const UpdatePeriodSchema = z.object({
-    name: z.string().min(1).max(50).optional(),
+    name: z.string().trim().min(1).max(50).optional(),
     defaultStart: TimeOnlySchema.optional(),
     defaultEnd: TimeOnlySchema.optional(),
     sortOrder: z.number().int().optional(),
