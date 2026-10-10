@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type SubmitEvent } from "react";
+import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -29,9 +29,9 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
     const [errors, setErrors] = useState<BranchFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
-    const [pending, setPending] = useState(false);
+    const [pending, startTransition] = useTransition();
 
-    async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
         setNotice(null);
@@ -43,29 +43,28 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
         setErrors(validationErrors);
         if (!isBranchFormValid(validationErrors)) return;
 
-        setPending(true);
-        try {
-            if (mode === "create") {
-                await createBranch({ name, location: location || undefined });
-            } else {
-                const patch: BranchUpdateInput = {};
-                if (name !== initialValues?.name) patch.name = name;
-                if (location && location !== initialValues?.location) patch.location = location;
+        startTransition(async () => {
+            try {
+                if (mode === "create") {
+                    await createBranch({ name, location: location || undefined });
+                } else {
+                    const patch: BranchUpdateInput = {};
+                    if (name !== initialValues?.name) patch.name = name;
+                    if (location && location !== initialValues?.location) patch.location = location;
 
-                if (Object.keys(patch).length === 0) {
-                    setNotice("No changes to save.");
-                    return;
+                    if (Object.keys(patch).length === 0) {
+                        setNotice("No changes to save.");
+                        return;
+                    }
+                    await updateBranch(branchId!, patch);
                 }
-                await updateBranch(branchId!, patch);
-            }
 
-            router.push("/branches");
-            router.refresh();
-        } catch (error) {
-            setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
-        } finally {
-            setPending(false);
-        }
+                router.push("/branches");
+                router.refresh();
+            } catch (error) {
+                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+            }
+        });
     }
 
     return (

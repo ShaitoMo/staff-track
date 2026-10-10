@@ -22,6 +22,8 @@ export interface TaskInstanceFilters {
     // dueDate is also given, since an exact date already answers the question a range would.
     dueFrom?: Date;
     dueTo?: Date;
+    // Completed on or after this instant; never-completed instances have no completedAt, so they drop out.
+    completedFrom?: Date;
     status?: TaskStatus;
     assignedToUser?: AssignedToUserFilter;
 }
@@ -260,7 +262,7 @@ export class TaskInstanceRepository {
     }
 
     private static buildWhere(filters: TaskInstanceFilters): Prisma.TaskInstanceWhereInput {
-        const { branchId, dueDate, dueFrom, dueTo, status, assignedToUser } = filters;
+        const { branchId, dueDate, dueFrom, dueTo, completedFrom, status, assignedToUser } = filters;
 
         const task: Prisma.TaskWhereInput = {};
 
@@ -279,6 +281,7 @@ export class TaskInstanceRepository {
             dueDate: dueDate ?? (dueFrom !== undefined || dueTo !== undefined
                 ? { gte: dueFrom, lte: dueTo }
                 : undefined),
+            completedAt: completedFrom !== undefined ? { gte: completedFrom } : undefined,
             status,
             ...(Object.keys(task).length > 0 ? { task } : {}),
             // A deactivated task's outstanding work is cancelled, so its pending instances drop

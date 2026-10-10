@@ -75,6 +75,18 @@ describe('buildWhere — filters', () => {
         expect(where.status).toBeUndefined();
     });
 
+    it('bounds completion time from below, independent of the due date', () => {
+        const completedFrom = new Date('2026-08-06T00:00:00Z');
+        const where = buildWhere({ completedFrom });
+
+        expect(where.completedAt).toEqual({ gte: completedFrom });
+        expect(where.dueDate).toBeUndefined();
+    });
+
+    it('leaves completedAt unset when completedFrom is not supplied', () => {
+        expect(buildWhere({ branchId: 1 }).completedAt).toBeUndefined();
+    });
+
     it('scopes to a branch', () => {
         expect(buildWhere({ branchId: 3 }).task).toEqual({ branchId: 3 });
     });
