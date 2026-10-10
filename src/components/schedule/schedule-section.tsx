@@ -14,6 +14,7 @@ import {
     buildRoleRows,
     indexWeek,
     NEEDS_DOT,
+    OtherShift,
     rolesOnRegisters,
     slotsForClient,
     summarizeWeek,
@@ -143,10 +144,14 @@ export async function ScheduleSection({
         <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
     ) : null;
 
+    // with every period off there's no grid, but the week's shifts (now custom hours) and copy week still apply
     if (sortedPeriods.length === 0) {
         return (
             <div className="flex flex-col gap-4">
-                {weekNav}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {weekNav}
+                    <CopyWeekButton branchId={branchId} weekStart={weekStart} />
+                </div>
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>No shift periods</EmptyTitle>
@@ -160,6 +165,7 @@ export async function ScheduleSection({
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
+                <OtherShiftsTable shifts={otherShifts} />
             </div>
         );
     }
@@ -195,36 +201,42 @@ export async function ScheduleSection({
                 staff={toStaff(users)}
                 slots={slotsForClient(week)}
             />
-            {otherShifts.length > 0 ? (
-                <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">
-                    <h3 id="custom-hours" className="text-sm font-medium">
-                        Custom-hours shifts
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">Not on an active period, so not counted above</span>
-                    </h3>
-                    <div className="overflow-x-auto rounded-lg border border-border bg-card sm:max-w-xl">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead scope="col">Day</TableHead>
-                                    <TableHead scope="col">Hours</TableHead>
-                                    <TableHead scope="col">Person</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {otherShifts.map((shift) => (
-                                    <TableRow key={shift.shiftId}>
-                                        <TableCell>{formatDay(shift.date)}</TableCell>
-                                        <TableCell className="font-mono tabular-nums">
-                                            {shift.startTime}–{shift.endTime}
-                                        </TableCell>
-                                        <TableCell>{shift.name}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </section>
-            ) : null}
+            <OtherShiftsTable shifts={otherShifts} />
         </div>
+    );
+}
+
+function OtherShiftsTable({ shifts }: { shifts: OtherShift[] }) {
+    if (shifts.length === 0) return null;
+
+    return (
+        <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">
+            <h3 id="custom-hours" className="text-sm font-medium">
+                Custom-hours shifts
+                <span className="ml-2 text-xs font-normal text-muted-foreground">Not on an active period, so not counted above</span>
+            </h3>
+            <div className="overflow-x-auto rounded-lg border border-border bg-card sm:max-w-xl">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead scope="col">Day</TableHead>
+                            <TableHead scope="col">Hours</TableHead>
+                            <TableHead scope="col">Person</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {shifts.map((shift) => (
+                            <TableRow key={shift.shiftId}>
+                                <TableCell>{formatDay(shift.date)}</TableCell>
+                                <TableCell className="font-mono tabular-nums">
+                                    {shift.startTime}–{shift.endTime}
+                                </TableCell>
+                                <TableCell>{shift.name}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </section>
     );
 }
