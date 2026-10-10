@@ -182,7 +182,7 @@ export class ShiftService {
     static async copyWeek(data: CopyWeekInput & { created_by: number }): Promise<CopyWeekResult> {
         const targetFrom = data.week_start
 
-        const [, source, staff, periods] = await Promise.all([
+        const [, source, staff, periods, registers] = await Promise.all([
             BranchRepository.assertExists(data.branch_id),
             ShiftRepository.getShifts({
                 branchId: data.branch_id,
@@ -191,10 +191,18 @@ export class ShiftService {
             }),
             UserRepository.getAllUsers([data.branch_id]),
             ShiftPeriodRepository.getPeriodsByBranch(data.branch_id),
+            RegisterRepository.getRegistersByBranch(data.branch_id),
         ])
 
         const activeStaff = new Set(staff.filter((user) => user.isActive).map((user) => user.userId))
-        const candidates = source.filter((shift) => activeStaff.has(shift.user_id))
+        // Registers can't be deleted or moved today, but if one ever leaves the branch the shift
+        // is still worth copying — just without a register, rather than failing the whole copy on the FK.
+        const branchRegisters = new Set(registers.map((register) => register.registerId))
+        const candidates = source
+            .filter((shift) => activeStaff.has(shift.user_id))
+            .map((shift) => (shift.register_id === null || branchRegisters.has(shift.register_id)
+                ? shift
+                : { ...shift, register_id: null }))
         const userIds = [...new Set(candidates.map((shift) => shift.user_id))]
         const registerIds = [...new Set(candidates.flatMap((shift) => (shift.register_id === null ? [] : [shift.register_id])))]
 

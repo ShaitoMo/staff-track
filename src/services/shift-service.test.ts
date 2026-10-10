@@ -15,10 +15,14 @@ jest.mock('@/repository/user-repository', () => ({
 jest.mock('@/repository/shift-period-repository', () => ({
     ShiftPeriodRepository: { getPeriodsByBranch: jest.fn() },
 }));
+jest.mock('@/repository/register-repository', () => ({
+    RegisterRepository: { getRegistersByBranch: jest.fn() },
+}));
 
 import { ShiftService } from '@/services/shift-service';
 import { NewShiftRow, ShiftRepository, OverlapQuery, RegisterOverlapQuery } from '@/repository/shift-repository';
 import { ShiftPeriodRepository } from '@/repository/shift-period-repository';
+import { RegisterRepository } from '@/repository/register-repository';
 import { UserRepository } from '@/repository/user-repository';
 import { ShiftView } from '@/types/shift';
 import { ShiftPeriodView } from '@/types/shift-period';
@@ -34,6 +38,9 @@ const copyIntoWeek = ShiftRepository.copyIntoWeek as jest.MockedFunction<typeof 
 const getAllUsers = UserRepository.getAllUsers as jest.MockedFunction<typeof UserRepository.getAllUsers>;
 const getPeriodsByBranch = ShiftPeriodRepository.getPeriodsByBranch as jest.MockedFunction<
     typeof ShiftPeriodRepository.getPeriodsByBranch
+>;
+const getRegistersByBranch = RegisterRepository.getRegistersByBranch as jest.MockedFunction<
+    typeof RegisterRepository.getRegistersByBranch
 >;
 
 /** `assertNoDoubleBooking` is private; element access reaches it without widening the service API. */
@@ -181,6 +188,18 @@ describe('copyWeek', () => {
 
     beforeEach(() => {
         getPeriodsByBranch.mockResolvedValue([period(3, '09:00', '17:00')]);
+        getRegistersByBranch.mockResolvedValue([{ registerId: 2, branchId: 1, name: 'Till 1' }]);
+    });
+
+    it('copies a shift without its register if that register is no longer at the branch', async () => {
+        getRegistersByBranch.mockResolvedValue([]);
+        getShifts.mockResolvedValue([shift({})]);
+        getAllUsers.mockResolvedValue([staff(7)]);
+        const inserted = bookedInTarget([]);
+
+        await expect(copy()).resolves.toEqual({ created: 1, skipped: 0 });
+        expect(inserted()[0].registerId).toBeNull();
+        expect(copyIntoWeek.mock.calls[0][0].registerIds).toEqual([]);
     });
 
     it('reads the seven days before week_start and copies each shift seven days forward', async () => {
