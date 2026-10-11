@@ -15,8 +15,8 @@ export class UserService {
         });
         return user;
     }
-    static async getAllUsers(): Promise<SafeUser[]> {
-        return UserRepository.getAllUsers();
+    static async getAllUsers(branchIds?: number[]): Promise<SafeUser[]> {
+        return UserRepository.getAllUsers(branchIds);
     }
     static async getUserById(userId: number): Promise<SafeUser | null> {
         return UserRepository.getUserById(userId);

@@ -1,0 +1,325 @@
+import { TaskStatus } from '@prisma/client';
+
+jest.mock('@/lib/db', () => ({ db: {} }));
+jest.mock('@/repository/user-repository', () => ({
+    UserRepository: { getUserById: jest.fn(), getAuthContext: jest.fn() },
+}));
+jest.mock('@/repository/user-branch-repository', () => ({
+    UserBranchRepository: { getUserBranches: jest.fn() },
+}));
+jest.mock('@/repository/task-instance-repository', () => ({
+    TaskInstanceRepository: {
+        getInstanceForWrite: jest.fn(),
+        reviewInstance: jest.fn(),
+        getTaskInstances: jest.fn(),
+    },
+}));
+
+import { TaskInstanceService } from '@/services/task-instance-service';
+import { UserRepository } from '@/repository/user-repository';
+import { UserBranchRepository } from '@/repository/user-branch-repository';
+import { TaskInstanceRepository } from '@/repository/task-instance-repository';
+import { InactiveTaskError } from '@/exceptions/inactive-task-error';
+import { ForbiddenError, NotAssignedToTaskError, NotBranchManagerError } from '@/exceptions/forbidden-error';
+import { UserNotFoundError } from '@/exceptions/user-not-found-error';
+
+const getUserById = UserRepository.getUserById as jest.MockedFunction<
+    typeof UserRepository.getUserById
+>;
+const getAuthContext = UserRepository.getAuthContext as jest.MockedFunction<
+    typeof UserRepository.getAuthContext
+>;
+const getUserBranches = UserBranchRepository.getUserBranches as jest.MockedFunction<
+    typeof UserBranchRepository.getUserBranches
+>;
+const getInstanceForWrite = TaskInstanceRepository.getInstanceForWrite as jest.MockedFunction<
+    typeof TaskInstanceRepository.getInstanceForWrite
+>;
+const getTaskInstances = TaskInstanceRepository.getTaskInstances as jest.MockedFunction<
+    typeof TaskInstanceRepository.getTaskInstances
+>;
+
+const ASSIGNEE = 7;
+const OTHER_USER = 8;
+const ROLE = 2;
+const BRANCH = 3;
+
+/** Mirrors the `getInstanceForWrite` projection: exactly what the permission rules get to see. */
+function instance(task: {
+    assignedTo?: number | null;
+    assignedRoleId?: number | null;
+    active?: boolean;
+}) {
+    return {
+        instanceId: 1,
+        status: TaskStatus.pending,
+        completedBy: null,
+        task: {
+            taskId: 10,
+            branchId: BRANCH,
+            assignedTo: task.assignedTo ?? null,
+            assignedRoleId: task.assignedRoleId ?? null,
+            active: task.active ?? true,
+        },
+    };
+}
+
+function user(overrides: { userId?: number; roleId?: number; isActive?: boolean } = {}) {
+    return {
+        userId: overrides.userId ?? ASSIGNEE,
+        name: 'Test User',
+        phone: '0000',
+        roleId: overrides.roleId ?? ROLE,
+        isActive: overrides.isActive ?? true,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+    };
+}
+
+const atBranch = [{ userId: ASSIGNEE, branchId: BRANCH }];
+
+/** `assertMayComplete` is private; element access reaches it without widening the service API. */
+const assertMayComplete = (
+    forWrite: ReturnType<typeof instance>,
+    completedBy: number,
+): Promise<void> => TaskInstanceService['assertMayComplete'](forWrite, completedBy);
+
+/** `assertMayReview` is private; element access reaches it without widening the service API. */
+const assertMayReview = (userId: number, branchId: number): Promise<void> =>
+    TaskInstanceService['assertMayReview'](userId, branchId);
+
+beforeEach(() => {
+    jest.resetAllMocks();
+});
+
+describe('assertMayComplete — inactive tasks', () => {
+    it('refuses completion once the task is deactivated', async () => {
+        await expect(
+            assertMayComplete(instance({ assignedTo: ASSIGNEE, active: false }), ASSIGNEE),
+        ).rejects.toThrow(InactiveTaskError);
+    });
+
+    it('refuses the assignee too — cancellation is about the task, not the person', async () => {
+        // the read filter already hides this instance; the guard is what stops a client that
+        // still holds the id from completing it anyway
+        await expect(
+            assertMayComplete(instance({ assignedTo: ASSIGNEE, active: false }), ASSIGNEE),
+        ).rejects.toThrow(InactiveTaskError);
+
+        expect(getUserById).not.toHaveBeenCalled();
+        expect(getUserBranches).not.toHaveBeenCalled();
+    });
+
+    it('reports cancellation ahead of any permission problem', async () => {
+        // a wrong user on a cancelled task is told the task is closed, not that they lack rights:
+        // otherwise a 403 would send them looking for a permission fix that does not exist
+        await expect(
+            assertMayComplete(instance({ assignedTo: ASSIGNEE, active: false }), OTHER_USER),
+        ).rejects.toThrow(InactiveTaskError);
+    });
+
+    it('refuses a role-targeted task as well, without consulting the user at all', async () => {
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE, active: false }), ASSIGNEE),
+        ).rejects.toThrow(InactiveTaskError);
+
+        expect(getUserById).not.toHaveBeenCalled();
+    });
+
+    it('is not a ForbiddenError, so the route maps it to 409 rather than 403', async () => {
+        // the completer may be entirely in the right; it is the task's state that conflicts
+        expect(new InactiveTaskError()).not.toBeInstanceOf(ForbiddenError);
+    });
+});
+
+describe('assertMayComplete — task targets a named person', () => {
+    it('admits the named assignee without touching the database', async () => {
+        await expect(
+            assertMayComplete(instance({ assignedTo: ASSIGNEE }), ASSIGNEE),
+        ).resolves.toBeUndefined();
+
+        expect(getUserById).not.toHaveBeenCalled();
+        expect(getUserBranches).not.toHaveBeenCalled();
+    });
+
+    it('refuses anyone else, even a colleague at the same branch', async () => {
+        await expect(
+            assertMayComplete(instance({ assignedTo: ASSIGNEE }), OTHER_USER),
+        ).rejects.toThrow(NotAssignedToTaskError);
+    });
+});
+
+describe('assertMayComplete — task targets a role', () => {
+    it('admits an active holder of the role who works at the branch', async () => {
+        getUserById.mockResolvedValue(user());
+        getUserBranches.mockResolvedValue(atBranch);
+
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE }), ASSIGNEE),
+        ).resolves.toBeUndefined();
+
+        expect(getUserBranches).toHaveBeenCalledWith({ userId: ASSIGNEE, branchId: BRANCH });
+    });
+
+    it('refuses a user who does not exist', async () => {
+        getUserById.mockResolvedValue(null);
+
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE }), ASSIGNEE),
+        ).rejects.toThrow(NotAssignedToTaskError);
+    });
+
+    it('refuses a deactivated user', async () => {
+        getUserById.mockResolvedValue(user({ isActive: false }));
+
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE }), ASSIGNEE),
+        ).rejects.toThrow(NotAssignedToTaskError);
+    });
+
+    it('refuses someone holding a different role', async () => {
+        getUserById.mockResolvedValue(user({ roleId: ROLE + 1 }));
+
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE }), ASSIGNEE),
+        ).rejects.toThrow(NotAssignedToTaskError);
+    });
+
+    it('refuses the right role at the wrong branch, and says which it is', async () => {
+        getUserById.mockResolvedValue(user());
+        getUserBranches.mockResolvedValue([]);
+
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE }), ASSIGNEE),
+        ).rejects.toThrow(/do not work at the branch/);
+    });
+
+    it('checks the role before spending a query on the branch link', async () => {
+        getUserById.mockResolvedValue(user({ roleId: ROLE + 1 }));
+
+        await expect(
+            assertMayComplete(instance({ assignedRoleId: ROLE }), ASSIGNEE),
+        ).rejects.toThrow(NotAssignedToTaskError);
+
+        expect(getUserBranches).not.toHaveBeenCalled();
+    });
+});
+
+function authContext(overrides: { isActive?: boolean; roleName?: string; branchIds?: number[] } = {}) {
+    return {
+        isActive: overrides.isActive ?? true,
+        roleName: overrides.roleName ?? 'manager',
+        branchIds: overrides.branchIds ?? [BRANCH],
+    };
+}
+
+describe('assertMayReview — restricted to owners and managers', () => {
+    it('admits an active manager attached to the branch', async () => {
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'manager', branchIds: [BRANCH] }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).resolves.toBeUndefined();
+    });
+
+    it('admits an active owner regardless of branch', async () => {
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'owner', branchIds: [] }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).resolves.toBeUndefined();
+    });
+
+    it('refuses a non-manager, even one attached to the branch', async () => {
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'cashier', branchIds: [BRANCH] }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
+
+    it('refuses a manager not attached to the branch', async () => {
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'manager', branchIds: [] }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
+
+    it('refuses a deactivated user', async () => {
+        getAuthContext.mockResolvedValue(authContext({ isActive: false }));
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
+
+    it('refuses an unknown user', async () => {
+        getAuthContext.mockResolvedValue(null);
+
+        await expect(assertMayReview(ASSIGNEE, BRANCH)).rejects.toThrow(NotBranchManagerError);
+    });
+});
+
+describe('review is deliberately not gated on the task being active', () => {
+    it('lets a completed instance of a deactivated task still be verified', async () => {
+        // otherwise work photographed before the task was closed would strand in `completed`,
+        // since that status only exits to verified or rejected
+        getInstanceForWrite.mockResolvedValue({
+            ...instance({ assignedRoleId: ROLE, active: false }),
+            status: TaskStatus.completed,
+            completedBy: OTHER_USER,
+        });
+        getAuthContext.mockResolvedValue(authContext({ roleName: 'manager', branchIds: [BRANCH] }));
+
+        await TaskInstanceService.reviewInstance({
+            instanceId: 1,
+            decision: TaskStatus.verified,
+            reviewedBy: ASSIGNEE,
+        });
+
+        expect(TaskInstanceRepository.reviewInstance).toHaveBeenCalledWith(
+            expect.objectContaining({ instanceId: 1, decision: TaskStatus.verified }),
+        );
+    });
+});
+
+describe('getTaskInstances — resolving the user_id filter', () => {
+    it('returns an empty list for an unknown user rather than everybody\'s tasks', async () => {
+        getUserById.mockResolvedValue(null);
+
+        const rows = await TaskInstanceService.getTaskInstances({ user_id: ASSIGNEE });
+
+        expect(rows).toEqual([]);
+        expect(getTaskInstances).not.toHaveBeenCalled();
+    });
+
+    it('passes an empty branchIds list through rather than fetching branch links again', async () => {
+        getUserById.mockResolvedValue(user());
+        getUserBranches.mockResolvedValue([]);
+        getTaskInstances.mockResolvedValue([]);
+
+        await TaskInstanceService.getTaskInstances({ user_id: ASSIGNEE });
+
+        expect(getTaskInstances).toHaveBeenCalledWith(
+            expect.objectContaining({
+                assignedToUser: { userId: ASSIGNEE, roleId: ROLE, branchIds: [] },
+            }),
+        );
+    });
+});
+
+describe('getTaskInstancesForUser — a worker attached to no branch', () => {
+    it('reports a 404-shaped error for an unknown user', async () => {
+        getUserById.mockResolvedValue(null);
+
+        await expect(TaskInstanceService.getTaskInstancesForUser(ASSIGNEE, {})).rejects.toThrow(
+            UserNotFoundError,
+        );
+    });
+
+    it('still asks for personal tasks — an empty branchIds list only closes off role-targeted ones', async () => {
+        getUserById.mockResolvedValue(user());
+        getUserBranches.mockResolvedValue([]);
+        getTaskInstances.mockResolvedValue([]);
+
+        await TaskInstanceService.getTaskInstancesForUser(ASSIGNEE, {});
+
+        // buildWhere's OR still carries { assignedTo: userId }, which does not depend on branchIds;
+        // only the role-targeted arm (branchId: { in: [] }) goes empty.
+        expect(getTaskInstances).toHaveBeenCalledWith(
+            expect.objectContaining({
+                assignedToUser: { userId: ASSIGNEE, roleId: ROLE, branchIds: [] },
+            }),
+        );
+    });
+});

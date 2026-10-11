@@ -50,8 +50,9 @@ model Role {
   roleId Int    @id @default(autoincrement()) @map("role_id")
   name   String @unique @db.VarChar
 
-  users User[]
-  tasks Task[] // tasks targeting this whole role (assigned_role_id)
+  users        User[]
+  tasks        Task[] // tasks targeting this whole role (assigned_role_id)
+  coverageReqs CoverageRequirement[]
 
   @@map("roles")
 }
@@ -92,6 +93,8 @@ model Branch {
   shifts       Shift[]
   attendance   Attendance[]
   tasks        Task[]
+  shiftPeriods ShiftPeriod[]
+  coverageReqs CoverageRequirement[]
 
   @@map("branches")
 }
@@ -130,6 +133,7 @@ model Shift {
   userId     Int      @map("user_id")
   branchId   Int      @map("branch_id")
   registerId Int?     @map("register_id") // NULL for non-cashier shifts
+  periodId   Int?     @map("period_id") // named slot this shift was scheduled from, if any
   shiftDate  DateTime @map("shift_date") @db.Date
   startTime  DateTime @map("start_time") @db.Time
   endTime    DateTime @map("end_time") @db.Time
@@ -148,7 +152,53 @@ model Shift {
   // field to participate in multiple relations.
   register Register? @relation(fields: [branchId, registerId], references: [branchId, registerId])
 
+  // NOT a composite FK against (branchId, periodId): shift_periods.branch_id is nullable (a NULL
+  // row applies chain-wide), so MATCH SIMPLE would let a period from any branch attach as long as
+  // its branch_id happens to be NULL — it can't express "same branch, or global". The branch match
+  // is an app-level check instead (see ShiftService.assertPeriodAtBranch).
+  //
+  // onDelete: Restrict overrides Prisma's own default (SetNull, since the relation is optional):
+  // deleting a referenced period must be refused (409), not silently drop off the shifts scheduled
+  // from it — see PeriodService.deletePeriod.
+  period ShiftPeriod? @relation(fields: [periodId], references: [periodId], onDelete: Restrict)
+
   @@map("shifts")
+}
+
+// named slots a day is divided into ('Morning', 'Evening'), with the hours a shift in that slot
+// normally runs. A NULL branch_id is the chain-wide default; a row naming a branch is that
+// branch's own version of the slot.
+model ShiftPeriod {
+  periodId     Int      @id @default(autoincrement()) @map("period_id")
+  branchId     Int?     @map("branch_id") // NULL = applies to all branches
+  name         String   @db.VarChar // 'Morning', 'Evening'
+  defaultStart DateTime @map("default_start") @db.Time
+  defaultEnd   DateTime @map("default_end") @db.Time
+  sortOrder    Int      @default(0) @map("sort_order")
+
+  branch       Branch?               @relation(fields: [branchId], references: [branchId])
+  requirements CoverageRequirement[]
+  shifts       Shift[]
+
+  @@map("shift_periods")
+}
+
+// how many people of a role a branch needs in a period — the target the schedule is measured
+// against, every day of the week. A helper for building the schedule: nothing reads this table to
+// create, block, or modify a shift.
+model CoverageRequirement {
+  requirementId Int @id @default(autoincrement()) @map("requirement_id")
+  branchId      Int @map("branch_id")
+  roleId        Int @map("role_id")
+  periodId      Int @map("period_id")
+  requiredCount Int @default(1) @map("required_count") // 0 is a real value: explicitly not needed
+
+  branch Branch      @relation(fields: [branchId], references: [branchId])
+  role   Role        @relation(fields: [roleId], references: [roleId])
+  period ShiftPeriod @relation(fields: [periodId], references: [periodId])
+
+  @@unique([branchId, roleId, periodId])
+  @@map("coverage_requirements")
 }
 
 // one row per CSV/Excel upload from the clock-in machine (FR5 v1)
@@ -169,8 +219,8 @@ model Attendance {
   attendanceId  Int              @id @default(autoincrement()) @map("attendance_id")
   userId        Int              @map("user_id")
   branchId      Int              @map("branch_id")
-  clockIn       DateTime         @map("clock_in") @db.Timestamptz
-  clockOut      DateTime?        @map("clock_out") @db.Timestamptz
+  clockIn       DateTime?        @map("clock_in") @db.Timestamptz // NULL: the machine logged a clock-out with no clock-in
+  clockOut      DateTime?        @map("clock_out") @db.Timestamptz // NULL: still clocked in, or never clocked out
   source        AttendanceSource @default(csv_import)
   importBatchId Int?             @map("import_batch_id") // NULL when source = manual
 
@@ -178,8 +228,11 @@ model Attendance {
   branch      Branch       @relation(fields: [branchId], references: [branchId])
   importBatch ImportBatch? @relation(fields: [importBatchId], references: [batchId])
 
-  // re-uploading the same CSV must not duplicate rows
+  // re-uploading the same CSV must not duplicate rows. Either end identifies a punch (NULLs never
+  // collide), so a clock-out-only row stays a no-op on re-import even after it has been fixed.
+  // At least one end is always set: a CHECK in the migration, which Prisma can't express.
   @@unique([userId, clockIn])
+  @@unique([userId, clockOut])
   @@map("attendance")
 }
 
@@ -196,6 +249,12 @@ model Task {
   origin         TaskOrigin @default(assigned)
   isRecurring    Boolean    @default(false) @map("is_recurring")
   recurrence     String?    @db.VarChar // 'daily', 'weekly:mon,wed'; NULL if one-off
+  // "generates new instances and accepts new completions", NOT "exists". Flipping this to false
+  // cancels the task's outstanding work: pending rows drop out of the daily list and completion
+  // is refused (409). For a recurring task the daily job also deletes those pending rows, since
+  // it can regenerate them if the task is switched back on; a one-off's instance is kept and
+  // merely hidden, because nothing would ever recreate it. Instances already completed stay
+  // visible and stay reviewable — the record of work that did happen is never rewritten.
   active         Boolean    @default(true)
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
@@ -227,6 +286,10 @@ model TaskInstance {
 
   media Media[]
 
+  // one occurrence per task per day. Every instance insert goes through
+  // ON CONFLICT DO NOTHING, so generation is idempotent: the daily top-up job
+  // re-inserts the same 14-day window every run and this absorbs the overlap.
+  @@unique([taskId, dueDate])
   @@map("task_instances")
 }
 
