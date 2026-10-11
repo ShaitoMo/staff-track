@@ -146,6 +146,11 @@ export async function* listPhotoKeys(before: Date): AsyncGenerator<string[]> {
     } while (ContinuationToken);
 }
 
+/** Server-side upload under a fixed key. Only the seed uses it; the app's uploads go browser → R2 directly. */
+export async function putPhoto(key: string, body: Uint8Array): Promise<void> {
+    await r2().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: PHOTO_CONTENT_TYPE }));
+}
+
 /** Best-effort cleanup for a photo that was uploaded but never made it into the database. */
 export async function deletePhoto(key: string): Promise<void> {
     try {
