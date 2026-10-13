@@ -9,6 +9,7 @@ jest.mock('@aws-sdk/client-s3', () => {
         GetObjectCommand: command('GetObject'),
         HeadObjectCommand: command('HeadObject'),
         DeleteObjectCommand: command('DeleteObject'),
+        ListObjectsV2Command: command('ListObjectsV2'),
     };
 });
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
@@ -17,7 +18,7 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 jest.mock('@/lib/logger', () => ({ logger: { error: jest.fn() } }));
 
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { createPhotoUploadUrl, getPhotoViewUrl, InvalidPhotoError, verifyUploadedPhoto } from '@/lib/storage';
+import { createPhotoUploadUrl, getPhotoViewUrl, InvalidPhotoError, listPhotoKeys, verifyUploadedPhoto } from '@/lib/storage';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
 
 const mockedGetSignedUrl = getSignedUrl as jest.Mock;
@@ -103,5 +104,38 @@ describe('getPhotoViewUrl', () => {
 
         const [, command] = mockedGetSignedUrl.mock.calls.at(-1);
         expect(command.input).toMatchObject({ ResponseContentType: 'image/jpeg', ResponseContentDisposition: 'inline' });
+    });
+});
+
+describe('listPhotoKeys', () => {
+    const cutoff = new Date('2026-10-12T00:00:00Z');
+    const old = new Date('2026-10-11T00:00:00Z');
+    const fresh = new Date('2026-10-12T12:00:00Z');
+
+    it('pages through the photo prefix and keeps only keys written before the cutoff', async () => {
+        mockSend
+            .mockResolvedValueOnce({
+                Contents: [{ Key: 'task-instances/1/a.jpg', LastModified: old }, { Key: 'task-instances/1/b.jpg', LastModified: fresh }],
+                NextContinuationToken: 'next',
+            })
+            .mockResolvedValueOnce({ Contents: [{ Key: 'task-instances/2/c.jpg', LastModified: old }] });
+
+        const pages: string[][] = [];
+        for await (const keys of listPhotoKeys(cutoff)) pages.push(keys);
+
+        expect(pages).toEqual([['task-instances/1/a.jpg'], ['task-instances/2/c.jpg']]);
+        expect(mockSend.mock.calls.map(([command]) => command.input)).toEqual([
+            { Bucket: 'photos', Prefix: 'task-instances/', ContinuationToken: undefined },
+            { Bucket: 'photos', Prefix: 'task-instances/', ContinuationToken: 'next' },
+        ]);
+    });
+
+    it('yields one empty page for an empty bucket', async () => {
+        mockSend.mockResolvedValueOnce({});
+
+        const pages: string[][] = [];
+        for await (const keys of listPhotoKeys(cutoff)) pages.push(keys);
+
+        expect(pages).toEqual([[]]);
     });
 });

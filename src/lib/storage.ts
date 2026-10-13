@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+    DeleteObjectCommand,
+    GetObjectCommand,
+    HeadObjectCommand,
+    ListObjectsV2Command,
+    PutObjectCommand,
+    S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
 import { logger } from '@/lib/logger';
@@ -57,8 +64,10 @@ function bucket(): string {
     return requireEnv('R2_BUCKET');
 }
 
+const PHOTO_PREFIX = 'task-instances/';
+
 function keyPrefix(instanceId: number): string {
-    return `task-instances/${instanceId}/`;
+    return `${PHOTO_PREFIX}${instanceId}/`;
 }
 
 /**
@@ -123,6 +132,18 @@ export async function getPhotoViewUrl(key: string): Promise<string> {
         }),
         { expiresIn: VIEW_URL_TTL_SECONDS },
     );
+}
+
+/** Photo keys last written before `before`, one bucket page (up to 1000 keys) at a time. */
+export async function* listPhotoKeys(before: Date): AsyncGenerator<string[]> {
+    let ContinuationToken: string | undefined;
+    do {
+        const page = await r2().send(new ListObjectsV2Command({ Bucket: bucket(), Prefix: PHOTO_PREFIX, ContinuationToken }));
+        yield (page.Contents ?? [])
+            .filter((object) => object.Key && object.LastModified && object.LastModified < before)
+            .map((object) => object.Key!);
+        ContinuationToken = page.NextContinuationToken;
+    } while (ContinuationToken);
 }
 
 /** Best-effort cleanup for a photo that was uploaded but never made it into the database. */

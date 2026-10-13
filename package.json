@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
-    "job:top-up": "tsx src/jobs/top-up-instances.ts"
+    "job:top-up": "tsx src/jobs/top-up-instances.ts",
+    "job:sweep-photos": "tsx src/jobs/sweep-orphan-photos.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1149.0",

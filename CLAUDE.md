@@ -45,6 +45,8 @@ npm run lint                  # ESLint (flat config)
 
 npm run job:top-up            # src/jobs/top-up-instances.ts — recurring task-instance
                                # top-up/prune; idempotent, meant to be cron'd
+npm run job:sweep-photos      # src/jobs/sweep-orphan-photos.ts — deletes R2 photos no media row
+                               # points at, once a day old; idempotent, meant to be cron'd
 ```
 
 **Typecheck gotcha:** API route handlers use Next's generated `RouteContext<'/path/[param]'>` ambient
