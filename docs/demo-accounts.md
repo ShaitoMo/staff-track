@@ -6,7 +6,7 @@ The `#` after a branch is the person's employee number on that branch's clock-in
 
 | Name | Role | Branch (machine #) | Phone | Note |
 | --- | --- | --- | --- | --- |
-| Karim Haddad | Owner | All branches | ` ` |  |
+| Karim Haddad | Owner | All branches | `70000000` |  |
 | Rania Khoury | Manager | Hamra (#101) | `70000001` |  |
 | Tarek Mansour | Manager | Hamra (#102) | `70000004` |  |
 | Georges Saliba | Manager | Achrafieh (#102) | `70000002` |  |
