@@ -31,6 +31,7 @@ npx prisma migrate deploy
 npx prisma db seed          # wipes and reloads the demo chain (3 branches, dates relative to today);
                              # every seeded user logs in with password 123456 — accounts in
                              # docs/demo-accounts.md. Uploads placeholder photos to R2.
+                             # Refuses a non-localhost DB unless SEED_ALLOW_REMOTE=1 (e.g. Supabase).
 
 npm run dev                 # Next.js dev server (Turbopack), http://localhost:3000
 npm run build                # production build

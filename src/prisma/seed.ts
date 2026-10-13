@@ -15,7 +15,8 @@ import { addDays, getDates } from "@/lib/recurrence";
 import { putPhoto } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 
-const adapter = new PrismaPg({ connectionString: process.env.DIRECT_URL ?? process.env.DATABASE_URL });
+const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
 const DEMO_PASSWORD = "123456";
@@ -255,7 +256,15 @@ async function wipe() {
   await prisma.role.deleteMany();
 }
 
+/** The seed deletes everything first, so a non-local database needs SEED_ALLOW_REMOTE=1. */
+function assertSafeTarget() {
+  const host = connectionString ? new URL(connectionString).hostname : "";
+  if (host === "localhost" || host === "127.0.0.1" || process.env.SEED_ALLOW_REMOTE === "1") return;
+  throw new Error(`Refusing to wipe the database at "${host}": set SEED_ALLOW_REMOTE=1 to seed a non-local database`);
+}
+
 async function main() {
+  assertSafeTarget();
   await wipe();
   await uploadDemoPhotos();
 
