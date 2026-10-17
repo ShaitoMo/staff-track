@@ -43,7 +43,7 @@ Name: **StaffTrack**. No other voice, visual, or asset commitments are confirmed
 
 ## Evidence on Hand
 
-No real branch, employee, or business data, screenshots, or testimonials on hand. `src/prisma/seed.ts` contains sample/placeholder data only (e.g. seeded users all have a placeholder password hash) — future work must not present seed data as real, and must not fabricate business names, employee names, or metrics.
+No real branch, employee, or business data, screenshots, or testimonials on hand. `src/prisma/seed.ts` contains an invented demo chain only (fictional branches and people, a shared demo password; see `docs/demo-accounts.md`) — future work must not present seed data as real, and must not fabricate business names, employee names, or metrics.
 
 ## Product Principles
 

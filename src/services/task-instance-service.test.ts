@@ -10,9 +10,17 @@ jest.mock('@/repository/user-branch-repository', () => ({
 jest.mock('@/repository/task-instance-repository', () => ({
     TaskInstanceRepository: {
         getInstanceForWrite: jest.fn(),
+        completeInstance: jest.fn(),
         reviewInstance: jest.fn(),
         getTaskInstances: jest.fn(),
     },
+}));
+
+jest.mock('@/lib/storage', () => ({
+    ...jest.requireActual('@/lib/storage'),
+    createPhotoUploadUrl: jest.fn(),
+    verifyUploadedPhoto: jest.fn(),
+    deletePhoto: jest.fn(),
 }));
 
 import { TaskInstanceService } from '@/services/task-instance-service';
@@ -22,6 +30,8 @@ import { TaskInstanceRepository } from '@/repository/task-instance-repository';
 import { InactiveTaskError } from '@/exceptions/inactive-task-error';
 import { ForbiddenError, NotAssignedToTaskError, NotBranchManagerError } from '@/exceptions/forbidden-error';
 import { UserNotFoundError } from '@/exceptions/user-not-found-error';
+import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error';
+import { createPhotoUploadUrl, deletePhoto, InvalidPhotoError, verifyUploadedPhoto } from '@/lib/storage';
 
 const getUserById = UserRepository.getUserById as jest.MockedFunction<
     typeof UserRepository.getUserById
@@ -321,5 +331,66 @@ describe('getTaskInstancesForUser — a worker attached to no branch', () => {
                 assignedToUser: { userId: ASSIGNEE, roleId: ROLE, branchIds: [] },
             }),
         );
+    });
+});
+
+describe('photo upload and completion', () => {
+    const completeInstance = TaskInstanceRepository.completeInstance as jest.Mock;
+    const KEY = 'task-instances/1/abc.jpg';
+
+    beforeEach(() => {
+        getInstanceForWrite.mockResolvedValue(instance({ assignedTo: ASSIGNEE }) as never);
+    });
+
+    it('hands out an upload URL to someone who may complete the instance', async () => {
+        (createPhotoUploadUrl as jest.Mock).mockResolvedValue({ key: KEY, uploadUrl: 'https://signed' });
+
+        await expect(TaskInstanceService.createPhotoUpload({ instanceId: 1, userId: ASSIGNEE }))
+            .resolves.toEqual({ key: KEY, uploadUrl: 'https://signed' });
+    });
+
+    it('hands no upload URL to anyone else', async () => {
+        await expect(TaskInstanceService.createPhotoUpload({ instanceId: 1, userId: OTHER_USER }))
+            .rejects.toThrow(NotAssignedToTaskError);
+        expect(createPhotoUploadUrl).not.toHaveBeenCalled();
+    });
+
+    it('hands no upload URL for an instance that is already completed', async () => {
+        getInstanceForWrite.mockResolvedValue({ ...instance({ assignedTo: ASSIGNEE }), status: TaskStatus.completed } as never);
+
+        await expect(TaskInstanceService.createPhotoUpload({ instanceId: 1, userId: ASSIGNEE }))
+            .rejects.toThrow(InvalidStatusTransitionError);
+        expect(createPhotoUploadUrl).not.toHaveBeenCalled();
+    });
+
+    it('completes with the verified key as the stored file path', async () => {
+        await TaskInstanceService.completeInstance({ instanceId: 1, completedBy: ASSIGNEE, photoKey: KEY });
+
+        expect(verifyUploadedPhoto).toHaveBeenCalledWith(KEY, 1);
+        expect(completeInstance).toHaveBeenCalledWith(expect.objectContaining({ filePath: KEY, completedBy: ASSIGNEE }));
+    });
+
+    it('does not complete when the key fails verification', async () => {
+        (verifyUploadedPhoto as jest.Mock).mockRejectedValue(new InvalidPhotoError('nope'));
+
+        await expect(TaskInstanceService.completeInstance({ instanceId: 1, completedBy: ASSIGNEE, photoKey: KEY }))
+            .rejects.toThrow(InvalidPhotoError);
+        expect(completeInstance).not.toHaveBeenCalled();
+    });
+
+    it('deletes the uploaded photo when the database write fails', async () => {
+        completeInstance.mockRejectedValue(new Error('db down'));
+
+        await expect(TaskInstanceService.completeInstance({ instanceId: 1, completedBy: ASSIGNEE, photoKey: KEY }))
+            .rejects.toThrow('db down');
+        expect(deletePhoto).toHaveBeenCalledWith(KEY);
+    });
+
+    it('keeps the photo when it lost a race, since the winning request may have stored the same key', async () => {
+        completeInstance.mockRejectedValue(new InvalidStatusTransitionError(TaskStatus.completed, TaskStatus.completed));
+
+        await expect(TaskInstanceService.completeInstance({ instanceId: 1, completedBy: ASSIGNEE, photoKey: KEY }))
+            .rejects.toThrow(InvalidStatusTransitionError);
+        expect(deletePhoto).not.toHaveBeenCalled();
     });
 });

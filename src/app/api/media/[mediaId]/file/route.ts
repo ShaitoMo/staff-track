@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireMediaAccess } from '@/lib/media-access'
-import { PhotoNotFoundError, readPhoto } from '@/lib/storage'
+import { getPhotoViewUrl } from '@/lib/storage'
 import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
 
-/** GET /api/media/:mediaId/file — the photo itself. Same access rule as its parent task instance. */
+/**
+ * GET /api/media/:mediaId/file — the photo itself. Same access rule as its parent task instance;
+ * once that passes, redirects to a short-lived signed URL on the private bucket.
+ */
 export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/media/[mediaId]/file'>
@@ -27,30 +30,17 @@ export async function GET(
 
     try {
         const media = await requireMediaAccess(user, mediaId);
-        const { data, contentType } = await readPhoto(media.file_path);
+        const res = NextResponse.redirect(await getPhotoViewUrl(media.file_path), 302);
 
-        return new NextResponse(new Uint8Array(data), {
-            status: 200,
-            headers: {
-                'Content-Type': contentType,
-                'Content-Length': String(data.length),
-                // a photo is private to whoever may see the instance: no shared caches, and no-cache
-                // makes the browser recheck access on every view, so a revoked user is not served from
-                // their own cache; the browser also must not second-guess the type we declare
-                'Cache-Control': 'private, no-cache',
-                'X-Content-Type-Options': 'nosniff',
-            },
-        });
+        // the signed URL is per-request: never cache the redirect, so a revoked user re-runs the access check
+        res.headers.set('Cache-Control', 'no-store');
+        return res;
     } catch (error) {
         const forbidden = forbiddenResponse(error);
         if (forbidden) {
             return forbidden;
         }
-        if (
-            error instanceof MediaNotFoundError ||
-            error instanceof TaskInstanceNotFoundError ||
-            error instanceof PhotoNotFoundError
-        ) {
+        if (error instanceof MediaNotFoundError || error instanceof TaskInstanceNotFoundError) {
             return NextResponse.json({ error: error.message }, { status: 404 })
         }
         logger.error({ err: error }, 'Failed to serve photo')
