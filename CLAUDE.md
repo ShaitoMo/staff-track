@@ -28,9 +28,10 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
 # Local database (Postgres only — the app itself runs directly via npm, not in Docker)
 docker compose up -d
 npx prisma migrate deploy
-npx prisma db seed          # wipes and reloads sample data; seeded users get a placeholder
-                             # password hash and cannot log in until a real one is set
-                             # (e.g. PUT /api/users/:id/password, or write it directly via Prisma)
+npx prisma db seed          # wipes and reloads the demo chain (3 branches, dates relative to today);
+                             # every seeded user logs in with password 123456 — accounts in
+                             # docs/demo-accounts.md. Uploads placeholder photos to R2.
+                             # Refuses a non-localhost DB unless SEED_ALLOW_REMOTE=1 (e.g. Supabase).
 
 npm run dev                 # Next.js dev server (Turbopack), http://localhost:3000
 npm run build                # production build

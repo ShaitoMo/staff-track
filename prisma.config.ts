@@ -9,7 +9,9 @@ export default defineConfig({
     path: "src/prisma/migrations",
     seed: "tsx src/prisma/seed.ts"
   },
+  // The CLI (migrate, db seed) needs a session connection: Supabase's session pooler via DIRECT_URL.
+  // The app itself uses DATABASE_URL (transaction pooler) in src/lib/db.ts. Locally, DATABASE_URL serves both.
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
