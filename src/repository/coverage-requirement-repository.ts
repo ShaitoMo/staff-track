@@ -8,10 +8,14 @@ import { DuplicateCoverageRequirementError } from '@/exceptions/duplicate-covera
 type RequirementWithRelations = CoverageRequirementRow & { role: RoleRow; period: ShiftPeriodRow }
 
 export class CoverageRequirementRepository {
-    /** For a branch's roles × periods grid: role and period expanded, ordered for a stable render. */
+    /**
+     * For a branch's roles × periods grid: role and period expanded, ordered for a stable render.
+     * A turned-off period's requirements are left out, so they stop counting as shortages; they
+     * come back if the period is turned on again.
+     */
     static async getRequirementsByBranch(branchId: number): Promise<CoverageRequirementView[]> {
         const requirements = await db.coverageRequirement.findMany({
-            where: { branchId },
+            where: { branchId, period: { active: true } },
             include: { role: true, period: true },
             orderBy: [{ periodId: 'asc' }, { roleId: 'asc' }],
         })
@@ -98,6 +102,7 @@ export class CoverageRequirementRepository {
                 defaultStart: toTimeOnlyString(requirement.period.defaultStart),
                 defaultEnd: toTimeOnlyString(requirement.period.defaultEnd),
                 sortOrder: requirement.period.sortOrder,
+                active: requirement.period.active,
             },
         }
     }

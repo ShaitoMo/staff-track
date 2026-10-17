@@ -21,6 +21,16 @@ export class MediaRepository {
         return media ? MediaRepository.toView(media) : null;
     }
 
+    /** Which of these object keys a media row still points at. */
+    static async getReferencedFilePaths(filePaths: string[]): Promise<Set<string>> {
+        const media = await db.media.findMany({
+            where: { filePath: { in: filePaths } },
+            select: { filePath: true },
+        });
+
+        return new Set(media.map((row) => row.filePath));
+    }
+
     private static toView(media: MediaRow): MediaRecordView {
         return {
             media_id: media.mediaId,

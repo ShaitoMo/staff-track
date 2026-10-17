@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { InvalidPhotoError } from '@/lib/storage'
-import { MAX_PHOTO_BYTES } from '@/lib/photo-limits'
+import { CompleteTaskInstanceSchema } from '@/types/task-instance'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
-import { PhotoRequiredError } from '@/exceptions/photo-required-error'
 import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 import { logger } from '@/lib/logger'
 
-/** Room for the multipart framing around a photo that is itself within MAX_PHOTO_BYTES. */
-const MULTIPART_OVERHEAD_BYTES = 1024 * 1024
-
-/** PATCH .../complete — multipart `photo` only; completer and completed_at both come from the session/server clock, not the body. */
+/**
+ * PATCH .../complete — body is { photo_key } for a photo already uploaded via POST .../photo-upload;
+ * completer and completed_at both come from the session/server clock, not the body.
+ */
 export async function PATCH(
     req: NextRequest,
     ctx: RouteContext<'/api/task-instances/[instanceId]/complete'>
 ) {
     const { instanceId: instanceIdParam } = await ctx.params;
 
-    if (!/^\d+$/.test(instanceIdParam)) {
+    const instanceId = parseNumericId(instanceIdParam);
+
+    if (instanceId === null) {
         return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
     }
 
@@ -29,34 +30,17 @@ export async function PATCH(
         return user;
     }
 
-    // A cheap early refusal: req.formData() buffers the whole body before savePhoto's own size
-    // check can run. The header is only the client's claim, so savePhoto still enforces the limit.
-    if (Number(req.headers.get('content-length')) > MAX_PHOTO_BYTES + MULTIPART_OVERHEAD_BYTES) {
-        return NextResponse.json({ error: 'Photo is too large' }, { status: 413 })
-    }
+    const { data, error: bodyError } = await parseJsonBody(req, CompleteTaskInstanceSchema);
 
-    let formData: FormData
-    try {
-        formData = await req.formData();
-    } catch {
-        return NextResponse.json(
-            { error: 'Expected a multipart/form-data body' },
-            { status: 400 },
-        )
-    }
-
-    const photo = formData.get('photo');
-
-    // a text field named `photo` is not a photo; require an actual upload
-    if (!(photo instanceof File)) {
-        return NextResponse.json({ error: new PhotoRequiredError().message }, { status: 400 })
+    if (bodyError) {
+        return bodyError;
     }
 
     try {
         const instance = await TaskInstanceService.completeInstance({
-            instanceId: Number(instanceIdParam),
+            instanceId,
             completedBy: user.userId,
-            photo,
+            photoKey: data.photo_key,
         });
 
         return NextResponse.json(instance, { status: 200 })

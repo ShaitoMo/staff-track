@@ -50,7 +50,21 @@ export type UserTaskInstanceFiltersInput = z.infer<typeof UserTaskInstanceFilter
 
 // ---------- Write payloads ----------
 
-/** PATCH /api/task-instances/:id/complete has no body schema — just the multipart `photo`; the acting user is the session. */
+/**
+ * PATCH /api/task-instances/:id/complete — the key of a photo already uploaded to the bucket via
+ * POST .../photo-upload; the acting user is the session.
+ */
+export const CompleteTaskInstanceSchema = z.object({
+    photo_key: z.string().min(1).max(200),
+});
+
+export type CompleteTaskInstanceInput = z.infer<typeof CompleteTaskInstanceSchema>;
+
+/** POST /api/task-instances/:id/photo-upload response — where the browser PUTs the compressed photo. */
+export interface PhotoUploadView {
+    key: string;
+    upload_url: string;
+}
 
 /** PATCH /api/task-instances/:id/review — the acting user is the session, not a request field. */
 export const ReviewTaskInstanceSchema = z.object({

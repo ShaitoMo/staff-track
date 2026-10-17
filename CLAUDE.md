@@ -28,9 +28,10 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
 # Local database (Postgres only — the app itself runs directly via npm, not in Docker)
 docker compose up -d
 npx prisma migrate deploy
-npx prisma db seed          # wipes and reloads sample data; seeded users get a placeholder
-                             # password hash and cannot log in until a real one is set
-                             # (e.g. PUT /api/users/:id/password, or write it directly via Prisma)
+npx prisma db seed          # wipes and reloads the demo chain (3 branches, dates relative to today);
+                             # every seeded user logs in with password 123456 — accounts in
+                             # docs/demo-accounts.md. Uploads placeholder photos to R2.
+                             # Refuses a non-localhost DB unless SEED_ALLOW_REMOTE=1 (e.g. Supabase).
 
 npm run dev                 # Next.js dev server (Turbopack), http://localhost:3000
 npm run build                # production build
@@ -45,12 +46,22 @@ npm run lint                  # ESLint (flat config)
 
 npm run job:top-up            # src/jobs/top-up-instances.ts — recurring task-instance
                                # top-up/prune; idempotent, meant to be cron'd
+npm run job:sweep-photos      # src/jobs/sweep-orphan-photos.ts — deletes R2 photos no media row
+                               # points at, once a day old; idempotent, meant to be cron'd
 ```
 
 **Typecheck gotcha:** API route handlers use Next's generated `RouteContext<'/path/[param]'>` ambient
 type from `.next/types/`. Running `tsc --noEmit` against a fresh checkout (no `.next/` yet) fails with
 `Cannot find name 'RouteContext'` on every dynamic route — run `npm run build` or `npm run dev` at least
 once first to generate those types.
+
+**Photo storage:** task completion photos live in a private Cloudflare R2 bucket, reached via its S3
+API (`src/lib/storage.ts`). Copy `.env.example` to `.env` and set the four `R2_*` vars from an R2 API
+token with Object Read & Write on the bucket. The browser uploads straight to R2 with a signed URL, so
+the bucket needs a CORS rule allowing `PUT` (and `GET`) with header `Content-Type` from each app origin
+(`http://localhost:3000`, production) — without it every upload fails with "The photo didn't upload".
+`media.file_path` holds the object key, not a URL; `GET /api/media/:id/file` checks access, then
+redirects to a short-lived signed URL.
 
 **Standalone scripts** (outside the Next.js request lifecycle, e.g. one-off scripts or `src/jobs/*`) must
 `import "dotenv/config"` before importing anything that touches `src/lib/db.ts`, or `DATABASE_URL` is
