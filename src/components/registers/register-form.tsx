@@ -3,9 +3,10 @@
 import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
+import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -57,15 +58,17 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
     }
 
     return (
-        <form onSubmit={handleSubmit} noValidate className="flex max-w-lg flex-col gap-6">
-            <FieldGroup>
-                {submitError && (
+        <FormCard onSubmit={handleSubmit} className="max-w-3xl">
+            {submitError && (
+                <FormAlerts>
                     <Alert variant="destructive">
                         <AlertCircleIcon />
                         <AlertDescription>{submitError}</AlertDescription>
                     </Alert>
-                )}
+                </FormAlerts>
+            )}
 
+            <FormSection legend="Details" className="sm:grid-cols-2">
                 <Field data-invalid={!!errors.branchId || undefined}>
                     <FieldLabel htmlFor="branch">Branch</FieldLabel>
                     <Select
@@ -73,7 +76,7 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                         onValueChange={(value) => setBranchId(Number(value))}
                         disabled={pending || mode === "edit"}
                     >
-                        <SelectTrigger id="branch" className="w-full">
+                        <SelectTrigger id="branch" className="w-full" aria-invalid={!!errors.branchId || undefined}>
                             <SelectValue placeholder="Select a branch">
                                 {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
                             </SelectValue>
@@ -91,15 +94,23 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
 
                 <Field data-invalid={!!errors.name || undefined}>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
-                    <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
+                    <Input
+                        id="name"
+                        value={name}
+                        disabled={pending}
+                        aria-invalid={!!errors.name || undefined}
+                        onChange={(e) => setName(e.target.value)}
+                    />
                     <FieldError>{errors.name}</FieldError>
                 </Field>
+            </FormSection>
 
-                <Button type="submit" disabled={pending} className="w-fit">
+            <FormFooter>
+                <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
                     {mode === "create" ? "Create register" : "Save changes"}
                 </Button>
-            </FieldGroup>
-        </form>
+            </FormFooter>
+        </FormCard>
     );
 }

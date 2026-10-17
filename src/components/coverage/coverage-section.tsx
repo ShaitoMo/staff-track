@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { buildRequirementGrid, formatWeekRange, mondayOf, sortPeriods } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
+import { NEEDS_DOT } from "@/lib/schedule-grid";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
 import { Role } from "@/types/role";
 import { ShiftPeriodView } from "@/types/shift-period";
@@ -93,7 +94,14 @@ export async function CoverageSection({
                     ) : (
                         <h3 className="text-sm font-medium tabular-nums">{formatWeekRange(weekStart)}</h3>
                     )}
-                    <span className="text-xs text-muted-foreground">Counts are scheduled / required</span>
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        Counts are scheduled / required;
+                        <span aria-hidden="true" className="flex items-center gap-1.5">
+                            <span className={NEEDS_DOT} />
+                            short
+                        </span>
+                        <span className="sr-only">a short slot says by how many.</span>
+                    </span>
                 </div>
                 {/* Keyed by week only, so changing the week reloads just this table and leaves the grid in place. */}
                 <Suspense

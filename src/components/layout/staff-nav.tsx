@@ -21,7 +21,8 @@ export function StaffNav() {
                         aria-current={active ? "page" : undefined}
                         className={cn(
                             "inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium transition-colors",
-                            active ? "bg-primary/8 text-primary" : "text-foreground hover:bg-muted",
+                            // where you are is a soft ink tint, never blue, which marks actions (same as the tab bar)
+                            active ? "bg-foreground/8 text-foreground" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
                             TOUCH_HEIGHT,
                         )}
                     >
@@ -43,7 +44,7 @@ export function StaffTabBar() {
     return (
         <nav
             aria-label="Sections"
-            className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
         >
             <ul className="grid grid-cols-4">
                 {STAFF_NAV.map(({ href, label, icon: Icon }) => {
@@ -54,15 +55,15 @@ export function StaffTabBar() {
                                 href={href}
                                 aria-current={active ? "page" : undefined}
                                 className={cn(
-                                    "flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium",
-                                    active ? "text-primary" : "text-muted-foreground",
+                                    "flex h-16 flex-col items-center justify-center gap-1 text-xs",
+                                    active ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
                                 )}
                             >
-                                {/* the left bar's active pill, sized for a thumb: Market Blue behind the icon */}
+                                {/* where you are: a soft ink pill behind the icon and a heavier label — not blue */}
                                 <span
                                     className={cn(
                                         "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
-                                        active && "bg-primary text-primary-foreground",
+                                        active && "bg-foreground/8",
                                     )}
                                 >
                                     <Icon aria-hidden className="size-5" />

@@ -13,7 +13,8 @@ import {
     buildOpenRegisterRows,
     buildRoleRows,
     indexWeek,
-    NEEDS_TINT,
+    NEEDS_DOT,
+    OtherShift,
     rolesOnRegisters,
     slotsForClient,
     summarizeWeek,
@@ -71,7 +72,7 @@ function GridLegend() {
     return (
         <ul aria-label="Legend" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <li className="flex items-center gap-1.5">
-                <LegendSwatch className={cn(NEEDS_TINT, "border-destructive/40")} />
+                <span aria-hidden="true" className={NEEDS_DOT} />
                 Needs people (the cell says how many)
             </li>
             <li className="flex items-center gap-1.5">
@@ -82,7 +83,7 @@ function GridLegend() {
                 <span aria-hidden="true" className="rounded-sm border border-foreground/15 bg-muted px-1 text-foreground">
                     Register 1
                 </span>
-                Working that register (click to change)
+                Working that register (select it to change)
             </li>
         </ul>
     );
@@ -137,22 +138,34 @@ export async function ScheduleSection({
     const week = indexWeek(shifts, users, registers);
     const roleRows = buildRoleRows(shifts, week, roles, sortedPeriods, requirements, weekStart);
     const openRegisterRows = buildOpenRegisterRows(week, registers, sortedPeriods, weekStart);
-    const otherShifts = toOtherShifts(shifts, week);
+    const otherShifts = toOtherShifts(shifts, week, sortedPeriods);
     const today = todayDateString();
     const weekNav = showWeekNav ? (
         <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
     ) : null;
 
+    // with every period off there's no grid, but the week's shifts (now custom hours) and copy week still apply
     if (sortedPeriods.length === 0) {
         return (
             <div className="flex flex-col gap-4">
-                {weekNav}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {weekNav}
+                    <CopyWeekButton branchId={branchId} weekStart={weekStart} />
+                </div>
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>No shift periods</EmptyTitle>
-                        <EmptyDescription>The schedule is filled per shift period, and this branch has none yet.</EmptyDescription>
+                        <EmptyDescription>
+                            The schedule is filled per shift period, and none is active for this branch. Add or activate one
+                            on the{" "}
+                            <Link href="/periods" className="text-primary underline-offset-4 hover:underline">
+                                Periods page
+                            </Link>
+                            .
+                        </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
+                <OtherShiftsTable shifts={otherShifts} />
             </div>
         );
     }
@@ -170,7 +183,7 @@ export async function ScheduleSection({
             {roleRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     No coverage requirements yet. Set how many people each role needs on{" "}
-                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-foreground underline underline-offset-4">
+                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-primary underline-offset-4 hover:underline">
                         Roles
                     </Link>{" "}
                     to schedule by role; registers can still be filled below.
@@ -188,36 +201,42 @@ export async function ScheduleSection({
                 staff={toStaff(users)}
                 slots={slotsForClient(week)}
             />
-            {otherShifts.length > 0 ? (
-                <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">
-                    <h3 id="custom-hours" className="text-sm font-medium">
-                        Custom-hours shifts
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">Not tied to a period, so not counted above</span>
-                    </h3>
-                    <div className="overflow-x-auto rounded-lg border border-border bg-card sm:max-w-xl">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead scope="col">Day</TableHead>
-                                    <TableHead scope="col">Hours</TableHead>
-                                    <TableHead scope="col">Person</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {otherShifts.map((shift) => (
-                                    <TableRow key={shift.shiftId}>
-                                        <TableCell>{formatDay(shift.date)}</TableCell>
-                                        <TableCell className="font-mono tabular-nums">
-                                            {shift.startTime}–{shift.endTime}
-                                        </TableCell>
-                                        <TableCell>{shift.name}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </section>
-            ) : null}
+            <OtherShiftsTable shifts={otherShifts} />
         </div>
+    );
+}
+
+function OtherShiftsTable({ shifts }: { shifts: OtherShift[] }) {
+    if (shifts.length === 0) return null;
+
+    return (
+        <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">
+            <h3 id="custom-hours" className="text-sm font-medium">
+                Custom-hours shifts
+                <span className="ml-2 text-xs font-normal text-muted-foreground">Not on an active period, so not counted above</span>
+            </h3>
+            <div className="overflow-x-auto rounded-lg border border-border bg-card sm:max-w-xl">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead scope="col">Day</TableHead>
+                            <TableHead scope="col">Hours</TableHead>
+                            <TableHead scope="col">Person</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {shifts.map((shift) => (
+                            <TableRow key={shift.shiftId}>
+                                <TableCell>{formatDay(shift.date)}</TableCell>
+                                <TableCell className="font-mono tabular-nums">
+                                    {shift.startTime}–{shift.endTime}
+                                </TableCell>
+                                <TableCell>{shift.name}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </section>
     );
 }

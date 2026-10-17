@@ -44,9 +44,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="flex min-h-screen flex-col">
+            {/* the first Tab stop: past the switcher, the left bar and the account menu, straight to the page */}
+            <a
+                href="#main"
+                className="sr-only rounded-md bg-card px-3 py-2 text-sm font-medium text-primary ring-1 ring-foreground/10 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
+            >
+                Skip to content
+            </a>
             <header
                 className={cn(
-                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-background",
+                    // Card, a step up from the Paper page, so the bar reads as its own band (no shadow: flat by default)
+                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-card",
                     // the dark column runs unbroken past the top bar, so its light rule stops where the column starts
                     canManage && "lg:border-b-0",
                 )}
@@ -89,7 +97,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     </aside>
                 ) : null}
                 {/* staff pages leave room for the tab bar on a phone */}
-                <main className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6", !canManage && "pb-24 md:pb-6")}>{children}</main>
+                <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6", !canManage && "pb-24 md:pb-6")}>{children}</main>
             </div>
             {canManage ? null : <StaffTabBar />}
         </div>

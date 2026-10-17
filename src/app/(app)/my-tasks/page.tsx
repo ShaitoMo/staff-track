@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { StaffTaskList } from "@/components/tasks/staff-task-list";
 import { Spinner } from "@/components/ui/spinner";
@@ -10,6 +11,8 @@ const loading = (
 );
 
 /** A staff member's full task list — what's left, and how the last week's work turned out. */
+export const metadata: Metadata = { title: "My tasks" };
+
 export default async function MyTasksPage() {
     const session = await getSession();
 

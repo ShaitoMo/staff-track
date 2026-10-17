@@ -15,6 +15,8 @@ const badgeVariants = cva(
           // on its own 10% tint at 12px the plain token is 4.0:1; this darker shade is 5.7:1 on a card
           // and 5.4:1 on the page background, clearing AA's 4.5:1 (see DESIGN.md)
           "bg-destructive/10 text-[color-mix(in_oklch,var(--destructive)_85%,black)] dark:text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        // approved / verified: a green outline, so it reads as done-and-checked, not as one more grey chip
+        success: "border-success/40 text-success",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:

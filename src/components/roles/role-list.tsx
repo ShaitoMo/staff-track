@@ -15,21 +15,22 @@ export function RoleList({ roles }: { roles: RoleWithMembers[] }) {
     }
 
     return (
-        <div className="rounded-lg border border-border">
+        <div className="rounded-lg border border-border bg-card">
             <Table>
                 <TableCaption className="sr-only">Roles and the people who hold them</TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead scope="col">Role</TableHead>
-                        <TableHead scope="col" className="text-right">People</TableHead>
+                        {/* both shrink to their content so the count sits by its role and Who takes the rest */}
+                        <TableHead scope="col" className="w-px pr-8">Role</TableHead>
+                        <TableHead scope="col" className="w-px pr-8 text-right">People</TableHead>
                         <TableHead scope="col">Who</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {roles.map((role) => (
                         <TableRow key={role.roleId}>
-                            <TableHead scope="row" className="h-auto py-2 align-top">{role.name}</TableHead>
-                            <TableCell className="align-top text-right tabular-nums">{role.members.length}</TableCell>
+                            <TableHead scope="row" className="h-auto py-2 pr-8 align-top capitalize">{role.name}</TableHead>
+                            <TableCell className="pr-8 align-top text-right tabular-nums">{role.members.length}</TableCell>
                             <TableCell>
                                 {role.members.length === 0 ? (
                                     <span className="text-muted-foreground">No one yet</span>

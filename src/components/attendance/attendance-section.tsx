@@ -66,7 +66,7 @@ export async function AttendanceSection({
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
                     <AddPunchDialog branchId={branchId} staff={staff} defaultDate={today} />
-                    <ImportAttendanceDialog branchId={branchId} />
+                    <ImportAttendanceDialog branchId={branchId} quiet={!showWeekNav} />
                 </div>
             </div>
             {rows.length === 0 ? (

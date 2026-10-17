@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { BranchForm } from "@/components/branches/branch-form";
 import { AccessMessage } from "@/components/layout/access-message";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
+
+export const metadata: Metadata = { title: "New branch" };
 
 export default async function NewBranchPage() {
     const session = await getSession();

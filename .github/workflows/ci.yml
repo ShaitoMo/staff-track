@@ -1,0 +1,92 @@
+# Checks only: nothing is deployed from here yet. Deployment (Vercel, `prisma migrate deploy` on
+# Supabase, and a daily run of `npm run job:top-up`) comes in a later change.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  # every PR, whatever its base: stacked PRs target the branch below them, not main
+  pull_request:
+
+# a newer push to the same branch makes the older run pointless
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Prisma 7 doesn't generate the client on install
+      - run: npx prisma generate
+
+      # route handlers use Next's generated RouteContext type (see CLAUDE.md "Typecheck gotcha")
+      - run: npx next typegen
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      # every test mocks the database, so this job needs no Postgres
+      - name: Test
+        run: npm test
+
+      # src/lib/auth.ts refuses to load without the JWT secrets, and the build loads it while
+      # collecting page data. Fresh random values per run: nothing real, nothing committed.
+      - name: Throwaway build secrets
+        run: |
+          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: npx next build
+
+  migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      # same major version as the Supabase database
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: stafftrack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # prisma.config.ts uses DIRECT_URL when set and falls back to this
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/stafftrack
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrations apply to an empty database
+        run: npx prisma migrate deploy
+
+      # exit 2 = schema.prisma has changes no migration creates; run `npx prisma migrate dev`
+      - name: Schema matches the migrations
+        run: npx prisma migrate diff --from-config-datasource --to-schema src/prisma/schema.prisma --exit-code

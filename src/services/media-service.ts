@@ -3,6 +3,10 @@ import { TaskInstanceRepository } from '@/repository/task-instance-repository'
 import { MediaRecordView } from '@/types/media'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { MediaNotFoundError } from '@/exceptions/media-not-found-error'
+import { deletePhoto, listPhotoKeys } from '@/lib/storage'
+
+/** A day: far longer than the 60s upload URL plus completion, so an in-flight upload is never swept. */
+const ORPHAN_MIN_AGE_MS = 24 * 60 * 60 * 1000
 
 export class MediaService {
     /**
@@ -27,5 +31,27 @@ export class MediaService {
         }
 
         return media
+    }
+
+    /** Deletes day-old photos no media row points at (completion never ran, or lost a double-submit race). */
+    static async sweepOrphanPhotos(now: Date): Promise<{ checked: number; deleted: number }> {
+        const before = new Date(now.getTime() - ORPHAN_MIN_AGE_MS)
+        let checked = 0
+        let deleted = 0
+
+        for await (const keys of listPhotoKeys(before)) {
+            if (keys.length === 0) continue
+
+            const referenced = await MediaRepository.getReferencedFilePaths(keys)
+            const orphans = keys.filter((key) => !referenced.has(key))
+
+            for (const key of orphans) {
+                await deletePhoto(key)
+            }
+            checked += keys.length
+            deleted += orphans.length
+        }
+
+        return { checked, deleted }
     }
 }

@@ -6,8 +6,12 @@ import { ShiftView } from "@/types/shift";
 import { ShiftPeriodView } from "@/types/shift-period";
 import { SafeUser } from "@/types/user";
 
-/** The one highlight in the schedule grid: a slot that still needs someone. Shared by the grid and its legend. */
-export const NEEDS_TINT = "bg-destructive/6";
+/**
+ * The one red mark in the schedule grid: a dot before "Needs N" on a slot that still needs someone.
+ * A dot, not a cell fill — when most of a week is short, filled cells turn the grid pink and stop
+ * reading as a signal. Shared by the grid, its legend, and the phone day strip.
+ */
+export const NEEDS_DOT = "inline-block size-1.5 shrink-0 rounded-full bg-destructive";
 
 /** Someone on a shift, as a chip in a cell. */
 export interface SchedulePerson {
@@ -215,9 +219,15 @@ export function buildOpenRegisterRows(
     }));
 }
 
-export function toOtherShifts(shifts: ShiftView[], week: WeekIndex): OtherShift[] {
+/**
+ * Shifts the period grid doesn't show: custom hours, and shifts on a period that's no longer
+ * offered here (deactivated), which would otherwise vanish. Same rule as the staff roster.
+ */
+export function toOtherShifts(shifts: ShiftView[], week: WeekIndex, periods: Pick<ShiftPeriodView, "periodId">[]): OtherShift[] {
+    const shown = new Set(periods.map((period) => period.periodId));
+
     return shifts.flatMap((shift) =>
-        shift.period_id !== null
+        shift.period_id !== null && shown.has(shift.period_id)
             ? []
             : [{
                 shiftId: shift.shift_id,

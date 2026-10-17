@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AccessMessage } from "@/components/layout/access-message";
 import { BranchStack } from "@/components/layout/branch-stack";
@@ -20,6 +21,8 @@ const loading = (
         <Spinner /> Loading…
     </div>
 );
+
+export const metadata: Metadata = { title: "Schedule" };
 
 export default async function SchedulePage({
     searchParams,

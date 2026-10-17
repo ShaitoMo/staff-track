@@ -7,7 +7,7 @@ import type { InstanceRow } from "@/lib/instance-rows";
 
 export function InstanceTable({ rows }: { rows: InstanceRow[] }) {
     return (
-        <div className="hidden rounded-lg border border-border md:block">
+        <div className="hidden rounded-lg border border-border bg-card md:block">
             <Table>
                 <TableHeader>
                     <TableRow>

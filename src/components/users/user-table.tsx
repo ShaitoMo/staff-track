@@ -7,7 +7,7 @@ import { UserRow } from "@/lib/user-rows";
 
 export function UserTable({ rows }: { rows: UserRow[] }) {
     return (
-        <div className="hidden rounded-lg border border-border md:block">
+        <div className="hidden rounded-lg border border-border bg-card md:block">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -29,7 +29,7 @@ export function UserTable({ rows }: { rows: UserRow[] }) {
                             </TableCell>
                             <TableCell className="capitalize">{row.roleName}</TableCell>
                             <TableCell>
-                                <Badge variant={row.isActive ? "outline" : "destructive"}>
+                                <Badge variant="outline" className={cn(!row.isActive && "border-dashed text-muted-foreground")}>
                                     {row.isActive ? "Active" : "Inactive"}
                                 </Badge>
                             </TableCell>

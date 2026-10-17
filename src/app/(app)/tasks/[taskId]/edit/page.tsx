@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AccessMessage } from "@/components/layout/access-message";
 import { TaskForm } from "@/components/tasks/task-form";
 import { ApiError } from "@/lib/api-client";
@@ -9,6 +10,8 @@ import { Role } from "@/types/role";
 import { TaskWire } from "@/types/task";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
+
+export const metadata: Metadata = { title: "Edit task" };
 
 export default async function EditTaskPage({ params }: { params: Promise<{ taskId: string }> }) {
     const { taskId } = await params;

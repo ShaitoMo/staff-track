@@ -172,7 +172,7 @@ describe('copyWeek', () => {
     });
 
     const period = (periodId: number, defaultStart: string, defaultEnd: string) =>
-        ({ periodId, branchId: 1, name: 'Morning', defaultStart, defaultEnd, sortOrder: 1 }) as ShiftPeriodView;
+        ({ periodId, branchId: 1, name: 'Morning', defaultStart, defaultEnd, sortOrder: 1, active: true }) as ShiftPeriodView;
 
     /** Stands in for the transaction: hands `plan` what is already booked and records what it would insert. */
     function bookedInTarget(booked: ShiftView[]): () => NewShiftRow[] {
@@ -235,6 +235,20 @@ describe('copyWeek', () => {
         await copy();
 
         expect(inserted().map((row) => `${timeOf(row.startTime)}-${timeOf(row.endTime)}`)).toEqual(['07:00-15:00', '18:00-20:00']);
+    });
+
+    it('copies a shift whose period is turned off as custom hours, keeping its own times', async () => {
+        // getPeriodsByBranch only returns periods that are on, so period 3 is missing here
+        getPeriodsByBranch.mockResolvedValue([]);
+        getShifts.mockResolvedValue([shift({ start_time: '08:00', end_time: '12:00' })]);
+        getAllUsers.mockResolvedValue([staff(7)]);
+        const inserted = bookedInTarget([]);
+
+        await copy();
+
+        const [row] = inserted();
+        expect(row.periodId).toBeNull();
+        expect(`${timeOf(row.startTime)}-${timeOf(row.endTime)}`).toBe('08:00-12:00');
     });
 
     it('skips a shift that clashes with one already booked in the target week', async () => {

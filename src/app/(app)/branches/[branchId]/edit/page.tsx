@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { BranchForm } from "@/components/branches/branch-form";
 import { AccessMessage } from "@/components/layout/access-message";
 import { ApiError } from "@/lib/api-client";
@@ -5,6 +6,8 @@ import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
+
+export const metadata: Metadata = { title: "Edit branch" };
 
 export default async function EditBranchPage({
     params,

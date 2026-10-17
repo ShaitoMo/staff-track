@@ -6,6 +6,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "types": ["node", "jest"],
     "esModuleInterop": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
