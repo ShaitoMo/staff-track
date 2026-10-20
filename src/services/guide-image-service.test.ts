@@ -3,18 +3,18 @@ jest.mock('@/repository/guide-image-repository', () => ({
     GuideImageRepository: { createImage: jest.fn(), updateImage: jest.fn(), recycleImage: jest.fn() },
 }));
 jest.mock('@/repository/guide-folder-repository', () => ({
-    GuideFolderRepository: { getFolderById: jest.fn() },
+    GuideFolderRepository: { getFolderInSection: jest.fn() },
 }));
 jest.mock('@/lib/storage', () => ({
     createGuideUploadUrls: jest.fn(),
-    verifyGuidePhoto: jest.fn(),
+    verifyGuideUpload: jest.fn(),
     deletePhoto: jest.fn(),
 }));
 
 import { GuideImageService } from '@/services/guide-image-service';
 import { GuideImageRecord, GuideImageRepository } from '@/repository/guide-image-repository';
 import { GuideFolderRepository } from '@/repository/guide-folder-repository';
-import { deletePhoto, verifyGuidePhoto } from '@/lib/storage';
+import { deletePhoto, verifyGuideUpload } from '@/lib/storage';
 import { BranchSectionView } from '@/types/shelf-guide';
 import { GuideFolderNotFoundError } from '@/exceptions/guide-folder-not-found-error';
 import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error';
@@ -24,13 +24,14 @@ import { InactiveGuideParentError } from '@/exceptions/inactive-guide-parent-err
 const createImage = GuideImageRepository.createImage as jest.Mock;
 const updateImage = GuideImageRepository.updateImage as jest.Mock;
 const recycleImage = GuideImageRepository.recycleImage as jest.Mock;
-const getFolderById = GuideFolderRepository.getFolderById as jest.Mock;
-const verify = verifyGuidePhoto as jest.Mock;
+const getFolderInSection = GuideFolderRepository.getFolderInSection as jest.Mock;
+const verify = verifyGuideUpload as jest.Mock;
 const remove = deletePhoto as jest.Mock;
 
 const section = (overrides: Partial<BranchSectionView> = {}): BranchSectionView => ({
     branchSectionId: 4,
     branchId: 1,
+    branchName: 'Hamra',
     sectionTypeId: 2,
     name: 'Dairy fridge',
     displayOrder: 0,
@@ -73,7 +74,7 @@ describe('GuideImageService.createImage', () => {
 
         await GuideImageService.createImage(section(), { ...keys, title: 'Front' }, 7);
 
-        expect(verify.mock.calls).toEqual([[keys.photoKey, 4], [keys.thumbKey, 4]]);
+        expect(verify).toHaveBeenCalledWith(keys.photoKey, keys.thumbKey, 4);
         expect(createImage).toHaveBeenCalledWith({
             branchSectionId: 4, folderId: null, title: 'Front', storageKey: keys.photoKey, thumbKey: keys.thumbKey, uploadedBy: 7,
         });
@@ -82,16 +83,17 @@ describe('GuideImageService.createImage', () => {
     it('refuses an inactive section or folder before looking at the upload', async () => {
         await expect(GuideImageService.createImage(section({ isActive: false }), keys, 7)).rejects.toThrow(InactiveGuideParentError);
 
-        getFolderById.mockResolvedValue(folder(4, false));
+        getFolderInSection.mockResolvedValue(folder(4, false));
         await expect(GuideImageService.createImage(section(), { ...keys, folderId: 9 }, 7)).rejects.toThrow(InactiveGuideParentError);
 
         expect(verify).not.toHaveBeenCalled();
     });
 
-    it("treats another section's folder as missing", async () => {
-        getFolderById.mockResolvedValue(folder(5));
+    it("checks the folder belongs to this section", async () => {
+        getFolderInSection.mockRejectedValue(new GuideFolderNotFoundError());
 
         await expect(GuideImageService.createImage(section(), { ...keys, folderId: 9 }, 7)).rejects.toThrow(GuideFolderNotFoundError);
+        expect(getFolderInSection).toHaveBeenCalledWith(4, 9);
     });
 
     it('deletes the uploaded files when the row does not land', async () => {
@@ -120,10 +122,10 @@ describe('GuideImageService.updateImage', () => {
         expect(updateImage.mock.invocationCallOrder[0]).toBeLessThan(remove.mock.invocationCallOrder[0]);
     });
 
-    it('only retitles when the current keys are sent back, so no file is deleted', async () => {
+    it('only retitles when the current pair is sent back, so no file is deleted', async () => {
         updateImage.mockResolvedValue(image());
 
-        await GuideImageService.updateImage(image(), { title: 'Back', photoKey: 'guide/sections/4/old.jpg', thumbKey: keys.thumbKey });
+        await GuideImageService.updateImage(image(), { title: 'Back', photoKey: 'guide/sections/4/old.jpg', thumbKey: 'guide/sections/4/old-thumb.jpg' });
 
         expect(updateImage).toHaveBeenCalledWith(30, { title: 'Back', files: undefined });
         expect(remove).not.toHaveBeenCalled();

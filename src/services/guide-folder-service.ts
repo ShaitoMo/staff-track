@@ -16,29 +16,23 @@ import { InactiveGuideParentError } from '@/exceptions/inactive-guide-parent-err
  * needs to walk up the tree.
  */
 export class GuideFolderService {
-    static async getFolders(section: BranchSectionView, parentFolderId: number | null, includeInactive: boolean): Promise<GuideFolderView[]> {
+    /** `visibleOnly` for staff: an inactive parent is reported missing. `includeInactive` lists inactive children (editors only). */
+    static async getFolders(
+        section: BranchSectionView,
+        parentFolderId: number | null,
+        options: { includeInactive: boolean; visibleOnly: boolean },
+    ): Promise<GuideFolderView[]> {
         if (parentFolderId !== null) {
-            await GuideFolderService.getFolderInSection(section.branchSectionId, parentFolderId)
+            await GuideFolderRepository.getFolderInSection(section.branchSectionId, parentFolderId, options.visibleOnly)
         }
 
-        return GuideFolderRepository.getChildren(section.branchSectionId, parentFolderId, includeInactive)
+        return GuideFolderRepository.getChildren(section.branchSectionId, parentFolderId, options.includeInactive)
     }
 
     static async getFolder(folderId: number): Promise<GuideFolderRecord> {
         const folder = await GuideFolderRepository.getFolderById(folderId)
 
         if (!folder) {
-            throw new GuideFolderNotFoundError()
-        }
-
-        return folder
-    }
-
-    /** A folder id taken from a request about one section must belong to that section. */
-    static async getFolderInSection(branchSectionId: number, folderId: number): Promise<GuideFolderRecord> {
-        const folder = await GuideFolderRepository.getFolderById(folderId)
-
-        if (!folder || folder.view.branchSectionId !== branchSectionId) {
             throw new GuideFolderNotFoundError()
         }
 
@@ -53,7 +47,7 @@ export class GuideFolderService {
         }
 
         if (parentFolderId !== null) {
-            const parent = await GuideFolderService.getFolderInSection(section.branchSectionId, parentFolderId)
+            const parent = await GuideFolderRepository.getFolderInSection(section.branchSectionId, parentFolderId)
 
             if (!parent.view.isActive) {
                 throw new InactiveGuideParentError()

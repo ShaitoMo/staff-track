@@ -24,7 +24,7 @@ export async function GET(
 
     try {
         const folder = await GuideFolderService.getFolder(folderId);
-        requireGuideAccess(user, { branchId: folder.branchId, visibleToStaff: folder.view.isActive && folder.sectionActive }, GuideFolderNotFoundError, 'edit')
+        requireGuideAccess(user, folder, GuideFolderNotFoundError, 'edit')
         const impact = await GuideFolderService.getDeactivationImpact(folderId);
         return NextResponse.json(impact, { status: 200 });
     } catch (error) {

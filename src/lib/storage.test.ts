@@ -24,7 +24,7 @@ import {
     getPhotoViewUrl,
     InvalidPhotoError,
     listPhotoKeys,
-    verifyGuidePhoto,
+    verifyGuideUpload,
     verifyUploadedPhoto,
 } from '@/lib/storage';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
@@ -157,16 +157,26 @@ describe('createGuideUploadUrls', () => {
     });
 });
 
-describe('verifyGuidePhoto', () => {
-    it("refuses another section's key without touching the bucket", async () => {
-        await expect(verifyGuidePhoto('guide/sections/5/a.jpg', 4)).rejects.toThrow(InvalidPhotoError);
-        await expect(verifyGuidePhoto('task-instances/4/a.jpg', 4)).rejects.toThrow(InvalidPhotoError);
+describe('verifyGuideUpload', () => {
+    const photo = 'guide/sections/4/0f8fad5b-d9cb-469f-a165-70867728950e.jpg';
+    const thumb = 'guide/sections/4/0f8fad5b-d9cb-469f-a165-70867728950e-thumb.jpg';
+
+    it('accepts an issued pair of JPEGs within the limit, checking both objects', async () => {
+        mockSend.mockResolvedValue({ ContentType: 'image/jpeg', ContentLength: 40_000 });
+
+        await expect(verifyGuideUpload(photo, thumb, 4)).resolves.toBeUndefined();
+        expect(mockSend.mock.calls.map(([command]) => command.input.Key)).toEqual([photo, thumb]);
+    });
+
+    it("refuses another section's or a task's key without touching the bucket", async () => {
+        await expect(verifyGuideUpload(photo.replace('/4/', '/5/'), thumb.replace('/4/', '/5/'), 4)).rejects.toThrow(InvalidPhotoError);
+        await expect(verifyGuideUpload('task-instances/4/a.jpg', 'task-instances/4/a-thumb.jpg', 4)).rejects.toThrow(InvalidPhotoError);
         expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it('accepts a JPEG of its own section within the limit', async () => {
-        mockSend.mockResolvedValue({ ContentType: 'image/jpeg', ContentLength: 40_000 });
-
-        await expect(verifyGuidePhoto('guide/sections/4/a-thumb.jpg', 4)).resolves.toBeUndefined();
+    it("refuses a thumbnail passed off as a photo, and a thumbnail that isn't the photo's own", async () => {
+        await expect(verifyGuideUpload(thumb, thumb.replace('.jpg', '-thumb.jpg'), 4)).rejects.toThrow(InvalidPhotoError);
+        await expect(verifyGuideUpload(photo, 'guide/sections/4/other-thumb.jpg', 4)).rejects.toThrow(InvalidPhotoError);
+        expect(mockSend).not.toHaveBeenCalled();
     });
 });

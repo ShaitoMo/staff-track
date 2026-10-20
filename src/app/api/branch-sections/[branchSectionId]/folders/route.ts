@@ -28,8 +28,11 @@ export async function GET(
     try {
         const section = await BranchSectionService.getSection(branchSectionId);
         requireGuideAccess(user, { branchId: section.branchId, visibleToStaff: section.isActive }, BranchSectionNotFoundError)
-        const includeInactive = queryFlag(req.nextUrl, 'includeInactive') && canEditGuide(user)
-        const folders = await GuideFolderService.getFolders(section, parentFolderId, includeInactive);
+        const editor = canEditGuide(user)
+        const folders = await GuideFolderService.getFolders(section, parentFolderId, {
+            includeInactive: queryFlag(req.nextUrl, 'includeInactive') && editor,
+            visibleOnly: !editor,
+        });
         return NextResponse.json(folders, { status: 200 });
     } catch (error) {
         return guideErrorResponse(error, 'Failed to fetch folders');

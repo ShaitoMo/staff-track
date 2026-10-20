@@ -125,13 +125,26 @@ export async function verifyUploadedPhoto(key: string, instanceId: number): Prom
     await verifyStoredJpeg(key);
 }
 
-/** verifyUploadedPhoto for a guide photo or thumbnail: same checks, scoped to the section's keys. */
-export async function verifyGuidePhoto(key: string, branchSectionId: number): Promise<void> {
-    if (!key.startsWith(guideKeyPrefix(branchSectionId))) {
+const GUIDE_PHOTO_NAME = /^[0-9a-f-]{36}\.jpg$/;
+
+/**
+ * verifyUploadedPhoto for a guide photo: the two keys must be exactly a pair createGuideUploadUrls
+ * issued for this section (`<id>.jpg` + `<id>-thumb.jpg`), so one photo's key can never be passed
+ * off as another's thumbnail; then both objects get the same stored-JPEG checks.
+ */
+export async function verifyGuideUpload(photoKey: string, thumbKey: string, branchSectionId: number): Promise<void> {
+    const prefix = guideKeyPrefix(branchSectionId);
+    const name = photoKey.slice(prefix.length);
+
+    if (!photoKey.startsWith(prefix) || !GUIDE_PHOTO_NAME.test(name)) {
         throw new InvalidPhotoError('That photo does not belong to this section');
     }
+    if (thumbKey !== photoKey.replace(/\.jpg$/, '-thumb.jpg')) {
+        throw new InvalidPhotoError('The thumbnail does not match the photo');
+    }
 
-    await verifyStoredJpeg(key);
+    await verifyStoredJpeg(photoKey);
+    await verifyStoredJpeg(thumbKey);
 }
 
 async function verifyStoredJpeg(key: string): Promise<void> {

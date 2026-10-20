@@ -43,7 +43,11 @@ export class GuideImageRepository {
         return row && GuideImageRepository.toRecord(row)
     }
 
-    /** Appends to the end of its level. The level's max and the insert share a transaction so two uploads can't take one slot. */
+    /**
+     * Appends to the end of its level. Under READ COMMITTED two uploads at the same moment can read
+     * the same max and share a position; nothing breaks — imageId orders them — and the next
+     * reorder renumbers the level.
+     */
     static async createImage(data: {
         branchSectionId: number
         folderId: GuideLevel

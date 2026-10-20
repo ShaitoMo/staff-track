@@ -24,7 +24,7 @@ export async function POST(
 
     try {
         const folder = await GuideFolderService.getFolder(folderId);
-        requireGuideAccess(user, { branchId: folder.branchId, visibleToStaff: folder.view.isActive && folder.sectionActive }, GuideFolderNotFoundError, 'edit')
+        requireGuideAccess(user, folder, GuideFolderNotFoundError, 'edit')
         const result = await GuideFolderService.reactivateFolder(folder, queryFlag(req.nextUrl, 'restoreImages'));
         return NextResponse.json(result, { status: 200 });
     } catch (error) {

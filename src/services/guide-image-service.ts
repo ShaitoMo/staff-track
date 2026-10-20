@@ -1,13 +1,12 @@
 import { GuideFolderRepository } from '@/repository/guide-folder-repository'
 import { GuideImageRecord, GuideImageRepository } from '@/repository/guide-image-repository'
-import { createGuideUploadUrls, deletePhoto, verifyGuidePhoto } from '@/lib/storage'
+import { createGuideUploadUrls, deletePhoto, verifyGuideUpload } from '@/lib/storage'
 import {
     BranchSectionView,
     CreateGuideImageInput,
     GuideUploadView,
     UpdateGuideImageInput,
 } from '@/types/shelf-guide'
-import { GuideFolderNotFoundError } from '@/exceptions/guide-folder-not-found-error'
 import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error'
 import { GuidePhotoKeyInUseError } from '@/exceptions/guide-photo-key-in-use-error'
 import { InactiveGuideParentError } from '@/exceptions/inactive-guide-parent-error'
@@ -26,9 +25,10 @@ export class GuideImageService {
         return createGuideUploadUrls(section.branchSectionId)
     }
 
-    static async getImages(section: BranchSectionView, folderId: number | null): Promise<GuideImageRecord[]> {
+    /** `visibleOnly` for staff: an inactive folder is reported missing, not listed as empty. */
+    static async getImages(section: BranchSectionView, folderId: number | null, visibleOnly: boolean): Promise<GuideImageRecord[]> {
         if (folderId !== null) {
-            await GuideImageService.getFolderInSection(section.branchSectionId, folderId)
+            await GuideFolderRepository.getFolderInSection(section.branchSectionId, folderId, visibleOnly)
         }
 
         return GuideImageRepository.getLevel(section.branchSectionId, folderId)
@@ -51,11 +51,11 @@ export class GuideImageService {
             throw new InactiveGuideParentError()
         }
 
-        if (folderId !== null && !(await GuideImageService.getFolderInSection(section.branchSectionId, folderId)).view.isActive) {
+        if (folderId !== null && !(await GuideFolderRepository.getFolderInSection(section.branchSectionId, folderId)).view.isActive) {
             throw new InactiveGuideParentError()
         }
 
-        await GuideImageService.verifyUpload(section.branchSectionId, data.photoKey, data.thumbKey)
+        await verifyGuideUpload(data.photoKey, data.thumbKey, section.branchSectionId)
 
         try {
             return await GuideImageRepository.createImage({
@@ -78,15 +78,14 @@ export class GuideImageService {
             throw new GuideImageNotFoundError()
         }
 
-        // a replace needs a fresh pair from photo-upload; re-sending a current key would make the
-        // cleanup below delete a file the photo still uses, so the file part is ignored then
-        const files = data.photoKey !== undefined && data.thumbKey !== undefined
-            && data.photoKey !== image.storageKey && data.thumbKey !== image.thumbKey
+        // keys only ever come as an issued pair (verifyGuideUpload), so re-sending the current pair is
+        // the one way to name a current file; that is a no-op, or the cleanup below would delete it
+        const files = data.photoKey !== undefined && data.thumbKey !== undefined && data.photoKey !== image.storageKey
             ? { storageKey: data.photoKey, thumbKey: data.thumbKey }
             : undefined
 
         if (files) {
-            await GuideImageService.verifyUpload(image.view.branchSectionId, files.storageKey, files.thumbKey)
+            await verifyGuideUpload(files.storageKey, files.thumbKey, image.view.branchSectionId)
         }
 
         let updated: GuideImageRecord
@@ -116,28 +115,14 @@ export class GuideImageService {
 
     static async reorderImages(section: BranchSectionView, folderId: number | null, imageIds: number[]): Promise<GuideImageRecord[]> {
         if (folderId !== null) {
-            await GuideImageService.getFolderInSection(section.branchSectionId, folderId)
+            await GuideFolderRepository.getFolderInSection(section.branchSectionId, folderId)
         }
 
         await GuideImageRepository.reorderLevel(section.branchSectionId, folderId, imageIds)
         return GuideImageRepository.getLevel(section.branchSectionId, folderId)
     }
 
-    private static async getFolderInSection(branchSectionId: number, folderId: number) {
-        const folder = await GuideFolderRepository.getFolderById(folderId)
 
-        if (!folder || folder.view.branchSectionId !== branchSectionId) {
-            throw new GuideFolderNotFoundError()
-        }
-
-        return folder
-    }
-
-    /** Both keys must be this section's and really uploaded as JPEGs; an invalid object is deleted by the check itself. */
-    private static async verifyUpload(branchSectionId: number, photoKey: string, thumbKey: string): Promise<void> {
-        await verifyGuidePhoto(photoKey, branchSectionId)
-        await verifyGuidePhoto(thumbKey, branchSectionId)
-    }
 
     /**
      * The upload happened but the row didn't land: don't leave the files unreferenced. Except when

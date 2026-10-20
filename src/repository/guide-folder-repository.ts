@@ -19,6 +19,7 @@ export interface GuideFolderRecord {
     branchId: number
     sectionActive: boolean
     parentActive: boolean // true at the section root
+    visibleToStaff: boolean // it and its section are active (an active folder's ancestors always are)
 }
 
 export class GuideFolderRepository {
@@ -45,7 +46,27 @@ export class GuideFolderRepository {
         }
 
         const { section, parent, ...view } = row
-        return { view, branchId: section.branchId, sectionActive: section.isActive, parentActive: parent?.isActive ?? true }
+        return {
+            view,
+            branchId: section.branchId,
+            sectionActive: section.isActive,
+            parentActive: parent?.isActive ?? true,
+            visibleToStaff: view.isActive && section.isActive,
+        }
+    }
+
+    /**
+     * A folder id taken from a request about one section must belong to it; with `visibleOnly`
+     * (a staff caller) an inactive one is missing too, so its existence isn't confirmed.
+     */
+    static async getFolderInSection(branchSectionId: number, folderId: number, visibleOnly = false): Promise<GuideFolderRecord> {
+        const folder = await GuideFolderRepository.getFolderById(folderId)
+
+        if (!folder || folder.view.branchSectionId !== branchSectionId || (visibleOnly && !folder.visibleToStaff)) {
+            throw new GuideFolderNotFoundError()
+        }
+
+        return folder
     }
 
     /** Appends to the end of its siblings. */

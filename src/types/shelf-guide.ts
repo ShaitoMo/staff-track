@@ -51,6 +51,7 @@ export type UpdateBranchSectionInput = z.infer<typeof UpdateBranchSectionSchema>
 export interface BranchSectionView {
     branchSectionId: number
     branchId: number
+    branchName: string // so staff, who can't read /api/branches, can tell their branches apart
     sectionTypeId: number
     name: string // the section type's name
     displayOrder: number

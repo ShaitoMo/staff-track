@@ -115,5 +115,8 @@ both ending in `/api/*` and both throwing `ApiError` (built by the shared `throw
   polling, or optimistic updates, wrapping these same functions. Form field state (`useState`) is unrelated.
 
 **Shared contracts (`src/types/*`):** one file per domain, each a Zod schema plus its inferred type.
-Wire format is snake_case (`branch_id`, `assigned_to`, ...) everywhere except `user.ts`, which is
-camelCase — a known, deliberate-if-unfortunate inconsistency, not something to "fix" incidentally.
+Wire format is mixed, per file: snake_case (`branch_id`, `assigned_to`, ...) in `task`, `task-instance`,
+`media`, `shift`, `attendance`, `import-batch`, `dashboard` and `schedule-vs-actual`; camelCase in `user`,
+`branch`, `role`, `user-branch`, `register`, `shift-period`, `coverage-*` and `shelf-guide`. Follow the
+file you're in; a new domain uses camelCase. A known, deliberate-if-unfortunate inconsistency, not
+something to "fix" incidentally.

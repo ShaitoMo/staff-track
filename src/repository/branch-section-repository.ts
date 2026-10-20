@@ -7,6 +7,7 @@ import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-foun
 
 const sectionInclude = {
     sectionType: { select: { name: true } },
+    branch: { select: { name: true } },
 } satisfies Prisma.BranchSectionInclude
 
 type SectionRow = Prisma.BranchSectionGetPayload<{ include: typeof sectionInclude }>
@@ -101,6 +102,7 @@ export class BranchSectionRepository {
         return {
             branchSectionId: row.branchSectionId,
             branchId: row.branchId,
+            branchName: row.branch.name,
             sectionTypeId: row.sectionTypeId,
             name: row.sectionType.name,
             displayOrder: row.displayOrder,

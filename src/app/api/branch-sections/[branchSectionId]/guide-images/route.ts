@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticated, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 import { guideErrorResponse, queryFolderId } from '@/lib/guide-errors'
-import { requireGuideAccess } from '@/lib/rbac'
+import { canEditGuide, requireGuideAccess } from '@/lib/rbac'
 import { BranchSectionService } from '@/services/branch-section-service'
 import { GuideImageService } from '@/services/guide-image-service'
 import { CreateGuideImageSchema } from '@/types/shelf-guide'
@@ -28,7 +28,7 @@ export async function GET(
     try {
         const section = await BranchSectionService.getSection(branchSectionId);
         requireGuideAccess(user, { branchId: section.branchId, visibleToStaff: section.isActive }, BranchSectionNotFoundError)
-        const images = await GuideImageService.getImages(section, folderId);
+        const images = await GuideImageService.getImages(section, folderId, !canEditGuide(user));
         return NextResponse.json(images.map(image => image.view), { status: 200 });
     } catch (error) {
         return guideErrorResponse(error, 'Failed to fetch photos');
