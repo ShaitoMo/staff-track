@@ -79,6 +79,7 @@ model User {
   taskInstancesCompleted TaskInstance[] @relation("TaskCompleter")
   taskInstancesReviewed  TaskInstance[] @relation("TaskReviewer")
   media                  Media[]
+  guideImages            GuideImage[]
 
   @@map("users")
 }
@@ -95,6 +96,7 @@ model Branch {
   tasks        Task[]
   shiftPeriods ShiftPeriod[]
   coverageReqs CoverageRequirement[]
+  sections     BranchSection[]
 
   @@map("branches")
 }
@@ -261,11 +263,15 @@ model Task {
   // visible and stay reviewable — the record of work that did happen is never rewritten.
   active         Boolean    @default(true)
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  // the shelf-guide section this task is about (FR12g); not wired into the task API yet
+  branchSectionId Int?      @map("branch_section_id")
 
   branch     Branch @relation(fields: [branchId], references: [branchId])
   assignee   User?  @relation("TaskAssignee", fields: [assignedTo], references: [userId])
   assigner   User   @relation("TaskAssigner", fields: [assignedBy], references: [userId])
   targetRole Role?  @relation(fields: [assignedRoleId], references: [roleId])
+  // composite FK, same pattern as shifts → registers: the section must be at the task's own branch
+  branchSection BranchSection? @relation(fields: [branchId, branchSectionId], references: [branchId, branchSectionId], onDelete: Restrict)
 
   instances TaskInstance[]
 
@@ -309,4 +315,96 @@ model Media {
   uploader     User         @relation(fields: [uploadedBy], references: [userId])
 
   @@map("media")
+}
+
+// ---------- Shelf guide (FR12) ----------
+// Reference photos of how each area of a branch should look. Nothing here is hard-deleted:
+// sections and folders are deactivated, photos go to a recycle bin (is_deleted).
+
+// chain-wide catalogue the owner manages ('Dairy fridge', 'Checkout area'). Names are unique
+// regardless of case through a lower(name) index in the migration, which Prisma can't express.
+model SectionType {
+  sectionTypeId Int      @id @default(autoincrement()) @map("section_type_id")
+  name          String   @db.VarChar(128)
+  displayOrder  Int      @default(0) @map("display_order")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  branchSections BranchSection[]
+
+  @@map("section_types")
+}
+
+// a section type added to one branch, at most once
+model BranchSection {
+  branchSectionId Int      @id @default(autoincrement()) @map("branch_section_id")
+  branchId        Int      @map("branch_id")
+  sectionTypeId   Int      @map("section_type_id")
+  displayOrder    Int      @default(0) @map("display_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  branch      Branch      @relation(fields: [branchId], references: [branchId], onDelete: Restrict)
+  sectionType SectionType @relation(fields: [sectionTypeId], references: [sectionTypeId], onDelete: Restrict)
+
+  folders GuideFolder[]
+  images  GuideImage[]
+  tasks   Task[]
+
+  @@unique([branchId, sectionTypeId])
+  // required so tasks can reference (branch_id, branch_section_id) as a composite FK
+  @@unique([branchId, branchSectionId])
+  @@map("branch_sections")
+}
+
+// folders of any depth inside a section. branch_section_id is always the root section, even when nested.
+model GuideFolder {
+  folderId        Int      @id @default(autoincrement()) @map("folder_id")
+  branchSectionId Int      @map("branch_section_id")
+  parentFolderId  Int?     @map("parent_folder_id") // NULL = at the section's root
+  name            String   @db.VarChar(200)
+  displayOrder    Int      @default(0) @map("display_order")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  section  BranchSection @relation(fields: [branchSectionId], references: [branchSectionId], onDelete: Restrict)
+  // composite FK: a parent must be in the same section. MATCH SIMPLE skips it when parent_folder_id is NULL.
+  parent   GuideFolder?  @relation("GuideFolderTree", fields: [branchSectionId, parentFolderId], references: [branchSectionId, folderId], onDelete: Restrict, onUpdate: Restrict)
+  children GuideFolder[] @relation("GuideFolderTree")
+  images   GuideImage[]
+
+  // composite-FK target for child folders and images
+  @@unique([branchSectionId, folderId])
+  @@index([branchSectionId, parentFolderId])
+  @@map("guide_folders")
+}
+
+// a reference photo at a section's root or in a folder. Both files are JPEGs the browser made
+// (full photo + small thumbnail). Separate from `media`: this is the expected state, not proof.
+model GuideImage {
+  imageId         Int       @id @default(autoincrement()) @map("image_id")
+  branchSectionId Int       @map("branch_section_id")
+  folderId        Int?      @map("folder_id") // NULL = at the section's root
+  title           String?   @db.VarChar(200)
+  storageKey      String    @unique @map("storage_key") @db.VarChar
+  thumbKey        String    @unique @map("thumb_key") @db.VarChar
+  displayOrder    Int       @default(0) @map("display_order")
+  version         Int       @default(1) // bumped on every replace
+  uploadedBy      Int       @map("uploaded_by")
+  isDeleted       Boolean   @default(false) @map("is_deleted") // in the recycle bin
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  filesPurgedAt   DateTime? @map("files_purged_at") @db.Timestamptz // files gone for good; row kept
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  section  BranchSection @relation(fields: [branchSectionId], references: [branchSectionId], onDelete: Restrict)
+  // composite FK: the folder must be in the image's own section
+  folder   GuideFolder?  @relation(fields: [branchSectionId, folderId], references: [branchSectionId, folderId], onDelete: Restrict)
+  uploader User          @relation(fields: [uploadedBy], references: [userId], onDelete: Restrict)
+
+  @@index([branchSectionId, folderId])
+  @@map("guide_images")
 }

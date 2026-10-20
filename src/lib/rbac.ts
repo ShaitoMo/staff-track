@@ -38,6 +38,35 @@ export function requireAnyBranchAccess(user: AccessTokenPayload, branchIds: numb
     }
 }
 
+/**
+ * Shelf guide (FR12). Another branch's section, folder or photo is reported missing, never
+ * forbidden, so ids in other branches aren't confirmed to exist; so is anything hidden from staff
+ * (inactive, recycled). Editing needs owner, or manager of the branch.
+ */
+export function requireGuideAccess(
+    user: AccessTokenPayload,
+    resource: { branchId: number; visibleToStaff: boolean },
+    NotFoundError: new () => Error,
+    mode: 'read' | 'edit' = 'read',
+): void {
+    if (user.role !== OWNER_ROLE && !user.branchIds.includes(resource.branchId)) {
+        throw new NotFoundError()
+    }
+
+    if (!resource.visibleToStaff && !canEditGuide(user)) {
+        throw new NotFoundError()
+    }
+
+    if (mode === 'edit' && !canEditGuide(user)) {
+        throw new InsufficientRoleError()
+    }
+}
+
+/** Owner and managers edit the guide (within their branches); staff only see what is live. */
+export function canEditGuide(user: AccessTokenPayload): boolean {
+    return user.role === OWNER_ROLE || user.role === MANAGER_ROLE
+}
+
 /** For users/:userId/* routes: the subject themselves always may; owner/manager may on anyone's behalf. */
 export function requireSelfOrRole(user: AccessTokenPayload, targetUserId: number, roles: string[]): void {
     if (user.userId === targetUserId) {

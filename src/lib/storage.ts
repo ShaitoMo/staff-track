@@ -77,13 +77,39 @@ function keyPrefix(instanceId: number): string {
  */
 export async function createPhotoUploadUrl(instanceId: number): Promise<{ key: string; uploadUrl: string }> {
     const key = `${keyPrefix(instanceId)}${randomUUID()}.jpg`;
-    const uploadUrl = await getSignedUrl(
+    return { key, uploadUrl: await signUpload(key) };
+}
+
+/** Shelf-guide reference photos (FR12), kept apart from task proof so the orphan sweep never sees them. */
+const GUIDE_PREFIX = 'guide/sections/';
+
+function guideKeyPrefix(branchSectionId: number): string {
+    return `${GUIDE_PREFIX}${branchSectionId}/`;
+}
+
+export interface GuideUploadUrls {
+    photo: { key: string; uploadUrl: string };
+    thumb: { key: string; uploadUrl: string };
+}
+
+/** Two signed PUTs for one guide photo: the full JPEG and the small thumbnail the browser made from it. */
+export async function createGuideUploadUrls(branchSectionId: number): Promise<GuideUploadUrls> {
+    const base = `${guideKeyPrefix(branchSectionId)}${randomUUID()}`;
+    const photoKey = `${base}.jpg`;
+    const thumbKey = `${base}-thumb.jpg`;
+
+    return {
+        photo: { key: photoKey, uploadUrl: await signUpload(photoKey) },
+        thumb: { key: thumbKey, uploadUrl: await signUpload(thumbKey) },
+    };
+}
+
+async function signUpload(key: string): Promise<string> {
+    return getSignedUrl(
         r2(),
         new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: PHOTO_CONTENT_TYPE }),
         { expiresIn: UPLOAD_URL_TTL_SECONDS },
     );
-
-    return { key, uploadUrl };
 }
 
 /**
@@ -95,6 +121,20 @@ export async function verifyUploadedPhoto(key: string, instanceId: number): Prom
     if (!key.startsWith(keyPrefix(instanceId))) {
         throw new InvalidPhotoError('That photo does not belong to this task');
     }
+
+    await verifyStoredJpeg(key);
+}
+
+/** verifyUploadedPhoto for a guide photo or thumbnail: same checks, scoped to the section's keys. */
+export async function verifyGuidePhoto(key: string, branchSectionId: number): Promise<void> {
+    if (!key.startsWith(guideKeyPrefix(branchSectionId))) {
+        throw new InvalidPhotoError('That photo does not belong to this section');
+    }
+
+    await verifyStoredJpeg(key);
+}
+
+async function verifyStoredJpeg(key: string): Promise<void> {
 
     let head;
     try {

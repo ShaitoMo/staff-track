@@ -18,7 +18,15 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 jest.mock('@/lib/logger', () => ({ logger: { error: jest.fn() } }));
 
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { createPhotoUploadUrl, getPhotoViewUrl, InvalidPhotoError, listPhotoKeys, verifyUploadedPhoto } from '@/lib/storage';
+import {
+    createGuideUploadUrls,
+    createPhotoUploadUrl,
+    getPhotoViewUrl,
+    InvalidPhotoError,
+    listPhotoKeys,
+    verifyGuidePhoto,
+    verifyUploadedPhoto,
+} from '@/lib/storage';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
 
 const mockedGetSignedUrl = getSignedUrl as jest.Mock;
@@ -137,5 +145,28 @@ describe('listPhotoKeys', () => {
         for await (const keys of listPhotoKeys(cutoff)) pages.push(keys);
 
         expect(pages).toEqual([[]]);
+    });
+});
+
+describe('createGuideUploadUrls', () => {
+    it('issues a photo and a thumbnail key under the section, sharing one id', async () => {
+        const { photo, thumb } = await createGuideUploadUrls(4);
+
+        expect(photo.key).toMatch(/^guide\/sections\/4\/[0-9a-f-]{36}\.jpg$/);
+        expect(thumb.key).toBe(photo.key.replace('.jpg', '-thumb.jpg'));
+    });
+});
+
+describe('verifyGuidePhoto', () => {
+    it("refuses another section's key without touching the bucket", async () => {
+        await expect(verifyGuidePhoto('guide/sections/5/a.jpg', 4)).rejects.toThrow(InvalidPhotoError);
+        await expect(verifyGuidePhoto('task-instances/4/a.jpg', 4)).rejects.toThrow(InvalidPhotoError);
+        expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('accepts a JPEG of its own section within the limit', async () => {
+        mockSend.mockResolvedValue({ ContentType: 'image/jpeg', ContentLength: 40_000 });
+
+        await expect(verifyGuidePhoto('guide/sections/4/a-thumb.jpg', 4)).resolves.toBeUndefined();
     });
 });

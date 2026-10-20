@@ -2,6 +2,9 @@
 const MAX_EDGE_PX = 1600;
 const JPEG_QUALITY = 0.8;
 
+/** Long edge of a shelf-guide grid thumbnail. */
+export const THUMB_EDGE_PX = 400;
+
 export class UnreadablePhotoError extends Error {
     constructor() {
         super("Couldn't read that photo. Try taking it again with the camera.");
@@ -10,11 +13,11 @@ export class UnreadablePhotoError extends Error {
 }
 
 /**
- * Shrinks a photo to at most MAX_EDGE_PX on its long edge and re-encodes it as JPEG. Re-encoding
+ * Shrinks a photo to at most `maxEdgePx` on its long edge and re-encodes it as JPEG. Re-encoding
  * also drops EXIF (including GPS) and turns HEIC into JPEG wherever the browser can decode HEIC;
  * where it can't, the photo is rejected here rather than by the server.
  */
-export async function compressPhoto(file: Blob): Promise<Blob> {
+export async function compressPhoto(file: Blob, maxEdgePx = MAX_EDGE_PX): Promise<Blob> {
     let bitmap: ImageBitmap;
     try {
         // the default orientation already honours EXIF rotation, so portrait photos stay upright
@@ -23,7 +26,7 @@ export async function compressPhoto(file: Blob): Promise<Blob> {
         throw new UnreadablePhotoError();
     }
 
-    const scale = Math.min(1, MAX_EDGE_PX / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxEdgePx / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
