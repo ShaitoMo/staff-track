@@ -244,6 +244,10 @@ async function wipe() {
   await prisma.media.deleteMany();
   await prisma.taskInstance.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.guideImage.deleteMany();
+  await prisma.guideFolder.deleteMany();
+  await prisma.branchSection.deleteMany();
+  await prisma.sectionType.deleteMany();
   await prisma.attendance.deleteMany();
   await prisma.importBatch.deleteMany();
   await prisma.shift.deleteMany();

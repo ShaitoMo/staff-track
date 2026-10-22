@@ -2,6 +2,7 @@ import {
     MANAGER_ROLE,
     OWNER_ROLE,
     requireAnyBranchAccess,
+    requireGuideAccess,
     requireBranchAccess,
     requireRole,
     requireSelfOrRole,
@@ -140,5 +141,34 @@ describe('requireTaskInstanceAccess', () => {
     it('blocks a role holder at a branch they do not work at, without reading the user', async () => {
         await expect(requireTaskInstanceAccess(staff({ branchIds: [2] }), instance({ roleId: 3 }))).rejects.toThrow(ForbiddenError)
         expect(mockedGetUserById).not.toHaveBeenCalled()
+    })
+})
+
+describe('requireGuideAccess', () => {
+    class ThingNotFoundError extends Error {}
+    const live = { branchId: 1, visibleToStaff: true }
+    const hidden = { branchId: 1, visibleToStaff: false }
+
+    it("reports another branch's resource as missing, not forbidden", () => {
+        expect(() => requireGuideAccess(user({ branchIds: [2] }), live, ThingNotFoundError)).toThrow(ThingNotFoundError)
+    })
+
+    it('lets the owner reach any branch', () => {
+        expect(() => requireGuideAccess(user({ role: OWNER_ROLE, branchIds: [] }), hidden, ThingNotFoundError, 'edit')).not.toThrow()
+    })
+
+    it('shows staff visible things at their branch, and hides inactive ones as missing', () => {
+        const staff = user({ role: 'cashier' })
+
+        expect(() => requireGuideAccess(staff, live, ThingNotFoundError)).not.toThrow()
+        expect(() => requireGuideAccess(staff, hidden, ThingNotFoundError)).toThrow(ThingNotFoundError)
+    })
+
+    it('refuses an edit by staff at their own branch with a 403-mapped error', () => {
+        expect(() => requireGuideAccess(user({ role: 'cashier' }), live, ThingNotFoundError, 'edit')).toThrow(InsufficientRoleError)
+    })
+
+    it('lets a manager edit, and see hidden things, at their own branch', () => {
+        expect(() => requireGuideAccess(user(), hidden, ThingNotFoundError, 'edit')).not.toThrow()
     })
 })

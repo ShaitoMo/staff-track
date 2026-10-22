@@ -18,7 +18,15 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 jest.mock('@/lib/logger', () => ({ logger: { error: jest.fn() } }));
 
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { createPhotoUploadUrl, getPhotoViewUrl, InvalidPhotoError, listPhotoKeys, verifyUploadedPhoto } from '@/lib/storage';
+import {
+    createGuideUploadUrls,
+    createPhotoUploadUrl,
+    getPhotoViewUrl,
+    InvalidPhotoError,
+    listPhotoKeys,
+    verifyGuideUpload,
+    verifyUploadedPhoto,
+} from '@/lib/storage';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
 
 const mockedGetSignedUrl = getSignedUrl as jest.Mock;
@@ -137,5 +145,38 @@ describe('listPhotoKeys', () => {
         for await (const keys of listPhotoKeys(cutoff)) pages.push(keys);
 
         expect(pages).toEqual([[]]);
+    });
+});
+
+describe('createGuideUploadUrls', () => {
+    it('issues a photo and a thumbnail key under the section, sharing one id', async () => {
+        const { photo, thumb } = await createGuideUploadUrls(4);
+
+        expect(photo.key).toMatch(/^guide\/sections\/4\/[0-9a-f-]{36}\.jpg$/);
+        expect(thumb.key).toBe(photo.key.replace('.jpg', '-thumb.jpg'));
+    });
+});
+
+describe('verifyGuideUpload', () => {
+    const photo = 'guide/sections/4/0f8fad5b-d9cb-469f-a165-70867728950e.jpg';
+    const thumb = 'guide/sections/4/0f8fad5b-d9cb-469f-a165-70867728950e-thumb.jpg';
+
+    it('accepts an issued pair of JPEGs within the limit, checking both objects', async () => {
+        mockSend.mockResolvedValue({ ContentType: 'image/jpeg', ContentLength: 40_000 });
+
+        await expect(verifyGuideUpload(photo, thumb, 4)).resolves.toBeUndefined();
+        expect(mockSend.mock.calls.map(([command]) => command.input.Key)).toEqual([photo, thumb]);
+    });
+
+    it("refuses another section's or a task's key without touching the bucket", async () => {
+        await expect(verifyGuideUpload(photo.replace('/4/', '/5/'), thumb.replace('/4/', '/5/'), 4)).rejects.toThrow(InvalidPhotoError);
+        await expect(verifyGuideUpload('task-instances/4/a.jpg', 'task-instances/4/a-thumb.jpg', 4)).rejects.toThrow(InvalidPhotoError);
+        expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("refuses a thumbnail passed off as a photo, and a thumbnail that isn't the photo's own", async () => {
+        await expect(verifyGuideUpload(thumb, thumb.replace('.jpg', '-thumb.jpg'), 4)).rejects.toThrow(InvalidPhotoError);
+        await expect(verifyGuideUpload(photo, 'guide/sections/4/other-thumb.jpg', 4)).rejects.toThrow(InvalidPhotoError);
+        expect(mockSend).not.toHaveBeenCalled();
     });
 });

@@ -82,6 +82,12 @@ export interface MediaView {
     server_timestamp: Date;
 }
 
+export interface TaskReferenceView {
+    branch_section_id: number;
+    folder_id: number | null;
+    name: string; // 'Dairy fridge', or 'Dairy fridge › Top shelf' for a folder
+}
+
 interface TaskInstanceBase {
     instance_id: number;
     task_id: number;
@@ -102,6 +108,8 @@ interface TaskInstanceBase {
         assigned_to: number | null;
         assigned_role_id: number | null;
         recurrence: string | null;
+        /** The shelf-guide level showing how it should look: a section's root (folder_id null) or a folder in it. */
+        reference: TaskReferenceView | null;
     };
     /** Named person the task targets; null when it targets a whole role. */
     assignee: { user_id: number; name: string } | null;

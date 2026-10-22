@@ -141,6 +141,7 @@ describe('completeInstance and reviewInstance — conditional writes', () => {
                     task: {
                         taskId: 1, title: 'T', description: null, branchId: 1, assignedTo: null,
                         assignedRoleId: 3, recurrence: null, branch: { name: 'Main' }, assignee: null,
+                        branchSectionId: null, guideFolderId: null, branchSection: null, guideFolder: null,
                     },
                 }),
             },

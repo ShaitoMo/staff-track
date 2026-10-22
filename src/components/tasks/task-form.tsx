@@ -4,6 +4,7 @@ import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
+import { NO_REFERENCE, TaskReferenceChoice, TaskReferencePicker } from "@/components/tasks/task-reference-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,6 +69,8 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "");
     const [weekdays, setWeekdays] = useState<Weekday[]>(initialValues?.weekdays ?? []);
     const [active, setActive] = useState(initialValues?.active ?? true);
+    // create only: a reference is set when the task is made (the edit form leaves it as it is)
+    const [reference, setReference] = useState<TaskReferenceChoice>(NO_REFERENCE);
     const [errors, setErrors] = useState<TaskFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
@@ -100,6 +103,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
         const nextBranchId = Number(value);
         setBranchId(nextBranchId);
         setAssignedTo(null);
+        setReference(NO_REFERENCE); // sections belong to one branch
         revalidate({ branchId: nextBranchId, assignedTo: null });
     }
 
@@ -128,7 +132,11 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                         await updateTask(taskId!, body);
                     }
                 } else {
-                    await createTask(buildCreateTaskBody(input));
+                    await createTask({
+                        ...buildCreateTaskBody(input),
+                        branch_section_id: reference.sectionId,
+                        guide_folder_id: reference.folderId,
+                    });
                 }
 
                 router.push("/tasks");
@@ -268,6 +276,12 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                     <FieldError>{errors.assignee}</FieldError>
                 </Field>
             </FormSection>
+
+            {!isEdit ? (
+                <FormSection legend="Reference" className="lg:grid-cols-3">
+                    <TaskReferencePicker branchId={branchId} value={reference} onChange={setReference} disabled={pending} />
+                </FormSection>
+            ) : null}
 
             <FormSection legend="Schedule" className="sm:grid-cols-2 lg:grid-cols-3">
                 {wasOneOff ? (

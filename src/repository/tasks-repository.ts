@@ -29,6 +29,8 @@ export class TasksRepository {
                         origin: data.origin,
                         isRecurring: data.is_recurring,
                         recurrence: data.recurrence ?? null,
+                        branchSectionId: data.branch_section_id ?? null,
+                        guideFolderId: data.guide_folder_id ?? null,
                     },
                 });
 

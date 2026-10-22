@@ -1,4 +1,5 @@
 import { ApiError, request } from "@/lib/api-client";
+import type { GuideImageView } from "@/types/shelf-guide";
 import type { PhotoUploadView } from "@/types/task-instance";
 
 /**
@@ -22,4 +23,9 @@ export async function completeInstance(instanceId: number, photo: Blob): Promise
 
 export async function reviewInstance(instanceId: number, decision: "verified" | "rejected"): Promise<void> {
     await request(`/api/task-instances/${instanceId}/review`, { method: "PATCH", json: { decision } });
+}
+
+/** The shelf-guide photos showing how the task should look; `[]` when it has none. */
+export async function getTaskReference(instanceId: number): Promise<GuideImageView[]> {
+    return (await request(`/api/task-instances/${instanceId}/reference`)).json();
 }

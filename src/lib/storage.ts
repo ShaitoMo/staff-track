@@ -77,13 +77,39 @@ function keyPrefix(instanceId: number): string {
  */
 export async function createPhotoUploadUrl(instanceId: number): Promise<{ key: string; uploadUrl: string }> {
     const key = `${keyPrefix(instanceId)}${randomUUID()}.jpg`;
-    const uploadUrl = await getSignedUrl(
+    return { key, uploadUrl: await signUpload(key) };
+}
+
+/** Shelf-guide reference photos (FR12), kept apart from task proof so the orphan sweep never sees them. */
+const GUIDE_PREFIX = 'guide/sections/';
+
+function guideKeyPrefix(branchSectionId: number): string {
+    return `${GUIDE_PREFIX}${branchSectionId}/`;
+}
+
+export interface GuideUploadUrls {
+    photo: { key: string; uploadUrl: string };
+    thumb: { key: string; uploadUrl: string };
+}
+
+/** Two signed PUTs for one guide photo: the full JPEG and the small thumbnail the browser made from it. */
+export async function createGuideUploadUrls(branchSectionId: number): Promise<GuideUploadUrls> {
+    const base = `${guideKeyPrefix(branchSectionId)}${randomUUID()}`;
+    const photoKey = `${base}.jpg`;
+    const thumbKey = `${base}-thumb.jpg`;
+
+    return {
+        photo: { key: photoKey, uploadUrl: await signUpload(photoKey) },
+        thumb: { key: thumbKey, uploadUrl: await signUpload(thumbKey) },
+    };
+}
+
+async function signUpload(key: string): Promise<string> {
+    return getSignedUrl(
         r2(),
         new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: PHOTO_CONTENT_TYPE }),
         { expiresIn: UPLOAD_URL_TTL_SECONDS },
     );
-
-    return { key, uploadUrl };
 }
 
 /**
@@ -95,6 +121,33 @@ export async function verifyUploadedPhoto(key: string, instanceId: number): Prom
     if (!key.startsWith(keyPrefix(instanceId))) {
         throw new InvalidPhotoError('That photo does not belong to this task');
     }
+
+    await verifyStoredJpeg(key);
+}
+
+const GUIDE_PHOTO_NAME = /^[0-9a-f-]{36}\.jpg$/;
+
+/**
+ * verifyUploadedPhoto for a guide photo: the two keys must be exactly a pair createGuideUploadUrls
+ * issued for this section (`<id>.jpg` + `<id>-thumb.jpg`), so one photo's key can never be passed
+ * off as another's thumbnail; then both objects get the same stored-JPEG checks.
+ */
+export async function verifyGuideUpload(photoKey: string, thumbKey: string, branchSectionId: number): Promise<void> {
+    const prefix = guideKeyPrefix(branchSectionId);
+    const name = photoKey.slice(prefix.length);
+
+    if (!photoKey.startsWith(prefix) || !GUIDE_PHOTO_NAME.test(name)) {
+        throw new InvalidPhotoError('That photo does not belong to this section');
+    }
+    if (thumbKey !== photoKey.replace(/\.jpg$/, '-thumb.jpg')) {
+        throw new InvalidPhotoError('The thumbnail does not match the photo');
+    }
+
+    await verifyStoredJpeg(photoKey);
+    await verifyStoredJpeg(thumbKey);
+}
+
+async function verifyStoredJpeg(key: string): Promise<void> {
 
     let head;
     try {

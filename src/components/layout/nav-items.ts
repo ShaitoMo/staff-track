@@ -1,9 +1,11 @@
 import {
+    BookImage,
     CalendarDays,
     ClipboardList,
     Clock,
     House,
     LayoutDashboard,
+    LayoutGrid,
     ListChecks,
     ScanBarcode,
     ShieldCheck,
@@ -28,6 +30,7 @@ export const MANAGER_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
             { href: "/schedule", label: "Schedule", icon: CalendarDays },
             { href: "/attendance", label: "Attendance", icon: Clock },
             { href: "/tasks", label: "Tasks", icon: ListChecks },
+            { href: "/guide", label: "Shelf guide", icon: BookImage },
         ],
     },
     {
@@ -38,6 +41,7 @@ export const MANAGER_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
             { href: "/registers", label: "Registers", icon: ScanBarcode },
             { href: "/periods", label: "Periods", icon: Timer },
             { href: "/roles", label: "Roles & coverage", icon: ShieldCheck },
+            { href: "/section-types", label: "Section types", icon: LayoutGrid },
         ],
     },
 ];
@@ -48,6 +52,7 @@ export const STAFF_NAV: NavItem[] = [
     { href: "/my-tasks", label: "My tasks", icon: ClipboardList },
     { href: "/schedule", label: "Schedule", icon: CalendarDays },
     { href: "/attendance", label: "Attendance", icon: Clock },
+    { href: "/guide", label: "Guide", icon: BookImage },
 ];
 
 /** "/" only matches itself; every other item also owns the pages under it (e.g. /tasks/new). */

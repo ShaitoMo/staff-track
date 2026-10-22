@@ -1,6 +1,6 @@
 jest.mock('@/lib/db', () => ({ db: {} }));
 jest.mock('@/repository/tasks-repository', () => ({
-    TasksRepository: { getTaskById: jest.fn(), updateTask: jest.fn() },
+    TasksRepository: { getTaskById: jest.fn(), updateTask: jest.fn(), createTask: jest.fn() },
 }));
 jest.mock('@/repository/task-instance-repository', () => ({
     TaskInstanceRepository: {
@@ -12,6 +12,15 @@ jest.mock('@/repository/task-instance-repository', () => ({
 jest.mock('@/repository/user-branch-repository', () => ({
     UserBranchRepository: { getUserBranches: jest.fn() },
 }));
+jest.mock('@/repository/branch-repository', () => ({
+    BranchRepository: { assertExists: jest.fn() },
+}));
+jest.mock('@/repository/branch-section-repository', () => ({
+    BranchSectionRepository: { getSectionById: jest.fn() },
+}));
+jest.mock('@/repository/guide-folder-repository', () => ({
+    GuideFolderRepository: { getFolderById: jest.fn() },
+}));
 jest.mock('@/repository/role-repository', () => ({
     RoleRepository: { getRoleById: jest.fn() },
 }));
@@ -21,7 +30,11 @@ import { TasksRepository } from '@/repository/tasks-repository';
 import { TaskInstanceRepository } from '@/repository/task-instance-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
 import { RoleRepository } from '@/repository/role-repository';
-import { Task, UpdateTaskInput } from '@/types/task';
+import { CreateTaskInput, Task, UpdateTaskInput } from '@/types/task';
+import { BranchSectionView } from '@/types/shelf-guide';
+import { BranchSectionRepository } from '@/repository/branch-section-repository';
+import { GuideFolderRepository } from '@/repository/guide-folder-repository';
+import { InvalidTaskReferenceError } from '@/exceptions/invalid-task-reference-error';
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error';
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error';
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error';
@@ -250,5 +263,72 @@ describe('updateTask — missing task', () => {
         );
 
         expect(updateTask).not.toHaveBeenCalled();
+    });
+});
+
+describe('createTask — the shelf-guide reference must be live at the task\'s branch', () => {
+    const getSectionById = BranchSectionRepository.getSectionById as jest.Mock;
+    const getFolderById = GuideFolderRepository.getFolderById as jest.Mock;
+    const createTask = TasksRepository.createTask as jest.Mock;
+
+    const section = (overrides: Partial<BranchSectionView> = {}): BranchSectionView => ({
+        branchSectionId: 4, branchId: BRANCH_ID, branchName: 'Hamra', sectionTypeId: 2, name: 'Dairy fridge', displayOrder: 0, isActive: true,
+        ...overrides,
+    });
+    const folder = (branchSectionId = 4, isActive = true) => ({ view: { folderId: 9, branchSectionId, isActive } });
+
+    const input = (reference: Partial<CreateTaskInput> = {}): CreateTaskInput => ({
+        title: 'Face up the yoghurts',
+        branch_id: BRANCH_ID,
+        assigned_to: 2,
+        origin: 'assigned',
+        is_recurring: false,
+        due_date: new Date('2026-11-01T00:00:00Z'),
+        assigned_by: 3,
+        ...reference,
+    });
+
+    beforeEach(() => {
+        getUserBranches.mockResolvedValue([{ userId: 2, branchId: BRANCH_ID }] as never);
+        createTask.mockResolvedValue(task());
+    });
+
+    it('creates a task with no reference without looking one up', async () => {
+        await TaskService.createTask(input());
+
+        expect(getSectionById).not.toHaveBeenCalled();
+        expect(createTask).toHaveBeenCalled();
+    });
+
+    it('accepts an active section at the branch, and an active folder in it', async () => {
+        getSectionById.mockResolvedValue(section());
+        getFolderById.mockResolvedValue(folder());
+
+        await TaskService.createTask(input({ branch_section_id: 4, guide_folder_id: 9 }));
+
+        expect(createTask).toHaveBeenCalledWith(expect.objectContaining({ branch_section_id: 4, guide_folder_id: 9 }), expect.any(Array));
+    });
+
+    it.each([
+        ['missing', null],
+        ["another branch's", section({ branchId: 2 })],
+        ['an inactive', section({ isActive: false })],
+    ])('refuses %s section', async (_label, found) => {
+        getSectionById.mockResolvedValue(found);
+
+        await expect(TaskService.createTask(input({ branch_section_id: 4 }))).rejects.toThrow(InvalidTaskReferenceError);
+        expect(createTask).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['missing', null],
+        ["another section's", folder(5)],
+        ['an inactive', folder(4, false)],
+    ])('refuses %s folder', async (_label, found) => {
+        getSectionById.mockResolvedValue(section());
+        getFolderById.mockResolvedValue(found);
+
+        await expect(TaskService.createTask(input({ branch_section_id: 4, guide_folder_id: 9 }))).rejects.toThrow(InvalidTaskReferenceError);
+        expect(createTask).not.toHaveBeenCalled();
     });
 });
