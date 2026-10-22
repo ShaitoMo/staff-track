@@ -40,6 +40,7 @@ function instance(overrides: {
             assigned_to: overrides.assignee?.user_id ?? null,
             assigned_role_id: overrides.roleId ?? null,
             recurrence: overrides.recurrence ?? null,
+            reference: null,
         },
     };
 }

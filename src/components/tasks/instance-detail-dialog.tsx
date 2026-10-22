@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { PhotoLink } from "@/components/tasks/photo-link";
 import { StatusBadge } from "@/components/tasks/status-badge";
+import { TaskReferencePhotos } from "@/components/tasks/task-reference";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatDay } from "@/lib/coverage-rows";
 import type { InstanceRow } from "@/lib/instance-rows";
+import { cn } from "@/lib/utils";
 
 function DetailField({ label, children }: { label: string; children: ReactNode }) {
     return (
@@ -22,6 +23,8 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
  * one primary action per view (DESIGN.md), and there is one of these per row.
  */
 export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow; titleClassName?: string }) {
+    const sideBySide = row.referenceName !== null && row.photoMediaId !== null;
+
     return (
         <Dialog>
             <DialogTrigger
@@ -34,7 +37,7 @@ export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow
             >
                 {row.title}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className={sideBySide ? "sm:max-w-2xl" : "sm:max-w-md"}>
                 <DialogHeader>
                     <div className="flex items-start justify-between gap-2 pr-6">
                         <DialogTitle>{row.title}</DialogTitle>
@@ -57,13 +60,31 @@ export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow
                             {row.completedDate !== null ? (
                                 <span className="text-muted-foreground"> on {formatDay(row.completedDate)}</span>
                             ) : null}
-                            {row.photoMediaId !== null ? (
-                                <>
-                                    {" · "}
-                                    <PhotoLink mediaId={row.photoMediaId} />
-                                </>
-                            ) : null}
                         </DetailField>
+                    ) : null}
+                    {row.referenceName !== null || row.photoMediaId !== null ? (
+                        // side by side when both are there, so a reviewer compares rather than remembers
+                        <div className={cn("grid gap-3", sideBySide && "sm:grid-cols-2")}>
+                            {row.referenceName !== null ? (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-xs text-muted-foreground">How it should look · {row.referenceName}</span>
+                                    <TaskReferencePhotos instanceId={row.instanceId} className={sideBySide ? "sm:grid-cols-2" : undefined} />
+                                </div>
+                            ) : null}
+                            {row.photoMediaId !== null ? (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-xs text-muted-foreground">Their photo</span>
+                                    <a href={`/api/media/${row.photoMediaId}/file`} target="_blank" rel="noreferrer" aria-label="Open their photo">
+                                        {/* eslint-disable-next-line @next/next/no-img-element -- a signed-URL redirect behind the session; next/image would fetch without the cookie */}
+                                        <img
+                                            src={`/api/media/${row.photoMediaId}/file`}
+                                            alt=""
+                                            className="aspect-[4/3] w-full rounded-lg border border-border bg-muted object-cover"
+                                        />
+                                    </a>
+                                </div>
+                            ) : null}
+                        </div>
                     ) : null}
                     {row.reviewedByName !== null ? (
                         <DetailField label={row.status === "rejected" ? "Declined by" : "Approved by"}>

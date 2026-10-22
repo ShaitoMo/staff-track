@@ -7,7 +7,10 @@ import { GuideFolderService } from '@/services/guide-folder-service'
 import { CreateGuideFolderSchema } from '@/types/shelf-guide'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
 
-/** GET .../folders?parentFolderId=&includeInactive=true — one level of folders; no parentFolderId = the section root. */
+/**
+ * GET .../folders?parentFolderId=&includeInactive=true — one level of folders; no parentFolderId = the section root.
+ * GET .../folders?all=true — every active folder at any depth instead (parentFolderId is then ignored).
+ */
 export async function GET(
     req: NextRequest,
     ctx: RouteContext<'/api/branch-sections/[branchSectionId]/folders'>
@@ -28,6 +31,11 @@ export async function GET(
     try {
         const section = await BranchSectionService.getSection(branchSectionId);
         requireGuideAccess(user, { branchId: section.branchId, visibleToStaff: section.isActive }, BranchSectionNotFoundError)
+
+        if (queryFlag(req.nextUrl, 'all')) {
+            return NextResponse.json(await GuideFolderService.getActiveTree(section), { status: 200 });
+        }
+
         const editor = canEditGuide(user)
         const folders = await GuideFolderService.getFolders(section, parentFolderId, {
             includeInactive: queryFlag(req.nextUrl, 'includeInactive') && editor,

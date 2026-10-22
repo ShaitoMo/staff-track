@@ -2,7 +2,7 @@ import { Prisma, TaskStatus } from '@prisma/client';
 import { db } from '@/lib/db';
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error';
 import { toDateOnlyString } from '@/types/date-only';
-import { TaskInstanceDetailView, TaskInstanceListView } from '@/types/task-instance';
+import { TaskInstanceDetailView, TaskInstanceListView, TaskReferenceView } from '@/types/task-instance';
 
 /**
  * Which instances a given worker may see. A task targets either a named person or a whole role,
@@ -39,8 +39,12 @@ const instanceInclude = {
             assignedTo: true,
             assignedRoleId: true,
             recurrence: true,
+            branchSectionId: true,
+            guideFolderId: true,
             branch: { select: { name: true } },
             assignee: { select: { userId: true, name: true } },
+            branchSection: { select: { sectionType: { select: { name: true } } } },
+            guideFolder: { select: { name: true } },
         },
     },
     completer: { select: { name: true } },
@@ -294,6 +298,19 @@ export class TaskInstanceRepository {
         };
     }
 
+    private static toReference(task: InstanceWithJoins['task']): TaskReferenceView | null {
+        if (task.branchSectionId === null || task.branchSection === null) {
+            return null;
+        }
+
+        const section = task.branchSection.sectionType.name;
+        return {
+            branch_section_id: task.branchSectionId,
+            folder_id: task.guideFolderId,
+            name: task.guideFolder ? `${section} › ${task.guideFolder.name}` : section,
+        };
+    }
+
     private static toView(instance: InstanceWithJoins): TaskInstanceDetailView {
         return {
             instance_id: instance.instanceId,
@@ -315,6 +332,7 @@ export class TaskInstanceRepository {
                 assigned_to: instance.task.assignedTo,
                 assigned_role_id: instance.task.assignedRoleId,
                 recurrence: instance.task.recurrence,
+                reference: TaskInstanceRepository.toReference(instance.task),
             },
             assignee: instance.task.assignee
                 ? { user_id: instance.task.assignee.userId, name: instance.task.assignee.name }

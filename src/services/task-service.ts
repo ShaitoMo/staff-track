@@ -3,6 +3,8 @@ import { TaskInstanceRepository } from '@/repository/task-instance-repository';
 import { UserBranchRepository } from '@/repository/user-branch-repository';
 import { BranchRepository } from '@/repository/branch-repository';
 import { RoleRepository } from '@/repository/role-repository';
+import { BranchSectionRepository } from '@/repository/branch-section-repository';
+import { GuideFolderRepository } from '@/repository/guide-folder-repository';
 import {
     addDays,
     getDates,
@@ -18,6 +20,7 @@ import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 import { TaskNotFoundError } from '@/exceptions/task-not-found-error';
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error';
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error';
+import { InvalidTaskReferenceError } from '@/exceptions/invalid-task-reference-error';
 
 export class TaskService {
 
@@ -108,6 +111,7 @@ export class TaskService {
     static async createTask(data: CreateTaskInput): Promise<Task> {
         await BranchRepository.assertExists(data.branch_id);
         await TaskService.assertTargetIsValid(data);
+        await TaskService.assertReferenceIsValid(data);
 
         const dueDates = TaskService.instanceDatesFor(data);
 
@@ -223,6 +227,33 @@ export class TaskService {
 
         if (!role) {
             throw new RoleNotFoundError();
+        }
+    }
+
+    /**
+     * An optional shelf-guide reference must be live where the task is: an active section at the
+     * task's branch, and an active folder in it. The composite FKs would catch a wrong branch or
+     * section too, but only as a 500; this names the problem, and the FKs can't see `isActive`.
+     */
+    private static async assertReferenceIsValid(data: CreateTaskInput): Promise<void> {
+        if (data.branch_section_id === null || data.branch_section_id === undefined) {
+            return;
+        }
+
+        const section = await BranchSectionRepository.getSectionById(data.branch_section_id);
+
+        if (!section || section.branchId !== data.branch_id || !section.isActive) {
+            throw new InvalidTaskReferenceError();
+        }
+
+        if (data.guide_folder_id === null || data.guide_folder_id === undefined) {
+            return;
+        }
+
+        const folder = await GuideFolderRepository.getFolderById(data.guide_folder_id);
+
+        if (!folder || folder.view.branchSectionId !== section.branchSectionId || !folder.view.isActive) {
+            throw new InvalidTaskReferenceError();
         }
     }
 

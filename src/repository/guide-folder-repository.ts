@@ -30,6 +30,15 @@ export class GuideFolderRepository {
         })
     }
 
+    /** Every active folder in the section, at any depth; an active folder's ancestors are always active too. */
+    static async getActiveTree(branchSectionId: number): Promise<GuideFolderView[]> {
+        return db.guideFolder.findMany({
+            where: { branchSectionId, isActive: true },
+            orderBy: [{ displayOrder: 'asc' }, { folderId: 'asc' }],
+            select: FOLDER_SELECT,
+        })
+    }
+
     static async getFolderById(folderId: number): Promise<GuideFolderRecord | null> {
         const row = await db.guideFolder.findUnique({
             where: { folderId },

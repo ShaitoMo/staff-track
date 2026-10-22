@@ -263,8 +263,9 @@ model Task {
   // visible and stay reviewable — the record of work that did happen is never rewritten.
   active         Boolean    @default(true)
   createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  // the shelf-guide section this task is about (FR12g); not wired into the task API yet
+  // the shelf-guide level showing how the work should look (FR12g): a section's root, or one of its folders
   branchSectionId Int?      @map("branch_section_id")
+  guideFolderId   Int?      @map("guide_folder_id") // needs branch_section_id (a CHECK in the migration)
 
   branch     Branch @relation(fields: [branchId], references: [branchId])
   assignee   User?  @relation("TaskAssignee", fields: [assignedTo], references: [userId])
@@ -272,6 +273,8 @@ model Task {
   targetRole Role?  @relation(fields: [assignedRoleId], references: [roleId])
   // composite FK, same pattern as shifts → registers: the section must be at the task's own branch
   branchSection BranchSection? @relation(fields: [branchId, branchSectionId], references: [branchId, branchSectionId], onDelete: Restrict)
+  // and the folder must be in that section
+  guideFolder   GuideFolder?   @relation(fields: [branchSectionId, guideFolderId], references: [branchSectionId, folderId], onDelete: Restrict)
 
   instances TaskInstance[]
 
@@ -375,8 +378,9 @@ model GuideFolder {
   parent   GuideFolder?  @relation("GuideFolderTree", fields: [branchSectionId, parentFolderId], references: [branchSectionId, folderId], onDelete: Restrict, onUpdate: Restrict)
   children GuideFolder[] @relation("GuideFolderTree")
   images   GuideImage[]
+  tasks    Task[]
 
-  // composite-FK target for child folders and images
+  // composite-FK target for child folders, images and tasks
   @@unique([branchSectionId, folderId])
   @@index([branchSectionId, parentFolderId])
   @@map("guide_folders")

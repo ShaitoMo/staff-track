@@ -29,6 +29,11 @@ export class GuideFolderService {
         return GuideFolderRepository.getChildren(section.branchSectionId, parentFolderId, options.includeInactive)
     }
 
+    /** The whole active tree in one read, for pickers that show a folder by its path. */
+    static async getActiveTree(section: BranchSectionView): Promise<GuideFolderView[]> {
+        return GuideFolderRepository.getActiveTree(section.branchSectionId)
+    }
+
     static async getFolder(folderId: number): Promise<GuideFolderRecord> {
         const folder = await GuideFolderRepository.getFolderById(folderId)
 

@@ -96,7 +96,21 @@ export const CreateTaskSchema = z.object({
     is_recurring: z.boolean().default(false),
     due_date: DateOnlySchema.nullable().optional(),
     recurrence: z.string().min(1).nullable().optional(),
+    // shelf-guide reference (FR12g): a section's root, or a folder in it; createTask checks both are live at the branch
+    branch_section_id: z.number().int().positive().nullable().optional(),
+    guide_folder_id: z.number().int().positive().nullable().optional(),
 }).superRefine((data, ctx) => {
+    const hasFolder = data.guide_folder_id !== null && data.guide_folder_id !== undefined;
+    const hasSection = data.branch_section_id !== null && data.branch_section_id !== undefined;
+
+    if (hasFolder && !hasSection) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['branch_section_id'],
+            message: 'A guide folder needs its branch_section_id',
+        });
+    }
+
     const hasAssignee = data.assigned_to !== null && data.assigned_to !== undefined;
     const hasRole = data.assigned_role_id !== null && data.assigned_role_id !== undefined;
 

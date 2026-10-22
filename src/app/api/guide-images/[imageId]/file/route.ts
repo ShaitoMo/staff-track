@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticated, parseNumericId } from '@/lib/route-utils'
 import { guideErrorResponse } from '@/lib/guide-errors'
-import { requireGuideAccess } from '@/lib/rbac'
+import { requireGuidePhotoAccess } from '@/lib/guide-photo-access'
 import { getPhotoViewUrl } from '@/lib/storage'
 import { GuideImageService } from '@/services/guide-image-service'
-import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error'
 
 /**
  * GET /api/guide-images/:id/file — The full photo. Same access as the photo (a manager can still open one in
- * an inactive section or folder); once that passes, redirects to a short-lived signed URL on the private bucket.
+ * an inactive section or folder; so can staff, through `?instance=` of a task that references it — see
+ * requireGuidePhotoAccess); once that passes, redirects to a short-lived signed URL on the private bucket.
  */
 export async function GET(
     req: NextRequest,
@@ -28,7 +28,7 @@ export async function GET(
 
     try {
         const image = await GuideImageService.getImage(imageId);
-        requireGuideAccess(user, image, GuideImageNotFoundError)
+        await requireGuidePhotoAccess(user, image, req.nextUrl.searchParams.get('instance'))
 
         const res = NextResponse.redirect(await getPhotoViewUrl(image.storageKey), 302);
         // the signed URL is per-request: never cache the redirect, so a revoked user re-runs the access check

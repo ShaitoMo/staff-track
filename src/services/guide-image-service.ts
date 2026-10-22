@@ -4,9 +4,11 @@ import { createGuideUploadUrls, deletePhoto, verifyGuideUpload } from '@/lib/sto
 import {
     BranchSectionView,
     CreateGuideImageInput,
+    GuideImageView,
     GuideUploadView,
     UpdateGuideImageInput,
 } from '@/types/shelf-guide'
+import { TaskReferenceView } from '@/types/task-instance'
 import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error'
 import { GuidePhotoKeyInUseError } from '@/exceptions/guide-photo-key-in-use-error'
 import { InactiveGuideParentError } from '@/exceptions/inactive-guide-parent-error'
@@ -32,6 +34,28 @@ export class GuideImageService {
         }
 
         return GuideImageRepository.getLevel(section.branchSectionId, folderId)
+    }
+
+    /**
+     * The photos at a task's reference level, whatever the guide's own visibility: the caller has
+     * already passed the task's access check. Each URL names the instance, so the photo routes can
+     * grant access through that task (see requireGuidePhotoAccess) when the guide alone would hide it.
+     */
+    static async getTaskReferenceImages(reference: TaskReferenceView, instanceId: number): Promise<GuideImageView[]> {
+        const images = await GuideImageRepository.getLevel(reference.branch_section_id, reference.folder_id)
+
+        return images.map(({ view }) => ({
+            ...view,
+            fileUrl: GuideImageService.withInstance(view.fileUrl, instanceId),
+            thumbUrl: GuideImageService.withInstance(view.thumbUrl, instanceId),
+        }))
+    }
+
+    /** Adds `instance` to a relative photo URL whatever query it already carries. */
+    private static withInstance(path: string, instanceId: number): string {
+        const url = new URL(path, 'http://relative')
+        url.searchParams.set('instance', String(instanceId))
+        return `${url.pathname}${url.search}`
     }
 
     static async getImage(imageId: number): Promise<GuideImageRecord> {

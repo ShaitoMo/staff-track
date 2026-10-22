@@ -8,6 +8,7 @@ import { RoleNotFoundError } from "@/exceptions/role-not-found-error";
 import { UserNotAtBranchError } from "@/exceptions/user-not-at-branch-error";
 import { InvalidTaskAssignmentError } from "@/exceptions/invalid-task-assignment-error";
 import { InvalidRecurrenceError } from "@/exceptions/invalid-recurrence-error";
+import { InvalidTaskReferenceError } from "@/exceptions/invalid-task-reference-error";
 import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
@@ -78,7 +79,8 @@ export async function POST(req: NextRequest) {
             error instanceof RoleNotFoundError ||
             error instanceof UserNotAtBranchError ||
             error instanceof InvalidTaskAssignmentError ||
-            error instanceof InvalidRecurrenceError
+            error instanceof InvalidRecurrenceError ||
+            error instanceof InvalidTaskReferenceError
         ) {
             return NextResponse.json({ error: error.message }, { status: 400 })
         }

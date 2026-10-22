@@ -1,6 +1,6 @@
 jest.mock('@/lib/db', () => ({ db: {} }));
 jest.mock('@/repository/guide-image-repository', () => ({
-    GuideImageRepository: { createImage: jest.fn(), updateImage: jest.fn(), deleteImage: jest.fn() },
+    GuideImageRepository: { createImage: jest.fn(), updateImage: jest.fn(), deleteImage: jest.fn(), getLevel: jest.fn() },
 }));
 jest.mock('@/repository/guide-folder-repository', () => ({
     GuideFolderRepository: { getFolderInSection: jest.fn() },
@@ -145,5 +145,19 @@ describe('GuideImageService.deleteImage', () => {
 
         await expect(GuideImageService.deleteImage(30)).rejects.toThrow(GuideImageNotFoundError);
         expect(remove).not.toHaveBeenCalled();
+    });
+});
+
+describe('GuideImageService.getTaskReferenceImages', () => {
+    it("reads the task's level and tags both URLs with the instance, keeping the version", async () => {
+        (GuideImageRepository.getLevel as jest.Mock).mockResolvedValue([
+            image({ fileUrl: '/api/guide-images/30/file?v=2', thumbUrl: '/api/guide-images/30/thumb?v=2' }),
+        ]);
+
+        const [view] = await GuideImageService.getTaskReferenceImages({ branch_section_id: 4, folder_id: 9, name: 'x' }, 12);
+
+        expect(GuideImageRepository.getLevel).toHaveBeenCalledWith(4, 9);
+        expect(view.fileUrl).toBe('/api/guide-images/30/file?v=2&instance=12');
+        expect(view.thumbUrl).toBe('/api/guide-images/30/thumb?v=2&instance=12');
     });
 });

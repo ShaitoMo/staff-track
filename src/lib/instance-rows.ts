@@ -16,6 +16,8 @@ export interface InstanceRow {
     completedByName: string | null;
     completedDate: string | null;
     photoMediaId: number | null;
+    /** The shelf-guide level showing how it should look, e.g. "Dairy fridge › Top shelf"; null when the task has none. */
+    referenceName: string | null;
     reviewedByName: string | null;
     reviewedDate: string | null;
     /** Completed by someone else: the backend refuses self-review, so the button is only offered when it could work. */
@@ -65,6 +67,7 @@ export function buildInstanceRows(instances: TaskInstanceListView[], roles: Role
             completedByName: instance.completed_by_name,
             completedDate: dateOnly(instance.completed_at),
             photoMediaId: instance.latest_photo?.media_id ?? null,
+            referenceName: instance.task.reference?.name ?? null,
             reviewedByName: instance.reviewed_by_name,
             reviewedDate: dateOnly(instance.reviewed_at),
             canReview: instance.status === "completed" && instance.completed_by !== viewerUserId,

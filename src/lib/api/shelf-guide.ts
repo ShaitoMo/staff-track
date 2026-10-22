@@ -1,8 +1,10 @@
 import { ApiError, request } from "@/lib/api-client";
 import { compressPhoto, THUMB_EDGE_PX } from "@/lib/compress-photo";
 import type {
+    BranchSectionView,
     CreateSectionTypeInput,
     DeactivationImpact,
+    GuideFolderView,
     GuideImageView,
     GuideUploadView,
     ReactivationImpact,
@@ -66,6 +68,16 @@ export async function reorderGuidePhotos(branchSectionId: number, folderId: numb
 }
 
 // ---------- catalogue, sections, folders ----------
+
+/** The branch's active sections. */
+export async function getBranchSections(branchId: number): Promise<BranchSectionView[]> {
+    return (await request(`/api/branches/${branchId}/sections`)).json();
+}
+
+/** Every active folder in the section, at any depth, for a picker that names each by its path. */
+export async function getFolderTree(branchSectionId: number): Promise<GuideFolderView[]> {
+    return (await request(`/api/branch-sections/${branchSectionId}/folders?all=true`)).json();
+}
 
 export async function createSectionType(input: CreateSectionTypeInput): Promise<void> {
     await request("/api/section-types", { method: "POST", json: input });
