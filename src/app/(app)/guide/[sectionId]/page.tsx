@@ -125,9 +125,9 @@ export default async function GuideSectionPage({
                     <InfoIcon />
                     <AlertDescription>
                         {!section.isActive
-                            ? "This section is inactive: staff can't see it, and its photos are in the recycle bin. Reactivate the section to bring them back."
+                            ? "This section is inactive: staff can't see it or its photos. Reactivate the section to show them again."
                             : parentActive
-                              ? "This folder is inactive: staff can't see it, and its photos are in the recycle bin. Reactivate it to bring them back."
+                              ? "This folder is inactive: staff can't see it or its photos. Reactivate it to show them again."
                               : "This folder is inactive because a folder above it is. Reactivate that folder first; this one comes back with it."}
                     </AlertDescription>
                 </Alert>

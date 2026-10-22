@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuthenticated, parseNumericId } from '@/lib/route-utils'
-import { guideErrorResponse, queryFlag } from '@/lib/guide-errors'
+import { guideErrorResponse } from '@/lib/guide-errors'
 import { requireGuideAccess } from '@/lib/rbac'
 import { GuideFolderService } from '@/services/guide-folder-service'
 import { GuideFolderNotFoundError } from '@/exceptions/guide-folder-not-found-error'
 
-/** POST .../reactivate?restoreImages=true — the folder and its subtree come back (409 while its section or parent is inactive). */
+/** POST .../reactivate — the folder and its subtree come back, photos and all (409 while its section or parent is inactive). */
 export async function POST(
     req: NextRequest,
     ctx: RouteContext<'/api/folders/[folderId]/reactivate'>
@@ -25,7 +25,7 @@ export async function POST(
     try {
         const folder = await GuideFolderService.getFolder(folderId);
         requireGuideAccess(user, folder, GuideFolderNotFoundError, 'edit')
-        const result = await GuideFolderService.reactivateFolder(folder, queryFlag(req.nextUrl, 'restoreImages'));
+        const result = await GuideFolderService.reactivateFolder(folder);
         return NextResponse.json(result, { status: 200 });
     } catch (error) {
         return guideErrorResponse(error, 'Failed to reactivate folder');

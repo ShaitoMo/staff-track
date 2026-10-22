@@ -46,8 +46,8 @@ export class BranchSectionService {
         await BranchSectionRepository.deactivateSection(branchSectionId, new Date())
     }
 
-    static async reactivateSection(branchSectionId: number, restoreImages: boolean): Promise<ReactivationImpact> {
-        return BranchSectionRepository.reactivateSection(branchSectionId, restoreImages, new Date())
+    static async reactivateSection(branchSectionId: number): Promise<ReactivationImpact> {
+        return BranchSectionRepository.reactivateSection(branchSectionId, new Date())
     }
 
     static async getDeactivationImpact(branchSectionId: number): Promise<DeactivationImpact> {

@@ -46,7 +46,7 @@ export function guideErrorResponse(error: unknown, failureMessage: string): Next
     return NextResponse.json({ error: failureMessage }, { status: 500 })
 }
 
-/** `?name=true` query flags (includeInactive, restoreImages). */
+/** `?name=true` query flags (includeInactive). */
 export function queryFlag(url: URL, name: string): boolean {
     return url.searchParams.get(name) === 'true'
 }

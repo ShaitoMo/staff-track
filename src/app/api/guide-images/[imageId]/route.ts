@@ -64,7 +64,7 @@ export async function PATCH(
     }
 }
 
-/** DELETE /api/guide-images/:id — to the recycle bin; the files stay until it is purged. */
+/** DELETE /api/guide-images/:id — deletes the photo for good, row and both files. */
 export async function DELETE(
     req: NextRequest,
     ctx: RouteContext<'/api/guide-images/[imageId]'>

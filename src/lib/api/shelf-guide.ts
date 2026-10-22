@@ -104,6 +104,6 @@ export async function deactivateNode(node: GuideNode): Promise<void> {
     await request(nodePath(node), { method: "DELETE" });
 }
 
-export async function reactivateNode(node: GuideNode, restoreImages: boolean): Promise<void> {
-    await request(`${nodePath(node)}/reactivate${restoreImages ? "?restoreImages=true" : ""}`, { method: "POST" });
+export async function reactivateNode(node: GuideNode): Promise<void> {
+    await request(`${nodePath(node)}/reactivate`, { method: "POST" });
 }

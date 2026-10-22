@@ -172,7 +172,7 @@ function PhotoDetail({
                         <span className="flex-1" />
                         {confirmDelete ? (
                             <>
-                                <span className="text-xs text-muted-foreground">Move to the recycle bin?</span>
+                                <span className="text-xs text-muted-foreground">Delete for good? This can&apos;t be undone.</span>
                                 <Button variant="ghost" size="sm" disabled={pending} onClick={() => setConfirmDelete(false)}>
                                     Keep
                                 </Button>

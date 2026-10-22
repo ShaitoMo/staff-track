@@ -87,13 +87,12 @@ export interface GuideFolderView {
 
 export interface DeactivationImpact {
     folders: number // active folders that will go inactive
-    images: number // live photos that will go to the recycle bin
+    images: number // photos staff will stop seeing
 }
 
 export interface ReactivationImpact {
     folders: number // inactive folders that will come back
-    images: number // recycled photos that come back with restoreImages=true
-    permanentlyLost: number // recycled photos already purged; never restored
+    images: number // photos staff will see again
 }
 
 // ---------- Photos ----------
@@ -129,7 +128,7 @@ export const UpdateGuideImageSchema = z.object({
 
 export type UpdateGuideImageInput = z.infer<typeof UpdateGuideImageSchema>
 
-/** Must list exactly the live photos at that level; positions are the array order, 0-based. */
+/** Must list exactly the photos at that level; positions are the array order, 0-based. */
 export const ReorderGuideImagesSchema = z.object({
     imageIds: z.array(z.number().int().positive()),
 })
@@ -143,8 +142,6 @@ export interface GuideImageView {
     title: string | null
     displayOrder: number
     version: number
-    isDeleted: boolean
-    deletedAt: string | null
     fileUrl: string // ?v=version, so a replaced photo is never served from a stale cache
     thumbUrl: string
 }

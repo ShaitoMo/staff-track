@@ -318,8 +318,8 @@ model Media {
 }
 
 // ---------- Shelf guide (FR12) ----------
-// Reference photos of how each area of a branch should look. Nothing here is hard-deleted:
-// sections and folders are deactivated, photos go to a recycle bin (is_deleted).
+// Reference photos of how each area of a branch should look. Sections and folders are deactivated
+// (hidden from staff, photos and all); a deleted photo is gone for good, row and files.
 
 // chain-wide catalogue the owner manages ('Dairy fridge', 'Checkout area'). Names are unique
 // regardless of case through a lower(name) index in the migration, which Prisma can't express.
@@ -385,20 +385,17 @@ model GuideFolder {
 // a reference photo at a section's root or in a folder. Both files are JPEGs the browser made
 // (full photo + small thumbnail). Separate from `media`: this is the expected state, not proof.
 model GuideImage {
-  imageId         Int       @id @default(autoincrement()) @map("image_id")
-  branchSectionId Int       @map("branch_section_id")
-  folderId        Int?      @map("folder_id") // NULL = at the section's root
-  title           String?   @db.VarChar(200)
-  storageKey      String    @unique @map("storage_key") @db.VarChar
-  thumbKey        String    @unique @map("thumb_key") @db.VarChar
-  displayOrder    Int       @default(0) @map("display_order")
-  version         Int       @default(1) // bumped on every replace
-  uploadedBy      Int       @map("uploaded_by")
-  isDeleted       Boolean   @default(false) @map("is_deleted") // in the recycle bin
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
-  filesPurgedAt   DateTime? @map("files_purged_at") @db.Timestamptz // files gone for good; row kept
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  imageId         Int      @id @default(autoincrement()) @map("image_id")
+  branchSectionId Int      @map("branch_section_id")
+  folderId        Int?     @map("folder_id") // NULL = at the section's root
+  title           String?  @db.VarChar(200)
+  storageKey      String   @unique @map("storage_key") @db.VarChar
+  thumbKey        String   @unique @map("thumb_key") @db.VarChar
+  displayOrder    Int      @default(0) @map("display_order")
+  version         Int      @default(1) // bumped on every replace
+  uploadedBy      Int      @map("uploaded_by")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   section  BranchSection @relation(fields: [branchSectionId], references: [branchSectionId], onDelete: Restrict)
   // composite FK: the folder must be in the image's own section

@@ -7,7 +7,7 @@ import { GuideImageService } from '@/services/guide-image-service'
 import { ReorderGuideImagesSchema } from '@/types/shelf-guide'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
 
-/** PUT .../guide-images/order?folderId= — body lists exactly the live photos at that level, in their new order. */
+/** PUT .../guide-images/order?folderId= — body lists exactly the photos at that level, in their new order. */
 export async function PUT(
     req: NextRequest,
     ctx: RouteContext<'/api/branch-sections/[branchSectionId]/guide-images/order'>

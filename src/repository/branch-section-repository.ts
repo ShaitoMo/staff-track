@@ -1,6 +1,5 @@
 import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
-import { GuideImageRepository } from '@/repository/guide-image-repository'
 import { BranchSectionView, DeactivationImpact, ReactivationImpact } from '@/types/shelf-guide'
 import { DuplicateBranchSectionError } from '@/exceptions/duplicate-branch-section-error'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
@@ -55,42 +54,42 @@ export class BranchSectionRepository {
         }
     }
 
-    /** Section → inactive, its active folders (any depth) → inactive, its live photos → recycle bin. One timestamp for all. */
+    /** Section → inactive, its active folders (any depth) → inactive; photos stay put, hidden with them. One timestamp for all. */
     static async deactivateSection(branchSectionId: number, now: Date): Promise<void> {
         await db.$transaction(async (tx) => {
             await tx.branchSection.updateMany({ where: { branchSectionId, isActive: true }, data: { isActive: false, updatedAt: now } })
             await tx.guideFolder.updateMany({ where: { branchSectionId, isActive: true }, data: { isActive: false, updatedAt: now } })
-            await GuideImageRepository.recycleWhere(tx, { branchSectionId }, now)
         })
     }
 
-    /** Section and all its folders come back; its recycled photos too when `restoreImages`. */
-    static async reactivateSection(branchSectionId: number, restoreImages: boolean, now: Date): Promise<ReactivationImpact> {
+    /** Section and all its folders come back, and with them every photo in it. */
+    static async reactivateSection(branchSectionId: number, now: Date): Promise<ReactivationImpact> {
         return db.$transaction(async (tx) => {
             const impact = await BranchSectionRepository.reactivationImpact(branchSectionId, tx)
 
             await tx.branchSection.update({ where: { branchSectionId }, data: { isActive: true, updatedAt: now } })
             await tx.guideFolder.updateMany({ where: { branchSectionId, isActive: false }, data: { isActive: true, updatedAt: now } })
-            const images = restoreImages ? await GuideImageRepository.restoreWhere(tx, branchSectionId, {}) : 0
 
-            return { ...impact, images }
+            return impact
         })
     }
 
+    /** Photos staff can see now: at the root, or in a folder that is still active. */
     static async deactivationImpact(branchSectionId: number): Promise<DeactivationImpact> {
         const [folders, images] = await Promise.all([
             db.guideFolder.count({ where: { branchSectionId, isActive: true } }),
-            GuideImageRepository.countLive(db, { branchSectionId }),
+            db.guideImage.count({ where: { branchSectionId, OR: [{ folderId: null }, { folder: { isActive: true } }] } }),
         ])
         return { folders, images }
     }
 
+    /** Every folder of an inactive section is inactive too, so all its photos come back. */
     static async reactivationImpact(branchSectionId: number, client: Prisma.TransactionClient = db): Promise<ReactivationImpact> {
-        const [folders, recycled] = await Promise.all([
+        const [folders, images] = await Promise.all([
             client.guideFolder.count({ where: { branchSectionId, isActive: false } }),
-            GuideImageRepository.countRecycled(client, { branchSectionId }),
+            client.guideImage.count({ where: { branchSectionId } }),
         ])
-        return { folders, images: recycled.restorable, permanentlyLost: recycled.purged }
+        return { folders, images }
     }
 
     private static async nextPosition(tx: Prisma.TransactionClient, branchId: number): Promise<number> {

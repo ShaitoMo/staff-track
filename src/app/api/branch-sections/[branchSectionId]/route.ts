@@ -64,7 +64,7 @@ export async function PATCH(
     }
 }
 
-/** DELETE /api/branch-sections/:id — deactivates it: its folders go inactive and its photos to the recycle bin. */
+/** DELETE /api/branch-sections/:id — deactivates it: it and its folders go inactive, hiding their photos from staff. */
 export async function DELETE(
     req: NextRequest,
     ctx: RouteContext<'/api/branch-sections/[branchSectionId]'>

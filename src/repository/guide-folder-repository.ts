@@ -1,6 +1,5 @@
 import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
-import { GuideImageRepository } from '@/repository/guide-image-repository'
 import { DeactivationImpact, GuideFolderView, ReactivationImpact, UpdateGuideFolderInput } from '@/types/shelf-guide'
 import { GuideFolderNotFoundError } from '@/exceptions/guide-folder-not-found-error'
 
@@ -94,49 +93,42 @@ export class GuideFolderRepository {
         }
     }
 
-    /** The folder and its active descendants → inactive; live photos anywhere in the subtree → recycle bin. */
+    /** The folder and its active descendants → inactive; photos in the subtree stay put, hidden with them. */
     static async deactivateFolder(folderId: number, now: Date): Promise<void> {
         await db.$transaction(async (tx) => {
             const ids = await GuideFolderRepository.subtreeIds(tx, folderId)
             await tx.guideFolder.updateMany({ where: { folderId: { in: ids }, isActive: true }, data: { isActive: false, updatedAt: now } })
-            await GuideImageRepository.recycleWhere(tx, { folderId: { in: ids } }, now)
         })
     }
 
-    /** The folder and its inactive descendants come back; ancestors and the section are left alone. */
-    static async reactivateFolder(folderId: number, branchSectionId: number, restoreImages: boolean, now: Date): Promise<ReactivationImpact> {
+    /** The folder and its inactive descendants come back, photos and all; ancestors and the section are left alone. */
+    static async reactivateFolder(folderId: number, now: Date): Promise<ReactivationImpact> {
         return db.$transaction(async (tx) => {
             const ids = await GuideFolderRepository.subtreeIds(tx, folderId)
-            const impact = await GuideFolderRepository.impactOf(tx, ids)
+            const impact = await GuideFolderRepository.impactOf(tx, ids, false)
 
             await tx.guideFolder.updateMany({ where: { folderId: { in: ids }, isActive: false }, data: { isActive: true, updatedAt: now } })
-            const images = restoreImages
-                ? await GuideImageRepository.restoreWhere(tx, branchSectionId, { folderId: { in: ids } })
-                : 0
 
-            return { ...impact, images }
+            return impact
         })
     }
 
     static async deactivationImpact(folderId: number): Promise<DeactivationImpact> {
-        const ids = await GuideFolderRepository.subtreeIds(db, folderId)
-        const [folders, images] = await Promise.all([
-            db.guideFolder.count({ where: { folderId: { in: ids }, isActive: true } }),
-            GuideImageRepository.countLive(db, { folderId: { in: ids } }),
-        ])
-        return { folders, images }
+        return GuideFolderRepository.impactOf(db, await GuideFolderRepository.subtreeIds(db, folderId), true)
     }
 
     static async reactivationImpact(folderId: number): Promise<ReactivationImpact> {
-        return GuideFolderRepository.impactOf(db, await GuideFolderRepository.subtreeIds(db, folderId))
+        return GuideFolderRepository.impactOf(db, await GuideFolderRepository.subtreeIds(db, folderId), false)
     }
 
-    private static async impactOf(client: Prisma.TransactionClient, ids: number[]): Promise<ReactivationImpact> {
-        const [folders, recycled] = await Promise.all([
-            client.guideFolder.count({ where: { folderId: { in: ids }, isActive: false } }),
-            GuideImageRepository.countRecycled(client, { folderId: { in: ids } }),
+    /** Folders in `ids` that are `isActive` now (and will flip), and the photos inside them. */
+    private static async impactOf(client: Prisma.TransactionClient, ids: number[], isActive: boolean): Promise<ReactivationImpact> {
+        const where = { folderId: { in: ids }, isActive }
+        const [folders, images] = await Promise.all([
+            client.guideFolder.count({ where }),
+            client.guideImage.count({ where: { folder: where } }),
         ])
-        return { folders, images: recycled.restorable, permanentlyLost: recycled.purged }
+        return { folders, images }
     }
 
     /** The folder itself and every folder below it, at any depth. */

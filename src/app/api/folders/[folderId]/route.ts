@@ -69,7 +69,7 @@ export async function PATCH(
     }
 }
 
-/** DELETE /api/folders/:id — deactivates it and every folder below it; their photos go to the recycle bin. */
+/** DELETE /api/folders/:id — deactivates it and every folder below it; their photos are hidden with them. */
 export async function DELETE(
     req: NextRequest,
     ctx: RouteContext<'/api/folders/[folderId]'>

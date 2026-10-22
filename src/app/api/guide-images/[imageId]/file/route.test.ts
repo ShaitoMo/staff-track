@@ -23,12 +23,11 @@ const mockedGetPhotoViewUrl = getPhotoViewUrl as jest.Mock
 const staff: AccessTokenPayload = { userId: 5, role: 'cashier', branchIds: [1] }
 const manager: AccessTokenPayload = { userId: 2, role: 'manager', branchIds: [1] }
 
-const image = (overrides: Partial<{ branchId: number; visibleToStaff: boolean; filesPurged: boolean }> = {}) => ({
+const image = (overrides: Partial<{ branchId: number; visibleToStaff: boolean }> = {}) => ({
     view: { imageId: 30 },
     branchId: 1,
     storageKey: 'guide/sections/4/a.jpg',
     thumbKey: 'guide/sections/4/a-thumb.jpg',
-    filesPurged: false,
     visibleToStaff: true,
     ...overrides,
 })
@@ -62,19 +61,12 @@ describe('GET /api/guide-images/:id/file', () => {
         expect(mockedGetPhotoViewUrl).not.toHaveBeenCalled()
     })
 
-    it('hides a recycled photo from staff but still serves it to a manager', async () => {
+    it('hides a photo in an inactive section or folder from staff but still serves it to a manager', async () => {
         mockedGetImage.mockResolvedValue(image({ visibleToStaff: false }))
         expect((await call()).status).toBe(404)
 
         mockedGetCurrentUser.mockReturnValue(manager)
         expect((await call()).status).toBe(302)
-    })
-
-    it('answers 404 once the files are purged', async () => {
-        mockedGetCurrentUser.mockReturnValue(manager)
-        mockedGetImage.mockResolvedValue(image({ visibleToStaff: false, filesPurged: true }))
-
-        expect((await call()).status).toBe(404)
     })
 
     it('answers 404 for an unknown id', async () => {

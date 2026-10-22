@@ -65,12 +65,12 @@ export class GuideFolderService {
         await GuideFolderRepository.deactivateFolder(folderId, new Date())
     }
 
-    static async reactivateFolder(folder: GuideFolderRecord, restoreImages: boolean): Promise<ReactivationImpact> {
+    static async reactivateFolder(folder: GuideFolderRecord): Promise<ReactivationImpact> {
         if (!folder.sectionActive || !folder.parentActive) {
             throw new InactiveGuideParentError()
         }
 
-        return GuideFolderRepository.reactivateFolder(folder.view.folderId, folder.view.branchSectionId, restoreImages, new Date())
+        return GuideFolderRepository.reactivateFolder(folder.view.folderId, new Date())
     }
 
     static async getDeactivationImpact(folderId: number): Promise<DeactivationImpact> {

@@ -7,8 +7,8 @@ import { GuideImageService } from '@/services/guide-image-service'
 import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error'
 
 /**
- * GET /api/guide-images/:id/thumb — The thumbnail. Same access as the photo (a manager can still open a
- * recycled one); once that passes, redirects to a short-lived signed URL on the private bucket.
+ * GET /api/guide-images/:id/thumb — The thumbnail. Same access as the photo (a manager can still open one in
+ * an inactive section or folder); once that passes, redirects to a short-lived signed URL on the private bucket.
  */
 export async function GET(
     req: NextRequest,
@@ -29,10 +29,6 @@ export async function GET(
     try {
         const image = await GuideImageService.getImage(imageId);
         requireGuideAccess(user, image, GuideImageNotFoundError)
-
-        if (image.filesPurged) {
-            throw new GuideImageNotFoundError();
-        }
 
         const res = NextResponse.redirect(await getPhotoViewUrl(image.thumbKey), 302);
         // the signed URL is per-request: never cache the redirect, so a revoked user re-runs the access check

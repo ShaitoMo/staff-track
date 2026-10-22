@@ -40,8 +40,8 @@ export function requireAnyBranchAccess(user: AccessTokenPayload, branchIds: numb
 
 /**
  * Shelf guide (FR12). Another branch's section, folder or photo is reported missing, never
- * forbidden, so ids in other branches aren't confirmed to exist; so is anything hidden from staff
- * (inactive, recycled). Editing needs owner, or manager of the branch.
+ * forbidden, so ids in other branches aren't confirmed to exist; so is anything inactive, which
+ * staff never see. Editing needs owner, or manager of the branch.
  */
 export function requireGuideAccess(
     user: AccessTokenPayload,

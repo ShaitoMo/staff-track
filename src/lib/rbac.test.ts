@@ -157,7 +157,7 @@ describe('requireGuideAccess', () => {
         expect(() => requireGuideAccess(user({ role: OWNER_ROLE, branchIds: [] }), hidden, ThingNotFoundError, 'edit')).not.toThrow()
     })
 
-    it('shows staff live things at their branch, and hides inactive or recycled ones as missing', () => {
+    it('shows staff visible things at their branch, and hides inactive ones as missing', () => {
         const staff = user({ role: 'cashier' })
 
         expect(() => requireGuideAccess(staff, live, ThingNotFoundError)).not.toThrow()

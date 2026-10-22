@@ -62,15 +62,15 @@ describe('GuideFolderService.createFolder', () => {
 
 describe('GuideFolderService.reactivateFolder', () => {
     it('refuses while its section or parent is still inactive', async () => {
-        await expect(GuideFolderService.reactivateFolder(folder({ sectionActive: false }), false)).rejects.toThrow(InactiveGuideParentError);
-        await expect(GuideFolderService.reactivateFolder(folder({ parentActive: false }), true)).rejects.toThrow(InactiveGuideParentError);
+        await expect(GuideFolderService.reactivateFolder(folder({ sectionActive: false }))).rejects.toThrow(InactiveGuideParentError);
+        await expect(GuideFolderService.reactivateFolder(folder({ parentActive: false }))).rejects.toThrow(InactiveGuideParentError);
         expect(reactivateFolder).not.toHaveBeenCalled();
     });
 
-    it('reactivates the subtree, passing on restoreImages', async () => {
-        reactivateFolder.mockResolvedValue({ folders: 2, images: 3, permanentlyLost: 1 });
+    it('reactivates the subtree', async () => {
+        reactivateFolder.mockResolvedValue({ folders: 2, images: 3 });
 
-        await expect(GuideFolderService.reactivateFolder(folder(), true)).resolves.toEqual({ folders: 2, images: 3, permanentlyLost: 1 });
-        expect(reactivateFolder).toHaveBeenCalledWith(9, 4, true, expect.any(Date));
+        await expect(GuideFolderService.reactivateFolder(folder())).resolves.toEqual({ folders: 2, images: 3 });
+        expect(reactivateFolder).toHaveBeenCalledWith(9, expect.any(Date));
     });
 });

@@ -1,6 +1,6 @@
 jest.mock('@/lib/db', () => ({ db: {} }));
 jest.mock('@/repository/guide-image-repository', () => ({
-    GuideImageRepository: { createImage: jest.fn(), updateImage: jest.fn(), recycleImage: jest.fn() },
+    GuideImageRepository: { createImage: jest.fn(), updateImage: jest.fn(), deleteImage: jest.fn() },
 }));
 jest.mock('@/repository/guide-folder-repository', () => ({
     GuideFolderRepository: { getFolderInSection: jest.fn() },
@@ -23,7 +23,7 @@ import { InactiveGuideParentError } from '@/exceptions/inactive-guide-parent-err
 
 const createImage = GuideImageRepository.createImage as jest.Mock;
 const updateImage = GuideImageRepository.updateImage as jest.Mock;
-const recycleImage = GuideImageRepository.recycleImage as jest.Mock;
+const deleteImage = GuideImageRepository.deleteImage as jest.Mock;
 const getFolderInSection = GuideFolderRepository.getFolderInSection as jest.Mock;
 const verify = verifyGuideUpload as jest.Mock;
 const remove = deletePhoto as jest.Mock;
@@ -49,8 +49,6 @@ const image = (overrides: Partial<GuideImageRecord['view']> = {}): GuideImageRec
         title: null,
         displayOrder: 0,
         version: 1,
-        isDeleted: false,
-        deletedAt: null,
         fileUrl: '',
         thumbUrl: '',
         ...overrides,
@@ -58,7 +56,6 @@ const image = (overrides: Partial<GuideImageRecord['view']> = {}): GuideImageRec
     branchId: 1,
     storageKey: 'guide/sections/4/old.jpg',
     thumbKey: 'guide/sections/4/old-thumb.jpg',
-    filesPurged: false,
     visibleToStaff: true,
 });
 
@@ -130,16 +127,23 @@ describe('GuideImageService.updateImage', () => {
         expect(updateImage).toHaveBeenCalledWith(30, { title: 'Back', files: undefined });
         expect(remove).not.toHaveBeenCalled();
     });
-
-    it('refuses to edit a photo in the recycle bin', async () => {
-        await expect(GuideImageService.updateImage(image({ isDeleted: true }), { title: 'x' })).rejects.toThrow(GuideImageNotFoundError);
-    });
 });
 
 describe('GuideImageService.deleteImage', () => {
-    it('reports a photo already in the recycle bin as missing', async () => {
-        recycleImage.mockResolvedValue(false);
+    it('deletes the row, then both files', async () => {
+        deleteImage.mockResolvedValue({ storageKey: 'guide/sections/4/old.jpg', thumbKey: 'guide/sections/4/old-thumb.jpg' });
+
+        await GuideImageService.deleteImage(30);
+
+        expect(deleteImage).toHaveBeenCalledWith(30);
+        expect(remove.mock.calls).toEqual([['guide/sections/4/old.jpg'], ['guide/sections/4/old-thumb.jpg']]);
+        expect(deleteImage.mock.invocationCallOrder[0]).toBeLessThan(remove.mock.invocationCallOrder[0]);
+    });
+
+    it('reports a photo that is already gone as missing', async () => {
+        deleteImage.mockResolvedValue(null);
 
         await expect(GuideImageService.deleteImage(30)).rejects.toThrow(GuideImageNotFoundError);
+        expect(remove).not.toHaveBeenCalled();
     });
 });

@@ -74,10 +74,6 @@ export class GuideImageService {
 
     /** Retitle and/or replace. A replace commits the new keys (version + 1) before the old files are deleted. */
     static async updateImage(image: GuideImageRecord, data: UpdateGuideImageInput): Promise<GuideImageRecord> {
-        if (image.view.isDeleted) {
-            throw new GuideImageNotFoundError()
-        }
-
         // keys only ever come as an issued pair (verifyGuideUpload), so re-sending the current pair is
         // the one way to name a current file; that is a no-op, or the cleanup below would delete it
         const files = data.photoKey !== undefined && data.thumbKey !== undefined && data.photoKey !== image.storageKey
@@ -106,11 +102,16 @@ export class GuideImageService {
         return updated
     }
 
-    /** To the recycle bin. The files stay until the bin is purged, so a restore can bring the photo back. */
+    /** Gone for good: the row first, then both files, so a failed delete never leaves a row pointing at nothing. */
     static async deleteImage(imageId: number): Promise<void> {
-        if (!await GuideImageRepository.recycleImage(imageId, new Date())) {
+        const deleted = await GuideImageRepository.deleteImage(imageId)
+
+        if (!deleted) {
             throw new GuideImageNotFoundError()
         }
+
+        await deletePhoto(deleted.storageKey)
+        await deletePhoto(deleted.thumbKey)
     }
 
     static async reorderImages(section: BranchSectionView, folderId: number | null, imageIds: number[]): Promise<GuideImageRecord[]> {
@@ -121,8 +122,6 @@ export class GuideImageService {
         await GuideImageRepository.reorderLevel(section.branchSectionId, folderId, imageIds)
         return GuideImageRepository.getLevel(section.branchSectionId, folderId)
     }
-
-
 
     /**
      * The upload happened but the row didn't land: don't leave the files unreferenced. Except when
