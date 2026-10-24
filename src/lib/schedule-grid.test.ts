@@ -145,6 +145,16 @@ describe('buildRoleRows', () => {
         expect(rows.map((row) => `${row.periodName}/${row.roleName}`)).toEqual(['Morning/Cashier', 'Morning/Stocker', 'Evening/Cashier']);
     });
 
+    it('gives each role in alwaysRoleIds a row in every period, needing 0 where nothing is required', () => {
+        const rows = buildRoleRows([], indexWeek([], users, []), [cashier, stocker], [morning, evening], [requirement(cashier, morning, 1)], WEEK, [
+            cashier.roleId,
+            stocker.roleId,
+        ]);
+
+        expect(rows.map((row) => `${row.periodName}/${row.roleName}`)).toEqual(['Morning/Cashier', 'Morning/Stocker', 'Evening/Cashier', 'Evening/Stocker']);
+        expect(rows[1].cells[0]).toMatchObject({ required: 0, shortfall: 0 });
+    });
+
     it('leaves out roles not passed in, e.g. owner hidden from a manager', () => {
         expect(roleRows([shift(1, hadi.userId, WEEK, morning.periodId)], [cashier], [morning], [])).toEqual([]);
     });
@@ -161,21 +171,8 @@ describe('buildOpenRegisterRows', () => {
         );
 
         expect(rows.map((row) => row.periodId)).toEqual([morning.periodId, evening.periodId]);
-        expect(rows[0].cells[0]).toEqual({ date: WEEK, open: [{ registerId: 6, name: 'Till 2' }], crowded: [] });
+        expect(rows[0].cells[0]).toEqual({ date: WEEK, open: [{ registerId: 6, name: 'Till 2' }] });
         expect(rows[1].cells[0].open.map((seat) => seat.name)).toEqual(['Till 1', 'Till 2']);
-    });
-
-    it('flags a register with more than one person, keeping them so one can be moved', () => {
-        const rows = openRegisterRows(
-            [shift(1, sara.userId, WEEK, morning.periodId, till1.registerId), shift(2, ali.userId, WEEK, morning.periodId, till1.registerId)],
-            [till1],
-            [morning],
-        );
-
-        expect(rows[0].cells[0].open).toEqual([]);
-        expect(rows[0].cells[0].crowded).toEqual([
-            { registerId: 5, name: 'Till 1', people: [expect.objectContaining({ name: 'Ali' }), expect.objectContaining({ name: 'Sara' })] },
-        ]);
     });
 });
 
@@ -214,27 +211,20 @@ describe('toOtherShifts / toStaff', () => {
 });
 
 describe('summarizeWeek', () => {
-    it('counts short role cells, missing people, and empty or crowded register cells', () => {
+    it('counts short role cells and the people missing across them', () => {
         const shifts = [
             shift(1, ali.userId, WEEK, morning.periodId, till1.registerId),
             shift(2, sara.userId, WEEK, morning.periodId, till1.registerId),
         ];
 
-        expect(
-            summarizeWeek(
-                roleRows(shifts, [cashier], [morning], [requirement(cashier, morning, 3)], [till1]),
-                openRegisterRows(shifts, [till1], [morning]),
-            ),
-        ).toEqual({
+        expect(summarizeWeek(roleRows(shifts, [cashier], [morning], [requirement(cashier, morning, 3)], [till1]))).toEqual({
             // Monday is 2 of 3 (short 1); the other six days are 0 of 3 (short 3 each)
             shortSlots: 7,
             peopleShort: 1 + 6 * 3,
-            unstaffedRegisters: 6,
-            crowdedRegisters: 1,
         });
     });
 
     it('is all zeros for an empty grid', () => {
-        expect(summarizeWeek([], [])).toEqual({ shortSlots: 0, peopleShort: 0, unstaffedRegisters: 0, crowdedRegisters: 0 });
+        expect(summarizeWeek([])).toEqual({ shortSlots: 0, peopleShort: 0 });
     });
 });

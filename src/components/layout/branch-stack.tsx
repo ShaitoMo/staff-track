@@ -26,7 +26,7 @@ export function BranchStack({
     return (
         <div className="flex flex-col gap-8">
             {branches.map((branch) => (
-                <details key={branch.branchId} open className="group border-t border-border pt-4">
+                <details key={branch.branchId} open className="group border-t border-border pt-4 print:break-before-page print:border-t-0 print:pt-0 print:first:break-before-auto">
                     <summary
                         className={cn(
                             "flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden",
@@ -36,13 +36,13 @@ export function BranchStack({
                         <span className="flex min-w-0 items-center gap-2">
                             <ChevronDownIcon
                                 aria-hidden
-                                className="size-4 shrink-0 text-muted-foreground transition-transform group-not-open:-rotate-90"
+                                className="size-4 shrink-0 text-muted-foreground transition-transform group-not-open:-rotate-90 print:hidden"
                             />
                             <Heading className="truncate text-base font-semibold">{branch.name}</Heading>
                         </span>
                         <Link
                             href={`${basePath}?${new URLSearchParams({ ...query, branch: String(branch.branchId) })}`}
-                            className={cn("inline-flex shrink-0 items-center text-sm text-primary underline-offset-4 hover:underline", TOUCH_HEIGHT)}
+                            className={cn("inline-flex shrink-0 items-center text-sm text-primary underline-offset-4 hover:underline print:hidden", TOUCH_HEIGHT)}
                         >
                             Only this branch
                         </Link>

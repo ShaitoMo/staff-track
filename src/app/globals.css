@@ -141,3 +141,20 @@
     @apply font-sans;
   }
 }
+
+/* Printing (the schedule's Print or save PDF): a week reads across, so landscape, on plain white
+   paper. On a page with a [data-print-target], only it prints: every element that is neither the
+   target, inside it, nor one of its ancestors is dropped, so no chrome or overlay reaches the paper.
+   Pages without one print as they are. */
+@media print {
+  body:has([data-print-target]) *:not([data-print-target], [data-print-target] *, :has([data-print-target])) {
+    display: none !important;
+  }
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  body {
+    background: #fff;
+  }
+}
