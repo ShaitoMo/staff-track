@@ -76,6 +76,15 @@ export type AttendanceFiltersInput = z.infer<typeof AttendanceFiltersSchema>;
 /** Mirrors the attendance_source enum; spelled out so this layer stays free of Prisma. */
 export type AttendanceSource = 'csv_import' | 'machine' | 'manual';
 
+/**
+ * GET /api/branches/:id/attendance-freshness. `latest_punch` is the newest machine or imported
+ * clock reading at the branch (hand-entered punches don't count); null when there has never been one.
+ */
+export interface AttendanceFreshnessView {
+    branch_id: number;
+    latest_punch: Date | null;
+}
+
 export interface AttendanceView {
     attendance_id: number;
     user_id: number;

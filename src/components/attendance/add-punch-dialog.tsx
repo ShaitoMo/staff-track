@@ -21,15 +21,22 @@ interface PunchErrors {
     clockIn?: string;
 }
 
-/** A clock-in the machine missed. Times are the branch's wall clock; an earlier clock-out means the next morning. */
+/**
+ * A clock-in the machine missed. Times are the branch's wall clock; an earlier clock-out means the
+ * next morning. With a `preset` it is a no-show row's own action: a small trigger, and the form
+ * opens on that person, day and scheduled start.
+ */
 export function AddPunchDialog({
     branchId,
     staff,
     defaultDate,
+    preset,
 }: {
     branchId: number;
     staff: { userId: number; name: string }[];
+    /** The day the form opens on without a preset: today in the current week, else the week's Monday. */
     defaultDate: string;
+    preset?: { userId: number; date: string; clockIn: string; label: string };
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -44,9 +51,9 @@ export function AddPunchDialog({
     function handleOpenChange(next: boolean) {
         if (pending) return;
         if (next) {
-            setUserId(null);
-            setDate(defaultDate);
-            setClockIn("");
+            setUserId(preset?.userId ?? null);
+            setDate(preset?.date ?? defaultDate);
+            setClockIn(preset?.clockIn ?? "");
             setClockOut("");
             setErrors({});
             setSubmitError(null);
@@ -85,10 +92,16 @@ export function AddPunchDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger render={<Button size="sm" variant="outline" className={TOUCH_HEIGHT} disabled={staff.length === 0} />}>
-                <PlusIcon data-icon="inline-start" />
-                Add punch
-            </DialogTrigger>
+            {preset ? (
+                <DialogTrigger render={<Button size="xs" variant="outline" className={TOUCH_HEIGHT} aria-label={preset.label} />}>
+                    Add punch
+                </DialogTrigger>
+            ) : (
+                <DialogTrigger render={<Button size="sm" variant="outline" className={TOUCH_HEIGHT} disabled={staff.length === 0} />}>
+                    <PlusIcon data-icon="inline-start" />
+                    Add punch
+                </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Add a punch</DialogTitle>

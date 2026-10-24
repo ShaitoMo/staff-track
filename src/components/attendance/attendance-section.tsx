@@ -1,43 +1,61 @@
 import { AlertCircleIcon } from "lucide-react";
 import { AddPunchDialog } from "@/components/attendance/add-punch-dialog";
-import { StatusBadge, StatusSummary } from "@/components/attendance/attendance-status";
-import { FixPunchDialog } from "@/components/attendance/fix-punch-dialog";
+import { AttendanceLog } from "@/components/attendance/attendance-log";
 import { ImportAttendanceDialog } from "@/components/attendance/import-attendance-dialog";
-import { WeekNav } from "@/components/layout/week-nav";
+import { AttendanceRange } from "@/components/attendance/range-switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { buildAttendanceRows, summarizeStatuses } from "@/lib/attendance-rows";
-import { addDays, formatDay, mondayOf } from "@/lib/coverage-rows";
+import { buildAttendanceRows, formatLatestPunch } from "@/lib/attendance-rows";
+import { formatDay, formatWeekRange } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
+import { AttendanceFreshnessView } from "@/types/attendance";
 import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 import { SafeUser } from "@/types/user";
 
+/** How far the clock data goes, and what that means for the shifts after it. */
+function ClockDataNote({ latest, notImported }: { latest: Date | null; notImported: number }) {
+    if (latest === null) {
+        return <p className="text-sm text-muted-foreground">No clock-machine punches recorded at this branch yet.</p>;
+    }
+
+    return (
+        <p className="text-sm text-muted-foreground">
+            Clock punches recorded through <span className="font-medium text-foreground">{formatLatestPunch(latest)}</span>.
+            {notImported > 0 ? " Import the machine's file to fill in the shifts after that." : null}
+        </p>
+    );
+}
+
 /**
- * One branch's week of scheduled shifts against what the clock recorded (FR6). Both reads fire
+ * One branch's day or week of scheduled shifts against what the clock recorded (FR6). All three reads fire
  * together; the dialogs get only the id/name pairs they need, not the full user records.
  */
 export async function AttendanceSection({
     branchId,
-    weekStart,
-    showWeekNav = true,
+    from,
+    to,
+    view,
+    stacked = false,
 }: {
     branchId: number;
-    weekStart: string;
-    /** False when the page shows one week nav over several stacked branches. */
-    showWeekNav?: boolean;
+    /** The day shown, or a week's Monday to Sunday; both inclusive. */
+    from: string;
+    to: string;
+    view: AttendanceRange;
+    /** True when several branches stack on one page, so each one's Import stays quiet (one blue per screen). */
+    stacked?: boolean;
 }) {
-    const weekEnd = addDays(weekStart, 6);
-
     let report: ScheduleVsActualRow[];
     let users: SafeUser[];
+    let freshness: AttendanceFreshnessView;
 
     try {
-        [report, users] = await Promise.all([
-            fetchApi<ScheduleVsActualRow[]>(`/api/schedule-vs-actual?branch_id=${branchId}&from=${weekStart}&to=${weekEnd}`),
+        [report, users, freshness] = await Promise.all([
+            fetchApi<ScheduleVsActualRow[]>(`/api/schedule-vs-actual?branch_id=${branchId}&from=${from}&to=${to}`),
             fetchApi<SafeUser[]>(`/api/users?branch_id=${branchId}`),
+            fetchApi<AttendanceFreshnessView>(`/api/branches/${branchId}/attendance-freshness`),
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
@@ -51,76 +69,47 @@ export async function AttendanceSection({
         throw error;
     }
 
-    const rows = buildAttendanceRows(report, users);
+    const latest = freshness.latest_punch === null ? null : new Date(freshness.latest_punch);
+    const rows = buildAttendanceRows(report, users, { latestPunches: new Map([[branchId, latest]]) });
     const staff = users
         .filter((user) => user.isActive)
         .map((user) => ({ userId: user.userId, name: user.name }))
         .toSorted((a, b) => a.name.localeCompare(b.name));
     const today = todayDateString();
+    // a punch added while looking at another day or week is most likely for that one
+    const defaultDate = today >= from && today <= to ? today : from;
+    const range = view === "day" ? formatDay(from) : formatWeekRange(from);
+    // "on Sat 24 Oct", but "5 Oct – 11 Oct" reads on its own
+    const during = view === "day" ? `on ${range}` : range;
 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                {showWeekNav ? (
-                    <WeekNav basePath="/attendance" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
-                ) : null}
+                <ClockDataNote latest={latest} notImported={rows.filter((row) => row.status === "not_imported").length} />
                 <div className="flex flex-wrap items-center gap-2">
-                    <AddPunchDialog branchId={branchId} staff={staff} defaultDate={today} />
-                    <ImportAttendanceDialog branchId={branchId} quiet={!showWeekNav} />
+                    <AddPunchDialog branchId={branchId} staff={staff} defaultDate={defaultDate} />
+                    <ImportAttendanceDialog branchId={branchId} quiet={stacked} />
                 </div>
             </div>
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No shifts this week</EmptyTitle>
+                        <EmptyTitle>No shifts {during}</EmptyTitle>
                         <EmptyDescription>
-                            Attendance is compared against the schedule, and nobody is scheduled at this branch this week.
+                            Attendance is compared against the schedule, and nobody is scheduled at this branch {during}.
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : (
-                <>
-                    <StatusSummary counts={summarizeStatuses(rows)} />
-                    <div className="overflow-x-auto rounded-lg border border-border bg-card">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead scope="col">Day</TableHead>
-                                    <TableHead scope="col">Person</TableHead>
-                                    <TableHead scope="col">Scheduled</TableHead>
-                                    <TableHead scope="col">In</TableHead>
-                                    <TableHead scope="col">Out</TableHead>
-                                    <TableHead scope="col">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rows.map((row) => (
-                                    <TableRow key={row.shiftId}>
-                                        <TableCell>{formatDay(row.shiftDate)}</TableCell>
-                                        <TableCell>{row.name}</TableCell>
-                                        <TableCell className="font-mono tabular-nums">{row.scheduled}</TableCell>
-                                        <TableCell className="font-mono tabular-nums">{row.clockIn ?? "—"}</TableCell>
-                                        <TableCell className="font-mono tabular-nums">{row.clockOut ?? "—"}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <StatusBadge status={row.status} detail={row.detail} />
-                                                {row.fix !== null ? (
-                                                    <FixPunchDialog
-                                                        attendanceId={row.fix.attendanceId}
-                                                        end={row.fix.end}
-                                                        name={row.name}
-                                                        shiftDate={row.shiftDate}
-                                                        scheduledStart={row.scheduledStart}
-                                                    />
-                                                ) : null}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </>
+                <AttendanceLog
+                    rows={rows}
+                    today={today}
+                    range={range}
+                    grouped={view === "week"}
+                    branchId={branchId}
+                    staff={staff}
+                    defaultDate={defaultDate}
+                />
             )}
         </div>
     );

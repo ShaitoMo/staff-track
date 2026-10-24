@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 // Status is functional colour, never Market Blue (DESIGN.md). Loudness follows how much a status
 // asks of the reader: on time is the quietest thing on the page, a slip gets a plain outline, a
-// shift still ahead (or running with nobody in yet) a dashed one, and red is kept for what needs a
-// manager — a no-show, or a punch missing an end.
+// shift still ahead, running with nobody in yet, or past the latest clock reading a dashed one, and
+// red is kept for what needs a manager — a no-show, or a punch missing an end.
 const STATUS_STYLES: Record<AttendanceStatus, { variant: "outline" | "destructive" | "ghost"; className?: string }> = {
     on_time: { variant: "ghost", className: "px-0 font-normal text-muted-foreground" },
     late: { variant: "outline" },
@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<AttendanceStatus, { variant: "outline" | "destructiv
     missing_clock_in: { variant: "destructive" },
     missing_clock_out: { variant: "destructive" },
     no_show: { variant: "destructive" },
+    not_imported: { variant: "outline", className: "border-dashed font-normal text-muted-foreground" },
     not_in_yet: { variant: "outline", className: "border-dashed font-normal text-muted-foreground" },
     upcoming: { variant: "outline", className: "border-dashed font-normal text-muted-foreground" },
 };
@@ -36,9 +37,16 @@ export function StatusBadge({ status, detail }: { status: AttendanceStatus; deta
     );
 }
 
-/** '12 on time · 3 late · 2 no-show' — statuses with no shifts are left out. */
+/**
+ * '12 on time · 3 late · 2 no-show' — statuses with no shifts are left out. A status region, so a
+ * fix that changes the counts is announced.
+ */
 export function StatusSummary({ counts }: { counts: Record<AttendanceStatus, number> }) {
     const parts = STATUS_ORDER.filter((status) => counts[status] > 0).map((status) => `${counts[status]} ${STATUS_LABELS[status].toLowerCase()}`);
 
-    return <p className="text-sm text-muted-foreground">{parts.join(" · ")}</p>;
+    return (
+        <p role="status" className="text-sm text-muted-foreground">
+            {parts.join(" · ")}
+        </p>
+    );
 }

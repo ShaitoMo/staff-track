@@ -1,4 +1,15 @@
-import { buildAttendanceRows, fixTimeToIso, formatMachineTime, formatMinutes, missedMinutes, punchToIso, summarizeStatuses } from '@/lib/attendance-rows';
+import {
+    buildAttendanceRows,
+    fixTimeToIso,
+    formatLatestPunch,
+    formatMachineTime,
+    formatMinutes,
+    groupByDay,
+    missedMinutes,
+    needsAction,
+    punchToIso,
+    summarizeStatuses,
+} from '@/lib/attendance-rows';
 import { ScheduleVsActualRow } from '@/types/schedule-vs-actual';
 
 function row(overrides: Partial<ScheduleVsActualRow>): ScheduleVsActualRow {
@@ -66,6 +77,7 @@ describe('summarizeStatuses', () => {
             missing_clock_in: 0,
             missing_clock_out: 1,
             no_show: 0,
+            not_imported: 0,
             not_in_yet: 0,
             upcoming: 1,
         });
@@ -128,7 +140,7 @@ describe('buildAttendanceRows status', () => {
                 row({ shift_id: 3, scheduled_start: '11:00', scheduled_end: '19:00' }),
             ],
             [],
-            now,
+            { now },
         );
 
         // ended exactly now: the shift is over, so the absence counts
@@ -141,10 +153,71 @@ describe('buildAttendanceRows status', () => {
         const [only] = buildAttendanceRows(
             [row({ shift_date: '2026-01-13', flag: 'on_time', actual_clock_in: new Date('2026-01-13T07:00:00.000Z') })],
             [],
-            now,
+            { now },
         );
 
         expect(only.status).toBe('on_time');
+    });
+});
+
+describe('buildAttendanceRows past the latest clock reading', () => {
+    // Wed 14 Jan 2026, 12:00 in Beirut; the branch's clock data stops Mon 12 Jan at 18:00
+    const now = new Date('2026-01-14T10:00:00.000Z');
+    const latestPunches = new Map([[1, new Date('2026-01-12T16:00:00.000Z')]]);
+
+    it('reads a punchless shift that started after it as not imported, and one before it as a no-show', () => {
+        const [missed, waiting] = buildAttendanceRows(
+            [row({ shift_id: 1, shift_date: '2026-01-12' }), row({ shift_id: 2, shift_date: '2026-01-13' })],
+            [],
+            { now, latestPunches },
+        );
+
+        expect([missed.status, waiting.status]).toEqual(['no_show', 'not_imported']);
+        expect(needsAction(missed)).toBe(true);
+        expect(needsAction(waiting)).toBe(false);
+    });
+
+    it('waits on a clock-out the data may not reach yet, and offers no fix for it', () => {
+        const [only] = buildAttendanceRows(
+            [row({ shift_date: '2026-01-12', scheduled_end: '19:00', flag: 'missing_clock_out', incomplete_attendance_id: 7 })],
+            [],
+            { now, latestPunches },
+        );
+
+        expect(only.status).toBe('not_imported');
+        expect(only.fix).toBeNull();
+    });
+
+    it('judges every shift as before for a branch with no clock data or none known', () => {
+        const shifts = [row({ shift_date: '2026-01-13' })];
+
+        expect(buildAttendanceRows(shifts, [], { now, latestPunches: new Map([[1, null]]) })[0].status).toBe('no_show');
+        expect(buildAttendanceRows(shifts, [], { now })[0].status).toBe('no_show');
+    });
+});
+
+describe('groupByDay', () => {
+    it('puts the rows under their day, days and rows in their sorted order', () => {
+        const rows = buildAttendanceRows(
+            [
+                row({ shift_id: 1, shift_date: '2026-01-13' }),
+                row({ shift_id: 2, shift_date: '2026-01-12', scheduled_start: '15:00' }),
+                row({ shift_id: 3, shift_date: '2026-01-12' }),
+            ],
+            [],
+        );
+
+        expect(groupByDay(rows).map((day) => [day.date, day.rows.map((r) => r.shiftId)])).toEqual([
+            ['2026-01-12', [3, 2]],
+            ['2026-01-13', [1]],
+        ]);
+        expect(groupByDay([])).toEqual([]);
+    });
+});
+
+describe('formatLatestPunch', () => {
+    it('names the day and time on the Beirut clock, across midnight UTC', () => {
+        expect(formatLatestPunch(new Date('2026-01-12T22:30:00.000Z'))).toBe('Tue 13 Jan, 00:30');
     });
 });
 

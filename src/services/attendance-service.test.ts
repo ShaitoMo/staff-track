@@ -4,7 +4,9 @@ jest.mock('@/repository/shift-repository', () => ({
 }));
 
 import { AttendanceService } from '@/services/attendance-service';
-import { ImportedPunch } from '@/repository/attendance-repository';
+import { AttendanceRepository, ImportedPunch } from '@/repository/attendance-repository';
+import { BranchRepository } from '@/repository/branch-repository';
+import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { ShiftRepository } from '@/repository/shift-repository';
 import { ShiftView } from '@/types/shift';
 
@@ -99,5 +101,27 @@ describe('AttendanceService.placeLoneClockOuts', () => {
 
         expect(await placeLoneClockOuts([complete])).toEqual([complete]);
         expect(getShifts).not.toHaveBeenCalled();
+    });
+});
+
+describe('AttendanceService.getFreshness', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it("reports the branch's newest clock reading once the branch is known", async () => {
+        const latest = new Date('2026-10-11T04:24:00.000Z');
+        jest.spyOn(BranchRepository, 'assertExists').mockResolvedValue();
+        jest.spyOn(AttendanceRepository, 'getLatestMachinePunch').mockResolvedValue(latest);
+
+        expect(await AttendanceService.getFreshness(4)).toEqual({ branch_id: 4, latest_punch: latest });
+    });
+
+    it('refuses a branch that does not exist, without reading any punches', async () => {
+        jest.spyOn(BranchRepository, 'assertExists').mockRejectedValue(new BranchNotFoundError());
+        const read = jest.spyOn(AttendanceRepository, 'getLatestMachinePunch');
+
+        await expect(AttendanceService.getFreshness(99)).rejects.toBeInstanceOf(BranchNotFoundError);
+        expect(read).not.toHaveBeenCalled();
     });
 });

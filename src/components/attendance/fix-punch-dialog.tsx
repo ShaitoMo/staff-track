@@ -71,7 +71,18 @@ export function FixPunchDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger render={<Button size="xs" variant="outline" className={TOUCH_HEIGHT} />}>Fix</DialogTrigger>
+            <DialogTrigger
+                render={
+                    <Button
+                        size="xs"
+                        variant="outline"
+                        className={TOUCH_HEIGHT}
+                        aria-label={`Fix ${end === "clock_in" ? "clock-in" : "clock-out"} for ${name}, ${formatDay(shiftDate)}`}
+                    />
+                }
+            >
+                Fix
+            </DialogTrigger>
             <DialogContent className="sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle>{end === "clock_in" ? "Add the missing clock-in" : "Add the missing clock-out"}</DialogTitle>

@@ -1,13 +1,15 @@
-import { MACHINE_TIME_ZONE, machineTimeToUtc } from "@/lib/machine-time";
+import { formatDay } from "@/lib/coverage-rows";
+import { MACHINE_TIME_ZONE, machineDayOf, machineTimeToUtc } from "@/lib/machine-time";
 import { scheduledInstant } from "@/lib/schedule-vs-actual";
 import type { AttendanceFlag, ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 
 /**
- * The report's flag, plus two softer readings of its no-show: the API calls any shift without
- * punches a no-show, but one that hasn't started yet (`upcoming`) or is still running
- * (`not_in_yet` — late, or a punch that hasn't synced) hasn't been missed yet.
+ * The report's flag, plus softer readings of a shift it can't judge yet. The API calls any shift
+ * without punches a no-show, but one that hasn't started (`upcoming`) or is still running
+ * (`not_in_yet`) hasn't been missed yet. And one after the branch's latest clock reading
+ * (`not_imported`) has no data either way: its punches, or the missing end, aren't in yet.
  */
-export type AttendanceStatus = AttendanceFlag | "not_in_yet" | "upcoming";
+export type AttendanceStatus = AttendanceFlag | "not_imported" | "not_in_yet" | "upcoming";
 
 /** In the order a manager reads them: what went right, what went wrong, then what's still ahead. */
 export const STATUS_ORDER: AttendanceStatus[] = [
@@ -17,6 +19,7 @@ export const STATUS_ORDER: AttendanceStatus[] = [
     "missing_clock_in",
     "missing_clock_out",
     "no_show",
+    "not_imported",
     "not_in_yet",
     "upcoming",
 ];
@@ -28,9 +31,38 @@ export const STATUS_LABELS: Record<AttendanceStatus, string> = {
     missing_clock_in: "Missing clock-in",
     missing_clock_out: "Missing clock-out",
     no_show: "No-show",
+    not_imported: "Not imported yet",
     not_in_yet: "Not in yet",
     upcoming: "Upcoming",
 };
+
+/** What a manager has to act on: a punch missing an end, or a shift nobody clocked. */
+const NEEDS_ACTION: AttendanceStatus[] = ["missing_clock_in", "missing_clock_out", "no_show"];
+
+export function needsAction(row: Pick<AttendanceRow, "status">): boolean {
+    return NEEDS_ACTION.includes(row.status);
+}
+
+/** Rows under their day, in the order they came (buildAttendanceRows sorts by day first). */
+export function groupByDay(rows: AttendanceRow[]): { date: string; rows: AttendanceRow[] }[] {
+    const days: { date: string; rows: AttendanceRow[] }[] = [];
+
+    for (const row of rows) {
+        const last = days.at(-1);
+        if (last?.date === row.shiftDate) last.rows.push(row);
+        else days.push({ date: row.shiftDate, rows: [row] });
+    }
+
+    return days;
+}
+
+/** The newest clock reading per branch; a branch absent from the map is never judged stale. */
+export type LatestPunches = Map<number, Date | null>;
+
+/** 'Sun 11 Oct, 22:14' on the branch clock — how far a branch's clock data goes. */
+export function formatLatestPunch(instant: Date): string {
+    return `${formatDay(machineDayOf(instant).toISOString().slice(0, 10))}, ${formatMachineTime(instant)}`;
+}
 
 /** Which end of a punch the Fix dialog fills in, from the row's status. */
 export type MissingEnd = "clock_in" | "clock_out";
@@ -120,6 +152,8 @@ export function summarizeStatuses(
 export interface AttendanceRow {
     shiftId: number;
     shiftDate: string;
+    branchId: number;
+    userId: number;
     name: string;
     /** 'HH:mm', for the Fix dialog's next-morning rollover. */
     scheduledStart: string;
@@ -140,25 +174,32 @@ export interface AttendanceRow {
 export function buildAttendanceRows(
     rows: ScheduleVsActualRow[],
     users: { userId: number; name: string }[],
-    now = new Date(),
+    { now = new Date(), latestPunches = new Map() }: { now?: Date; latestPunches?: LatestPunches } = {},
 ): AttendanceRow[] {
     const names = new Map(users.map((user) => [user.userId, user.name]));
 
     return rows
-        .map((row) => ({
-            shiftId: row.shift_id,
-            shiftDate: row.shift_date,
-            name: names.get(row.user_id) ?? `User ${row.user_id}`,
-            scheduledStart: row.scheduled_start.slice(0, 5),
-            scheduled: `${row.scheduled_start.slice(0, 5)}–${row.scheduled_end.slice(0, 5)}`,
-            clockIn: row.actual_clock_in === null ? null : formatMachineTime(row.actual_clock_in),
-            clockOut: row.actual_clock_out === null ? null : formatMachineTime(row.actual_clock_out),
-            status: statusOf(row, now),
-            fix: fixFor(row),
-            detail: slipDetail(row),
-            isLate: row.is_late,
-            leftEarly: row.left_early,
-        }))
+        .map((row) => {
+            const status = statusOf(row, now, latestPunches.get(row.branch_id) ?? null);
+
+            return {
+                shiftId: row.shift_id,
+                shiftDate: row.shift_date,
+                branchId: row.branch_id,
+                userId: row.user_id,
+                name: names.get(row.user_id) ?? `User ${row.user_id}`,
+                scheduledStart: row.scheduled_start.slice(0, 5),
+                scheduled: `${row.scheduled_start.slice(0, 5)}–${row.scheduled_end.slice(0, 5)}`,
+                clockIn: row.actual_clock_in === null ? null : formatMachineTime(row.actual_clock_in),
+                clockOut: row.actual_clock_out === null ? null : formatMachineTime(row.actual_clock_out),
+                status,
+                // an end that may still be on its way isn't fixed by hand
+                fix: status === "not_imported" ? null : fixFor(row),
+                detail: slipDetail(row),
+                isLate: row.is_late,
+                leftEarly: row.left_early,
+            };
+        })
         .toSorted(
             (a, b) =>
                 // `scheduled` leads with the start time, so comparing it orders by start
@@ -166,12 +207,19 @@ export function buildAttendanceRows(
         );
 }
 
-/** A no-show only counts once the shift is over; before its end, no punch just means not here yet. */
-function statusOf(row: ScheduleVsActualRow, now: Date): AttendanceStatus {
+/**
+ * A no-show only counts once the shift is over; before its end, no punch just means not here yet.
+ * Past the branch's latest clock reading nothing is judged: a shift that started after it can't
+ * have punches yet, and one that ended after it can't have its clock-out yet.
+ */
+function statusOf(row: ScheduleVsActualRow, now: Date, latestPunch: Date | null): AttendanceStatus {
+    const after = (time: string) => latestPunch !== null && scheduledInstant(row.shift_date, time) > latestPunch;
+
+    if (row.flag === "missing_clock_out") return after(row.scheduled_end) ? "not_imported" : row.flag;
     if (row.flag !== "no_show") return row.flag;
     if (scheduledInstant(row.shift_date, row.scheduled_start) > now) return "upcoming";
     if (scheduledInstant(row.shift_date, row.scheduled_end) > now) return "not_in_yet";
-    return "no_show";
+    return after(row.scheduled_start) ? "not_imported" : "no_show";
 }
 
 function fixFor(row: ScheduleVsActualRow): AttendanceRow["fix"] {

@@ -9,6 +9,7 @@ import { UserRepository } from '@/repository/user-repository'
 import { UserBranchRepository } from '@/repository/user-branch-repository'
 import {
     AttendanceFiltersInput,
+    AttendanceFreshnessView,
     AttendanceView,
     CreateAttendanceInput,
     UpdateAttendanceInput,
@@ -61,6 +62,16 @@ export class AttendanceService {
         }
 
         return AttendanceRepository.createAttendance(data)
+    }
+
+    /** How far the branch's clock data goes, so a shift after it reads as not imported, not a no-show. */
+    static async getFreshness(branchId: number): Promise<AttendanceFreshnessView> {
+        await BranchRepository.assertExists(branchId)
+
+        return {
+            branch_id: branchId,
+            latest_punch: await AttendanceRepository.getLatestMachinePunch(branchId),
+        }
     }
 
     static async getAttendanceById(attendanceId: number): Promise<AttendanceView | null> {
