@@ -54,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <header
                 className={cn(
                     // Card, a step up from the Paper page, so the bar reads as its own band (no shadow: flat by default)
-                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-card",
+                    "sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-border bg-card print:hidden",
                     // the dark column runs unbroken past the top bar, so its light rule stops where the column starts
                     canManage && "lg:border-b-0",
                 )}
@@ -92,12 +92,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </header>
             <div className="flex flex-1">
                 {canManage ? (
-                    <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto bg-sidebar px-3 py-5 text-sidebar-foreground lg:block">
+                    <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto bg-sidebar px-3 py-5 text-sidebar-foreground lg:block print:hidden">
                         <SidebarNav />
                     </aside>
                 ) : null}
                 {/* staff pages leave room for the tab bar on a phone */}
-                <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6", !canManage && "pb-24 md:pb-6")}>{children}</main>
+                <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6 print:p-0", !canManage && "pb-24 md:pb-6")}>{children}</main>
             </div>
             {canManage ? null : <StaffTabBar />}
         </div>

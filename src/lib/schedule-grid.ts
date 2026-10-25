@@ -44,15 +44,10 @@ export interface RegisterSeat {
     name: string;
 }
 
-/**
- * Registers for one (date, period): the ones nobody works (each needs one person) and the ones
- * more than one person was put on — a mistake to fix. Everyone seated correctly shows on their
- * role row instead, so nobody is listed twice.
- */
+/** The registers nobody works for one (date, period), offered by the grid's Add picker and register tags. */
 export interface OpenRegisterCell {
     date: string;
     open: RegisterSeat[];
-    crowded: { registerId: number; name: string; people: SchedulePerson[] }[];
 }
 
 export interface OpenRegisterRow {
@@ -129,7 +124,8 @@ export function slotsForClient(week: WeekIndex): Record<string, SchedulePerson[]
  * One row per period × role that has a requirement or anyone scheduled this week, one cell per day.
  * Period-first, in the order `periods` arrives (sortPeriods), so a period's roles sit together.
  * A person's role is their current one — the same join coverage uses (see CoverageRepository).
- * Roles not in `roles` (e.g. owner, hidden from a manager) get no row.
+ * Roles not in `roles` (e.g. owner, hidden from a manager) get no row. Roles in `alwaysRoleIds` get a
+ * row in every period even with neither, so the editing grid always has somewhere to add a person.
  */
 export function buildRoleRows(
     shifts: ShiftView[],
@@ -138,6 +134,7 @@ export function buildRoleRows(
     periods: ShiftPeriodView[],
     requirements: CoverageRequirementView[],
     weekStart: string,
+    alwaysRoleIds: number[] = [],
 ): RoleRow[] {
     const dates = weekDates(weekStart);
     const { roleOf, slots } = week;
@@ -156,7 +153,7 @@ export function buildRoleRows(
 
     return periods.flatMap((period) =>
         sortedRoles
-            .filter((role) => required.has(`${role.roleId}:${period.periodId}`) || staffed.has(`${role.roleId}:${period.periodId}`))
+            .filter((role) => alwaysRoleIds.includes(role.roleId) || required.has(`${role.roleId}:${period.periodId}`) || staffed.has(`${role.roleId}:${period.periodId}`))
             .map((role): RoleRow => ({
                 roleId: role.roleId,
                 roleName: role.name,
@@ -189,7 +186,7 @@ export function rolesOnRegisters(shifts: ShiftView[], week: WeekIndex): number[]
     ];
 }
 
-/** One row per period, every day: each register needs exactly one person per period. */
+/** One row per period, every day: the registers still free in each slot. */
 export function buildOpenRegisterRows(
     week: WeekIndex,
     registers: Register[],
@@ -204,16 +201,13 @@ export function buildOpenRegisterRows(
         periodId: period.periodId,
         cells: dates.map((date): OpenRegisterCell => {
             const people = slots.get(slotKey(date, period.periodId)) ?? [];
-            const seated = (registerId: number) => people.filter((person) => person.registerId === registerId);
+            const taken = new Set(people.map((person) => person.registerId));
 
             return {
                 date,
                 open: sortedRegisters
-                    .filter((register) => seated(register.registerId).length === 0)
+                    .filter((register) => !taken.has(register.registerId))
                     .map((register) => ({ registerId: register.registerId, name: register.name })),
-                crowded: sortedRegisters
-                    .filter((register) => seated(register.registerId).length > 1)
-                    .map((register) => ({ registerId: register.registerId, name: register.name, people: seated(register.registerId) })),
             };
         }),
     }));
@@ -247,25 +241,22 @@ export function toStaff(users: SafeUser[]): StaffMember[] {
         .toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
-/** What the week still needs, counted per cell — the line above the grid. */
+/**
+ * What the week still needs, counted per cell — the line above the grid. Roles only: the grid shows
+ * each cell's "Needs", and registers are chosen per person, not tracked as gaps of their own.
+ */
 export interface WeekSummary {
     /** Role cells with fewer people than required. */
     shortSlots: number;
     /** People missing across those cells. */
     peopleShort: number;
-    unstaffedRegisters: number;
-    /** Register cells with more than one person — a mistake to fix, not coverage. */
-    crowdedRegisters: number;
 }
 
-export function summarizeWeek(roleRows: RoleRow[], openRegisterRows: OpenRegisterRow[]): WeekSummary {
+export function summarizeWeek(roleRows: RoleRow[]): WeekSummary {
     const roleCells = roleRows.flatMap((row) => row.cells);
-    const registerCells = openRegisterRows.flatMap((row) => row.cells);
 
     return {
         shortSlots: roleCells.filter((cell) => cell.shortfall > 0).length,
         peopleShort: roleCells.reduce((total, cell) => total + cell.shortfall, 0),
-        unstaffedRegisters: registerCells.reduce((total, cell) => total + cell.open.length, 0),
-        crowdedRegisters: registerCells.reduce((total, cell) => total + cell.crowded.length, 0),
     };
 }

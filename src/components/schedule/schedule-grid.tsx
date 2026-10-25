@@ -13,6 +13,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PeriodHours } from "@/components/schedule/schedule-roster";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -22,7 +23,6 @@ import { copyWeek, createShift, deleteShift, setShiftRegister } from "@/lib/api/
 import { addDays, formatDay } from "@/lib/coverage-rows";
 import {
     NEEDS_DOT,
-    OpenRegisterCell,
     OpenRegisterRow,
     RegisterSeat,
     RoleRow,
@@ -93,9 +93,12 @@ function PersonChip({
     tag?: React.ReactNode;
 }) {
     return (
-        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-card py-0.5 pr-0.5 pl-2 text-xs">
-            {person.name}
-            {tag}
+        <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card py-0.5 pr-0.5 pl-2 text-xs">
+            {/* in a narrow day column the register wraps under the name, as on the read-only schedule */}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                {person.name}
+                {tag}
+            </span>
             <button
                 type="button"
                 aria-label={label}
@@ -230,11 +233,11 @@ function RegisterTag({
 
 function CellShell({ pending, error, children }: { pending: boolean; error: string | null; children: React.ReactNode }) {
     return (
-        <div className="flex min-w-44 flex-col items-start gap-1.5">
+        <div className="flex min-w-0 flex-col items-start gap-1.5">
             {children}
             {pending ? <Spinner /> : null}
             {error ? (
-                <p role="alert" className="max-w-44 text-xs whitespace-normal text-destructive">
+                <p role="alert" className="text-xs text-destructive">
                     {error}
                 </p>
             ) : null}
@@ -327,90 +330,16 @@ function RoleCellView({
 }
 
 /**
- * The period's leftover register work: each register nobody is on, with a picker to fill it, and
- * any register holding more than one person, so the extra can be taken off.
+ * A period's heading row: its name and hours, spanning the week. No fill — today's column is the grid's
+ * one tint — so weight and the space above it mark the week's main division. Matches ScheduleRoster's.
  */
-function OpenRegistersCellView({
-    branchId,
-    periodLabel,
-    periodId,
-    cell,
-    staff,
-    slot,
-    busy,
-}: {
-    branchId: number;
-    periodLabel: string;
-    periodId: number;
-    cell: OpenRegisterCell;
-    /** Active people only, so `onShift` below leaves out anyone switched off. */
-    staff: StaffMember[];
-    slot: SchedulePerson[];
-    busy: Set<number>;
-}) {
-    const { pending, error, run } = useScheduleAction();
-    const day = formatDay(cell.date);
-
-    // Someone already working this period moves onto the register (a PATCH); anyone else gets a new shift.
-    const onShift = slot
-        .filter((person) => person.registerId === null && staff.some((member) => member.userId === person.userId))
-        .map((person) => ({ id: `shift:${person.shiftId}`, name: person.name }));
-    const others = staff.filter((member) => !busy.has(member.userId)).map((member) => ({ id: `user:${member.userId}`, name: member.name }));
-
-    function assign(registerId: number, value: string) {
-        const [kind, id] = value.split(":");
-        run(() =>
-            kind === "shift"
-                ? setShiftRegister(Number(id), registerId)
-                : createShift({ user_id: Number(id), branch_id: branchId, period_id: periodId, shift_date: cell.date, register_id: registerId }),
-        );
-    }
-
-    return (
-        <CellShell pending={pending} error={error}>
-            {cell.open.map((seat) => (
-                <div key={seat.registerId} className="flex flex-wrap items-center gap-x-1">
-                    <span className="text-xs font-medium text-muted-foreground">{seat.name}</span>
-                    <PersonPicker
-                        placeholder="Assign"
-                        label={`Assign someone to ${seat.name}, ${periodLabel}, ${day}`}
-                        groups={[
-                            { label: "Already on shift", options: onShift.map((option) => ({ value: option.id, name: option.name })) },
-                            { label: "Everyone else", options: others.map((option) => ({ value: option.id, name: option.name })) },
-                        ]}
-                        disabled={pending}
-                        onPick={(value) => assign(seat.registerId, value)}
-                    />
-                </div>
-            ))}
-            {cell.crowded.map((register) => (
-                <div key={register.registerId} className="flex flex-col items-start gap-1">
-                    <span className="text-xs font-medium text-destructive">
-                        {register.name} · {register.people.length} people
-                    </span>
-                    {register.people.map((person) => (
-                        <PersonChip
-                            key={person.shiftId}
-                            person={person}
-                            label={`Take ${person.name} off ${register.name}, ${periodLabel}, ${day}`}
-                            disabled={pending}
-                            onRemove={() => run(() => setShiftRegister(person.shiftId, null))}
-                        />
-                    ))}
-                </div>
-            ))}
-        </CellShell>
-    );
-}
-
-/** A period's heading row: its name and hours, spanning the week. No fill — today's column is the grid's one tint. */
 function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: number }) {
     return (
         <TableRow className="hover:bg-transparent">
-            <TableHead scope="colgroup" colSpan={colSpan} className="h-8 pt-3 text-xs font-medium text-foreground">
-                {period.name}
-                <span className="ml-2 font-mono font-normal text-muted-foreground tabular-nums">
-                    {period.defaultStart}–{period.defaultEnd}
+            <TableHead scope="colgroup" colSpan={colSpan} className="h-10 pt-4 font-semibold text-foreground">
+                <span className="sticky left-2 inline-flex items-baseline gap-2">
+                    {period.name}
+                    <PeriodHours period={period} />
                 </span>
             </TableHead>
         </TableRow>
@@ -418,13 +347,12 @@ function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: numb
 }
 
 /** Sticky so the slot stays readable while the week scrolls sideways on a narrow screen. */
-function RowHeader({ title, muted = false, capitalize = false }: { title: string; muted?: boolean; capitalize?: boolean }) {
+function RowHeader({ title, capitalize = false }: { title: string; capitalize?: boolean }) {
     return (
         <TableHead
             scope="row"
             className={cn(
-                "sticky left-0 z-10 h-auto w-28 bg-card py-2 align-top whitespace-normal sm:w-auto sm:whitespace-nowrap",
-                muted && "text-xs font-normal text-muted-foreground",
+                "sticky left-0 z-10 h-auto bg-card py-2 align-top whitespace-normal",
                 // role names are stored lowercase; every other screen shows them capitalized
                 capitalize && "capitalize",
             )}
@@ -469,24 +397,19 @@ export function ScheduleGrid({
     );
     const noOne = useMemo(() => new Set<number>(), []);
 
-    const slotOf = (date: string, periodId: number) => slots[slotKey(date, periodId)] ?? [];
     const busyIn = (date: string, periodId: number) => busyBySlot.get(slotKey(date, periodId)) ?? noOne;
     const usesRegisters = (roleId: number) => registerRoleIds.length === 0 || registerRoleIds.includes(roleId);
 
-    // Each period with its role rows and (when the branch has registers) its open-registers row;
-    // periods with neither are left out. Both layouts below render from this.
+    // Each period with its role rows; a period without any is left out. Both layouts below render from
+    // this. The period's free registers aren't a row of their own: each cell's Add picker and register
+    // tags offer them, and its "Needs" already says who is missing.
     const groups = periods.flatMap((period) => {
         const rows = roleRows.filter((row) => row.periodId === period.periodId);
         const openRow = hasRegisters ? openRegisterRows.find((row) => row.periodId === period.periodId) : undefined;
-        return rows.length === 0 && !openRow ? [] : [{ period, rows, openRow }];
+        return rows.length === 0 ? [] : [{ period, rows, openRow }];
     });
 
-    const roleNeeds = (row: RoleRow, index: number) => row.cells[index].shortfall > 0;
-    const openNeeds = (openRow: OpenRegisterRow, index: number) =>
-        openRow.cells[index].open.length > 0 || openRow.cells[index].crowded.length > 0;
-    const dayNeeds = dates.map((_, index) =>
-        groups.some(({ rows, openRow }) => rows.some((row) => roleNeeds(row, index)) || (openRow !== undefined && openNeeds(openRow, index))),
-    );
+    const dayNeeds = dates.map((_, index) => groups.some(({ rows }) => rows.some((row) => row.cells[index].shortfall > 0)));
 
     const roleCell = (row: RoleRow, index: number, openRow: OpenRegisterRow | undefined) => (
         <RoleCellView
@@ -498,30 +421,26 @@ export function ScheduleGrid({
             openSeats={usesRegisters(row.roleId) ? openRow?.cells[index].open ?? [] : []}
         />
     );
-    const openCell = (period: ShiftPeriodView, openRow: OpenRegisterRow, index: number) => (
-        <OpenRegistersCellView
-            branchId={branchId}
-            periodLabel={period.name}
-            periodId={period.periodId}
-            cell={openRow.cells[index]}
-            staff={staff}
-            slot={slotOf(openRow.cells[index].date, period.periodId)}
-            busy={busyIn(openRow.cells[index].date, period.periodId)}
-        />
-    );
 
     // Today's column carries a light tint top to bottom, so it stays findable deep in the grid; a slot
     // still needing someone says so with its own dot (NEEDS_DOT), not a fill.
-    const dayCell = (date: string) => cn("align-top", date === today && "bg-muted");
+    const dayCell = (date: string) => cn("align-top whitespace-normal", date === today && "bg-muted");
 
     return (
         <div>
             {/* Wide screens: the whole week at once. */}
             {layout !== "day" ? (<div className="hidden overflow-x-auto rounded-lg border border-border bg-card xl:block">
-                <Table>
+                {/* fixed layout: the seven days share the width evenly, so the whole week fits from `xl` without scrolling */}
+                <Table className="table-fixed">
                     <TableCaption className="sr-only">
-                        Weekly schedule by shift period: people per role, with the register each person works, and registers still open
+                        Weekly schedule by shift period: people per role, with the register each person works
                     </TableCaption>
+                    <colgroup>
+                        <col className="w-28" />
+                        {dates.map((date) => (
+                            <col key={date} />
+                        ))}
+                    </colgroup>
                     <TableHeader>
                         <TableRow className="hover:bg-transparent">
                             <TableHead scope="col" className="sticky left-0 z-10 bg-card">Slot</TableHead>
@@ -552,16 +471,6 @@ export function ScheduleGrid({
                                         ))}
                                     </TableRow>
                                 ))}
-                                {openRow ? (
-                                    <TableRow className="hover:bg-transparent">
-                                        <RowHeader title="Open registers" muted />
-                                        {openRow.cells.map((cell, index) => (
-                                            <TableCell key={cell.date} className={dayCell(cell.date)}>
-                                                {openCell(period, openRow, index)}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ) : null}
                             </Fragment>
                         ))}
                     </TableBody>
@@ -573,11 +482,9 @@ export function ScheduleGrid({
                 {(index) =>
                     groups.map(({ period, rows, openRow }) => (
                         <section key={period.periodId} aria-labelledby={`day-period-${period.periodId}`} className="flex flex-col gap-2">
-                            <h4 id={`day-period-${period.periodId}`} className="text-xs font-medium">
+                            <h4 id={`day-period-${period.periodId}`} className="flex items-baseline gap-2 text-sm font-semibold">
                                 {period.name}
-                                <span className="ml-2 font-mono font-normal text-muted-foreground tabular-nums">
-                                    {period.defaultStart}–{period.defaultEnd}
-                                </span>
+                                <PeriodHours period={period} />
                             </h4>
                             <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
                                 {rows.map((row) => (
@@ -589,16 +496,6 @@ export function ScheduleGrid({
                                         {roleCell(row, index, openRow)}
                                     </li>
                                 ))}
-                                {openRow ? (
-                                    <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3">
-                                        <span className="pt-0.5 text-xs text-muted-foreground">Open registers</span>
-                                        {openNeeds(openRow, index) ? (
-                                            openCell(period, openRow, index)
-                                        ) : (
-                                            <span className="pt-0.5 text-xs text-muted-foreground">All staffed</span>
-                                        )}
-                                    </li>
-                                ) : null}
                             </ul>
                         </section>
                     ))

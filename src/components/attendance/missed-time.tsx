@@ -15,6 +15,7 @@ export function MissedTime({
     title,
     minutes,
     pending,
+    noShows = 0,
     link,
     className,
 }: {
@@ -22,6 +23,8 @@ export function MissedTime({
     minutes: number;
     /** Shifts still missing a punch, which aren't counted until a manager adds it. */
     pending: number;
+    /** Shifts nobody clocked, which aren't minutes missed; said so, so "No time missed" doesn't read as all clear. */
+    noShows?: number;
     link?: { href: string; label: string };
     className?: string;
 }) {
@@ -45,6 +48,12 @@ export function MissedTime({
                 <p className="text-sm text-muted-foreground">
                     {pending === 1 ? "1 shift is" : `${pending} shifts are`} missing a punch and not counted until your branch
                     manager adds it.
+                </p>
+            ) : null}
+            {noShows > 0 ? (
+                <p className="text-sm text-muted-foreground">
+                    {noShows === 1 ? "1 shift has" : `${noShows} shifts have`} no punch at all and {noShows === 1 ? "isn't" : "aren't"} counted
+                    here. If you worked {noShows === 1 ? "it" : "them"}, ask your branch manager to add your punch.
                 </p>
             ) : null}
         </section>

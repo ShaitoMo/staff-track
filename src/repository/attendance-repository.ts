@@ -84,6 +84,21 @@ export class AttendanceRepository {
         });
     }
 
+    /**
+     * The newest instant any clock reading reached the branch — either end of a machine or imported
+     * punch. Hand-entered punches are left out: they fill gaps and say nothing about how far the
+     * machine's data goes.
+     */
+    static async getLatestMachinePunch(branchId: number): Promise<Date | null> {
+        const { _max } = await db.attendance.aggregate({
+            where: { branchId, source: { not: 'manual' } },
+            _max: { clockIn: true, clockOut: true },
+        });
+        const ends = [_max.clockIn, _max.clockOut].filter((end): end is Date => end !== null);
+
+        return ends.length === 0 ? null : new Date(Math.max(...ends.map((end) => end.getTime())));
+    }
+
     static async getAttendanceById(attendanceId: number): Promise<AttendanceView | null> {
         const attendance = await db.attendance.findUnique({ where: { attendanceId } });
 

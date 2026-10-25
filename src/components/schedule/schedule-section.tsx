@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { AlertCircleIcon, CircleCheckIcon } from "lucide-react";
 import { CopyWeekButton, ScheduleGrid } from "@/components/schedule/schedule-grid";
+import { ScheduleRoster } from "@/components/schedule/schedule-roster";
 import { WeekNav } from "@/components/layout/week-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { addDays, formatDay, mondayOf, sortPeriods, weekDates } from "@/lib/coverage-rows";
+import { addDays, formatDay, formatWeekRange, mondayOf, sortPeriods, weekDates } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
 import {
     buildOpenRegisterRows,
@@ -34,19 +35,9 @@ function plural(count: number, one: string, many: string): string {
     return `${count} ${count === 1 ? one : many}`;
 }
 
-/** The week's open work in one line, so the red cells don't have to be counted by eye. */
+/** The week's missing people in one line, so the "Needs" cells don't have to be counted by eye. */
 function CoverageSummary({ summary }: { summary: WeekSummary }) {
-    const gaps = [
-        summary.shortSlots > 0
-            ? `${plural(summary.shortSlots, "role slot", "role slots")} short (${plural(summary.peopleShort, "person", "people")})`
-            : null,
-        summary.unstaffedRegisters > 0 ? `${plural(summary.unstaffedRegisters, "register slot", "register slots")} unstaffed` : null,
-        summary.crowdedRegisters > 0
-            ? `${plural(summary.crowdedRegisters, "register slot has", "register slots have")} more than one person`
-            : null,
-    ].filter((gap) => gap !== null);
-
-    if (gaps.length === 0) {
+    if (summary.shortSlots === 0) {
         return (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CircleCheckIcon className="size-4 shrink-0" aria-hidden="true" />
@@ -58,7 +49,9 @@ function CoverageSummary({ summary }: { summary: WeekSummary }) {
     return (
         <p className="flex items-start gap-2 text-sm">
             <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
-            <span>{gaps.join(" · ")}</span>
+            <span>
+                {plural(summary.shortSlots, "role slot", "role slots")} short ({plural(summary.peopleShort, "person", "people")})
+            </span>
         </p>
     );
 }
@@ -67,7 +60,7 @@ function LegendSwatch({ className }: { className: string }) {
     return <span aria-hidden="true" className={cn("h-3 w-5 shrink-0 rounded-sm border", className)} />;
 }
 
-/** Keys the grid's two tints; the register rule lives here too since the grid itself can't show it. */
+/** Keys the editing grid's marks: the needs dot, today's tint, and the register tag. */
 function GridLegend() {
     return (
         <ul aria-label="Legend" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -97,11 +90,14 @@ export async function ScheduleSection({
     branchId,
     weekStart,
     roles,
+    editing,
     showWeekNav = true,
 }: {
     branchId: number;
     weekStart: string;
     roles: Role[];
+    /** The editing grid; otherwise the finished, printable roster. */
+    editing: boolean;
     /** False when the page shows one week nav over several stacked branches. */
     showWeekNav?: boolean;
 }) {
@@ -136,22 +132,31 @@ export async function ScheduleSection({
     const sortedPeriods = sortPeriods(periods);
     // One pass over the week, shared by every builder below.
     const week = indexWeek(shifts, users, registers);
-    const roleRows = buildRoleRows(shifts, week, roles, sortedPeriods, requirements, weekStart);
+    const staff = toStaff(users);
+    // editing gives every role the branch has people for a row, so there is always somewhere to add them
+    const roleRows = buildRoleRows(shifts, week, roles, sortedPeriods, requirements, weekStart, editing ? staff.map((member) => member.roleId) : []);
     const openRegisterRows = buildOpenRegisterRows(week, registers, sortedPeriods, weekStart);
     const otherShifts = toOtherShifts(shifts, week, sortedPeriods);
     const today = todayDateString();
-    const weekNav = showWeekNav ? (
-        <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={{ branch: String(branchId) }} />
-    ) : null;
+    const toolbar = (
+        <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+            {showWeekNav ? (
+                <WeekNav
+                    basePath="/schedule"
+                    weekStart={weekStart}
+                    thisWeek={mondayOf(today)}
+                    query={{ branch: String(branchId), ...(editing && { mode: "edit" }) }}
+                />
+            ) : null}
+            {editing ? <CopyWeekButton branchId={branchId} weekStart={weekStart} /> : null}
+        </div>
+    );
 
     // with every period off there's no grid, but the week's shifts (now custom hours) and copy week still apply
     if (sortedPeriods.length === 0) {
         return (
             <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    {weekNav}
-                    <CopyWeekButton branchId={branchId} weekStart={weekStart} />
-                </div>
+                {toolbar}
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>No shift periods</EmptyTitle>
@@ -170,37 +175,65 @@ export async function ScheduleSection({
         );
     }
 
+    // an unscheduled week would read as a wall of "Needs" (and print blank), so it says so and offers the quick start
+    if (!editing && shifts.length === 0) {
+        return (
+            <div className="flex flex-col gap-4">
+                {toolbar}
+                <Empty className="border border-dashed border-border print:hidden">
+                    <EmptyHeader>
+                        <EmptyTitle>Nothing scheduled for {formatWeekRange(weekStart)}</EmptyTitle>
+                        <EmptyDescription>
+                            Start from the week before, then adjust it in Edit schedule. Or fill the week from scratch there.
+                        </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                        <CopyWeekButton branchId={branchId} weekStart={weekStart} />
+                    </EmptyContent>
+                </Empty>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                {weekNav}
-                <CopyWeekButton branchId={branchId} weekStart={weekStart} />
+            {toolbar}
+            {/* paper carries no week nav, so it says which week it is */}
+            <p className="hidden text-sm font-medium print:-mt-2 print:block">Week of {formatWeekRange(weekStart)}</p>
+            <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 print:hidden">
+                <CoverageSummary summary={summarizeWeek(roleRows)} />
+                {editing ? <GridLegend /> : null}
             </div>
-            <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-                <CoverageSummary summary={summarizeWeek(roleRows, openRegisterRows)} />
-                <GridLegend />
-            </div>
-            {roleRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+            {requirements.length === 0 ? (
+                <p className="text-sm text-muted-foreground print:hidden">
                     No coverage requirements yet. Set how many people each role needs on{" "}
                     <Link href={`/roles?branch=${branchId}`} className="font-medium text-primary underline-offset-4 hover:underline">
                         Roles
                     </Link>{" "}
-                    to schedule by role; registers can still be filled below.
+                    so the schedule shows who is still needed.
                 </p>
             ) : null}
-            <ScheduleGrid
-                branchId={branchId}
-                dates={weekDates(weekStart)}
-                today={today}
-                roleRows={roleRows}
-                periods={sortedPeriods}
-                openRegisterRows={openRegisterRows}
-                hasRegisters={registers.length > 0}
-                registerRoleIds={rolesOnRegisters(shifts, week)}
-                staff={toStaff(users)}
-                slots={slotsForClient(week)}
-            />
+            {editing ? (
+                <ScheduleGrid
+                    branchId={branchId}
+                    dates={weekDates(weekStart)}
+                    today={today}
+                    roleRows={roleRows}
+                    periods={sortedPeriods}
+                    openRegisterRows={openRegisterRows}
+                    hasRegisters={registers.length > 0}
+                    registerRoleIds={rolesOnRegisters(shifts, week)}
+                    staff={staff}
+                    slots={slotsForClient(week)}
+                />
+            ) : (
+                <ScheduleRoster
+                    dates={weekDates(weekStart)}
+                    today={today}
+                    roleRows={roleRows}
+                    periods={sortedPeriods}
+                />
+            )}
             <OtherShiftsTable shifts={otherShifts} />
         </div>
     );

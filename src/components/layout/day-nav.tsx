@@ -5,9 +5,22 @@ import { addDays, formatDay } from "@/lib/coverage-rows";
 import { TOUCH_HEIGHT, TOUCH_SIZE } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 
-/** ‹ Wed 30 Sep ›, plus a way back to today. The day sibling of WeekNav; links set `?date=`. */
-export function DayNav({ basePath, date, today }: { basePath: string; date: string; today: string }) {
-    const dayHref = (day: string) => `${basePath}?${new URLSearchParams({ date: day })}`;
+/**
+ * ‹ Wed 30 Sep ›, plus a way back to today. The day sibling of WeekNav; links keep the page's other
+ * params (`query`, e.g. branch) and set `?date=`.
+ */
+export function DayNav({
+    basePath,
+    date,
+    today,
+    query = {},
+}: {
+    basePath: string;
+    date: string;
+    today: string;
+    query?: Record<string, string>;
+}) {
+    const dayHref = (day: string) => `${basePath}?${new URLSearchParams({ ...query, date: day })}`;
 
     return (
         <div className="flex items-center gap-1">
