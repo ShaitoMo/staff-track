@@ -4,6 +4,7 @@ import { PhotoLink } from "@/components/tasks/photo-link";
 import { StatusBadge } from "@/components/tasks/status-badge";
 import { TaskReferenceButton } from "@/components/tasks/task-reference";
 import { Badge } from "@/components/ui/badge";
+import { getI18n } from "@/i18n/server";
 import { formatDay } from "@/lib/coverage-rows";
 import { type InstanceRow, todayDateString } from "@/lib/instance-rows";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,8 @@ import { cn } from "@/lib/utils";
  * shows how it ended, so a declined task doesn't just vanish. The title opens the same full-detail
  * modal as the owner/manager Instances view. Only CompleteTaskForm, the reference and the dialog are client islands.
  */
-export function MyTaskList({ rows, className }: { rows: InstanceRow[]; className?: string }) {
+export async function MyTaskList({ rows, className }: { rows: InstanceRow[]; className?: string }) {
+    const { t, locale } = await getI18n();
     const today = todayDateString();
 
     return (
@@ -22,7 +24,7 @@ export function MyTaskList({ rows, className }: { rows: InstanceRow[]; className
                 const pending = row.status === "pending";
                 // a recurring task repeats its title daily, so an overdue copy must say so or it reads as a duplicate
                 const overdue = pending && row.dueDate < today;
-                const taskLabel = `${row.title}, due ${formatDay(row.dueDate)}`;
+                const taskLabel = t.tasks.taskLabel(row.title, formatDay(row.dueDate, locale));
 
                 return (
                     <li key={row.instanceId} className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
@@ -30,14 +32,14 @@ export function MyTaskList({ rows, className }: { rows: InstanceRow[]; className
                             {/* a 44px minimum on touch, not TOUCH_HEIGHT's fixed h-11, so a wrapped title isn't clipped */}
                             <InstanceDetailDialog row={row} titleClassName="text-base [@media(pointer:coarse)]:min-h-11" />
                             {pending ? null : <StatusBadge status={row.status} />}
-                            {overdue ? <Badge variant="destructive">Overdue</Badge> : null}
+                            {overdue ? <Badge variant="destructive">{t.tasks.overdue}</Badge> : null}
                         </div>
                         {row.description !== null ? (
-                            <span className="max-w-prose text-sm text-muted-foreground">{row.description}</span>
+                            <span className="max-w-prose text-sm text-muted-foreground"><bdi>{row.description}</bdi></span>
                         ) : null}
                         <div className="mt-1 flex items-center justify-between text-sm text-muted-foreground">
                             <span>{row.branchName}</span>
-                            <span className={cn(overdue && "text-destructive")}>Due {formatDay(row.dueDate)}</span>
+                            <span className={cn(overdue && "text-destructive")}>{t.tasks.dueOn(formatDay(row.dueDate, locale))}</span>
                         </div>
                         {pending && row.referenceName !== null ? (
                             <div className="mt-3">

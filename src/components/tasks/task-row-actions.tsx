@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { updateTask } from "@/lib/api/tasks";
 
@@ -28,6 +29,7 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
     const [pending, startTransition] = useTransition();
     const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const t = useT();
 
     function toggleActive() {
         setError(null);
@@ -36,7 +38,7 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
                 await updateTask(taskId, { active: !active });
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             } finally {
                 setConfirming(false);
             }
@@ -47,7 +49,7 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
         <div className="flex flex-col items-end gap-1">
             <div className="flex gap-2">
                 <Link href={`/tasks/${taskId}/edit`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                    Edit
+                    {t.common.edit}
                 </Link>
                 <Button
                     size="sm"
@@ -56,7 +58,7 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
                     onClick={active ? () => setConfirming(true) : toggleActive}
                 >
                     {pending && !confirming ? <Spinner data-icon="inline-start" /> : null}
-                    {active ? "Deactivate" : "Activate"}
+                    {active ? t.tasks.deactivate : t.tasks.activate}
                 </Button>
             </div>
             {error !== null ? <span className="text-xs text-destructive">{error}</span> : null}
@@ -64,17 +66,14 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
             <AlertDialog open={confirming} onOpenChange={setConfirming}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Deactivate this task?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            &ldquo;{title}&rdquo; will stop showing up for staff and no new instances will be created.
-                            Work already done, with its photos, is kept. You can activate it again at any time.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>{t.tasks.deactivateTitle}</AlertDialogTitle>
+                        <AlertDialogDescription>{t.tasks.deactivateDescription(title)}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={pending}>{t.common.cancel}</AlertDialogCancel>
                         <AlertDialogAction disabled={pending} onClick={toggleActive}>
                             {pending ? <Spinner data-icon="inline-start" /> : null}
-                            Deactivate
+                            {t.tasks.deactivate}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

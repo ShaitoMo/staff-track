@@ -11,6 +11,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createUser, linkUserBranch, unlinkUserBranch, updateUser } from "@/lib/api/users";
 import { BranchLinkInput, diffBranchLinks } from "@/lib/branch-link-diff";
@@ -58,6 +59,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [branchWarnings, setBranchWarnings] = useState<string[]>([]);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function toggleBranch(branchId: number, selected: boolean) {
         setBranchSelections((prev) => ({
@@ -92,8 +94,8 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         );
         removeResults.forEach((result, index) => {
             if (result.status === "rejected") {
-                const branchName = branches.find((b) => b.branchId === removeIds[index])?.name ?? `branch ${removeIds[index]}`;
-                warnings.push({ branchId: removeIds[index], message: `Could not remove ${branchName}.` });
+                const branchName = branches.find((b) => b.branchId === removeIds[index])?.name ?? t.users.fallbackBranch(removeIds[index]);
+                warnings.push({ branchId: removeIds[index], message: t.users.couldNotRemove(branchName) });
             }
         });
 
@@ -103,9 +105,9 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         );
         addResults.forEach((result, index) => {
             if (result.status === "fulfilled") return;
-            const branchName = branches.find((b) => b.branchId === addLinks[index].branchId)?.name ?? `branch ${addLinks[index].branchId}`;
-            const reason = result.reason instanceof ApiError ? `: ${result.reason.message}` : ".";
-            warnings.push({ branchId: addLinks[index].branchId, message: `Could not link ${branchName}${reason}` });
+            const branchName = branches.find((b) => b.branchId === addLinks[index].branchId)?.name ?? t.users.fallbackBranch(addLinks[index].branchId);
+            const reason = result.reason instanceof ApiError ? result.reason.message : null;
+            warnings.push({ branchId: addLinks[index].branchId, message: t.users.couldNotLink(branchName, reason) });
         });
 
         return warnings;
@@ -119,6 +121,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         const validationErrors = validateUserForm(
             { name, phone, password, roleId },
             { requirePassword: mode === "create" },
+            t.users.errors,
         );
         setErrors(validationErrors);
         if (!isUserFormValid(validationErrors)) return;
@@ -161,7 +164,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                 router.push("/users");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -180,8 +183,8 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                         <Alert variant="destructive">
                             <AlertCircleIcon />
                             <AlertDescription>
-                                The user was saved, but some branch changes didn&apos;t go through:
-                                <ul className="ml-4 list-disc">
+                                {t.users.savedButBranches}
+                                <ul className="ms-4 list-disc">
                                     {branchWarnings.map((warning) => (
                                         <li key={warning}>{warning}</li>
                                     ))}
@@ -192,22 +195,22 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                 </FormAlerts>
             ) : null}
 
-            <FormSection legend="Person" className="sm:grid-cols-2 lg:grid-cols-3">
+            <FormSection legend={t.users.person} className="sm:grid-cols-2 lg:grid-cols-3">
                 <Field data-invalid={!!errors.name || undefined}>
-                    <FieldLabel htmlFor="name">Name</FieldLabel>
+                    <FieldLabel htmlFor="name">{t.setup.name}</FieldLabel>
                     <Input id="name" value={name} disabled={pending} onChange={(e) => setName(e.target.value)} />
                     <FieldError>{errors.name}</FieldError>
                 </Field>
 
                 <Field data-invalid={!!errors.phone || undefined}>
-                    <FieldLabel htmlFor="phone">Phone</FieldLabel>
-                    <Input id="phone" type="tel" autoComplete="off" value={phone} disabled={pending} onChange={(e) => setPhone(e.target.value)} />
+                    <FieldLabel htmlFor="phone">{t.users.phone}</FieldLabel>
+                    <Input id="phone" type="tel" dir="ltr" autoComplete="off" value={phone} disabled={pending} onChange={(e) => setPhone(e.target.value)} />
                     <FieldError>{errors.phone}</FieldError>
                 </Field>
 
                 {mode === "create" && (
                     <Field data-invalid={!!errors.password || undefined}>
-                        <FieldLabel htmlFor="password">Password</FieldLabel>
+                        <FieldLabel htmlFor="password">{t.users.password}</FieldLabel>
                         <Input
                             id="password"
                             type="password"
@@ -221,19 +224,19 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                 )}
             </FormSection>
 
-            <FormSection legend="Access" className="sm:grid-cols-2 lg:grid-cols-3">
+            <FormSection legend={t.users.access} className="sm:grid-cols-2 lg:grid-cols-3">
                 <Field data-invalid={!!errors.roleId || undefined}>
-                    <FieldLabel htmlFor="role">Role</FieldLabel>
+                    <FieldLabel htmlFor="role">{t.users.role}</FieldLabel>
                     <Select
                         value={roleId !== null ? String(roleId) : ""}
                         onValueChange={(value) => setRoleId(Number(value))}
                         disabled={pending || (mode === "edit" && !canEditRoleAndStatus)}
                     >
                         <SelectTrigger id="role" className="w-full">
-                            <SelectValue placeholder="Select a role">
+                            <SelectValue placeholder={t.users.selectRole}>
                                 {(value: string) => {
                                     const name = roles.find((role) => String(role.roleId) === value)?.name;
-                                    return name !== undefined ? <span className="capitalize">{name}</span> : "Select a role";
+                                    return name !== undefined ? <span className="capitalize">{name}</span> : t.users.selectRole;
                                 }}
                             </SelectValue>
                         </SelectTrigger>
@@ -256,13 +259,13 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                             disabled={pending || !canEditRoleAndStatus}
                             onCheckedChange={(checked) => setIsActive(checked === true)}
                         />
-                        <FieldLabel htmlFor="isActive" className="font-normal">Active</FieldLabel>
+                        <FieldLabel htmlFor="isActive" className="font-normal">{t.setup.active}</FieldLabel>
                     </Field>
                 )}
             </FormSection>
 
             {/* a branch's machine ID sits on its own row, beside it, once the branch is ticked */}
-            <FormSection legend="Branches" className="gap-y-3">
+            <FormSection legend={t.users.branches} className="gap-y-3">
                 {branches.map((branch) => {
                     const selection = branchSelections[branch.branchId];
                     return (
@@ -280,12 +283,12 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                             </Field>
                             {selection?.selected && (
                                 <Input
-                                    aria-label={`Machine employee ID at ${branch.name} (optional)`}
-                                    placeholder="Machine employee ID (optional)"
+                                    aria-label={t.users.machineIdAt(branch.name)}
+                                    placeholder={t.users.machineIdPlaceholder}
                                     value={selection.machineEmployeeId}
                                     disabled={pending}
                                     onChange={(e) => setMachineEmployeeId(branch.branchId, e.target.value)}
-                                    className="ml-6 w-auto sm:ml-0"
+                                    className="ms-6 w-auto sm:ms-0"
                                 />
                             )}
                         </div>
@@ -296,7 +299,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
             <FormFooter>
                 <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
-                    {mode === "create" ? "Create user" : "Save changes"}
+                    {mode === "create" ? t.users.createUser : t.setup.saveChanges}
                 </Button>
             </FormFooter>
         </FormCard>

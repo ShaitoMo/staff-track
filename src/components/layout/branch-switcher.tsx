@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { ALL_BRANCHES, BRANCH_COOKIE, branchCookieString, parseBranchId, resolveBranchId } from "@/lib/branch-selection";
+import { useT } from "@/i18n/client";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 
@@ -38,13 +39,14 @@ export function BranchSwitcher({ branches, preference }: { branches: { branchId:
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [pending, startTransition] = useTransition();
+    const t = useT();
     const saved = useSyncExternalStore(noSubscription, readBranchCookie, () => preference);
 
     // memoized: it's an effect dependency below, and a fresh array each render would rerun the effect every time
     const branchIds = useMemo(() => branches.map((branch) => branch.branchId), [branches]);
     const requested = searchParams.get("branch");
     const selectedId = resolveBranchId(requested, saved, branchIds);
-    const selectedName = branches.find((branch) => branch.branchId === selectedId)?.name ?? "All branches";
+    const selectedName = branches.find((branch) => branch.branchId === selectedId)?.name ?? t.common.allBranches;
 
     useEffect(() => {
         const linked = parseBranchId(requested);
@@ -57,7 +59,7 @@ export function BranchSwitcher({ branches, preference }: { branches: { branchId:
         return (
             <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
                 <StoreIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{branches[0]?.name ?? "No branch"}</span>
+                <span className="truncate">{branches[0]?.name ?? t.common.noBranch}</span>
             </span>
         );
     }
@@ -81,21 +83,21 @@ export function BranchSwitcher({ branches, preference }: { branches: { branchId:
                     <Button
                         variant="outline"
                         size="sm"
-                        aria-label={`Branch: ${selectedName}. Change branch`}
+                        aria-label={t.layout.branchTrigger(selectedName)}
                         className={cn("min-w-0 max-w-56 justify-start gap-2", TOUCH_HEIGHT)}
                     />
                 }
             >
                 {pending ? <Spinner data-icon="inline-start" /> : <StoreIcon aria-hidden className="text-muted-foreground" />}
                 <span className="truncate">{selectedName}</span>
-                <ChevronsUpDownIcon aria-hidden className="ml-auto text-muted-foreground" />
+                <ChevronsUpDownIcon aria-hidden className="ms-auto text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-60">
                 <DropdownMenuGroup>
-                    <DropdownMenuLabel>Branch</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t.layout.branch}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={selectedId === undefined ? ALL_BRANCHES : String(selectedId)} onValueChange={choose}>
                         <DropdownMenuRadioItem value={ALL_BRANCHES} closeOnClick className={TOUCH_HEIGHT}>
-                            All branches
+                            {t.common.allBranches}
                         </DropdownMenuRadioItem>
                         <DropdownMenuSeparator />
                         {branches.map((branch) => (

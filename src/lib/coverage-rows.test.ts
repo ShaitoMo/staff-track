@@ -42,8 +42,8 @@ describe('mondayOf', () => {
 
 describe('formatDay', () => {
     it('gives the same three-letter month style for every month', () => {
-        expect(formatDay('2026-09-28')).toBe('Mon 28 Sep');
-        expect(formatDay('2026-10-01')).toBe('Thu 1 Oct');
+        expect(formatDay('2026-09-28', 'en')).toBe('Mon 28 Sep');
+        expect(formatDay('2026-10-01', 'en')).toBe('Thu 1 Oct');
     });
 });
 

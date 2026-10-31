@@ -85,7 +85,7 @@ describe('buildInstanceRows', () => {
 
     it('falls back to the role id when the role is unknown', () => {
         const [row] = buildInstanceRows([instance({ id: 1, roleId: 99 })], roles, 1);
-        expect(row.assignee).toBe('Role #99');
+        expect(row.assignee).toBe('#99');
     });
 
     it('says Unassigned when there is neither', () => {

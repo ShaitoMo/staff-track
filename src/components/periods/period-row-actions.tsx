@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { deletePeriod, setPeriodActive } from "@/lib/api/periods";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function PeriodRowActions({ periodId, name, active }: { periodId: number;
     const [pending, startTransition] = useTransition();
     const [confirming, setConfirming] = useState<Confirming>(null);
     const [error, setError] = useState<string | null>(null);
+    const t = useT();
 
     function run(action: () => Promise<void>) {
         setError(null);
@@ -40,7 +42,7 @@ export function PeriodRowActions({ periodId, name, active }: { periodId: number;
                 await action();
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             } finally {
                 setConfirming(null);
             }
@@ -54,7 +56,7 @@ export function PeriodRowActions({ periodId, name, active }: { periodId: number;
         <div className="flex flex-col items-end gap-1">
             <div className="flex gap-2">
                 <Link href={`/periods/${periodId}/edit`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-                    Edit
+                    {t.periods.edit}
                 </Link>
                 <Button
                     size="sm"
@@ -63,10 +65,10 @@ export function PeriodRowActions({ periodId, name, active }: { periodId: number;
                     onClick={active ? () => setConfirming("deactivate") : toggleActive}
                 >
                     {pending && confirming === null ? <Spinner data-icon="inline-start" /> : null}
-                    {active ? "Deactivate" : "Activate"}
+                    {active ? t.periods.deactivate : t.periods.activate}
                 </Button>
                 <Button size="sm" variant="ghost" disabled={pending} onClick={() => setConfirming("delete")}>
-                    Delete
+                    {t.periods.delete}
                 </Button>
             </div>
             {error !== null ? <span className="text-xs text-destructive">{error}</span> : null}
@@ -74,27 +76,20 @@ export function PeriodRowActions({ periodId, name, active }: { periodId: number;
             <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{confirming === "delete" ? "Delete this period?" : "Deactivate this period?"}</AlertDialogTitle>
+                        <AlertDialogTitle>{confirming === "delete" ? t.periods.deleteTitle : t.periods.deactivateTitle}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {confirming === "delete" ? (
-                                <>&ldquo;{name}&rdquo; will be removed. This only works if no shift or coverage rule uses it.</>
-                            ) : (
-                                <>
-                                    &ldquo;{name}&rdquo; will stop showing on the schedule and coverage, and can&apos;t be picked for new
-                                    shifts. Shifts already on it keep their times. You can activate it again at any time.
-                                </>
-                            )}
+                            {confirming === "delete" ? t.periods.deleteDescription(name) : t.periods.deactivateDescription(name)}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={pending}>{t.common.cancel}</AlertDialogCancel>
                         <AlertDialogAction
                             variant={confirming === "delete" ? "destructive" : "default"}
                             disabled={pending}
                             onClick={confirming === "delete" ? remove : toggleActive}
                         >
                             {pending ? <Spinner data-icon="inline-start" /> : null}
-                            {confirming === "delete" ? "Delete" : "Deactivate"}
+                            {confirming === "delete" ? t.periods.delete : t.periods.deactivate}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -4,21 +4,23 @@ import { BranchesToday } from "@/components/dashboard/branches-today";
 import { StaffToday } from "@/components/dashboard/staff-today";
 import { DayNav } from "@/components/layout/day-nav";
 import { Spinner } from "@/components/ui/spinner";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { getDictionary } from "@/i18n/server";
 import { parseDateParam, todayDateString } from "@/lib/instance-rows";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
 
-const loading = (
+const loading = (t: Dictionary) => (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Spinner /> Loading…
+        <Spinner /> {t.dashboard.loading}
     </div>
 );
 
 /** The tab says what the page heading says, which depends on who's looking. */
 export async function generateMetadata(): Promise<Metadata> {
-    const session = await getSession();
+    const [session, t] = await Promise.all([getSession(), getDictionary()]);
     const canManage = session?.role === OWNER_ROLE || session?.role === MANAGER_ROLE;
-    return { title: canManage ? "Dashboard" : "Home" };
+    return { title: canManage ? t.dashboard.title : t.dashboard.homeTitle };
 }
 
 /**
@@ -26,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * their today and tomorrow. The day nav sits outside the boundary so the date stays put on load.
  */
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ date?: string; branch?: string }> }) {
-    const [{ date: dateParam, branch }, session] = await Promise.all([searchParams, getSession()]);
+    const [{ date: dateParam, branch }, session, t] = await Promise.all([searchParams, getSession(), getDictionary()]);
 
     if (!session) {
         return null;
@@ -35,8 +37,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     if (session.role !== OWNER_ROLE && session.role !== MANAGER_ROLE) {
         return (
             <div className="flex flex-col gap-6">
-                <h1 className="text-xl font-semibold">Home</h1>
-                <Suspense fallback={loading}>
+                <h1 className="text-xl font-semibold">{t.dashboard.homeTitle}</h1>
+                <Suspense fallback={loading(t)}>
                     <StaffToday userId={session.userId} branchIds={session.branchIds} />
                 </Suspense>
             </div>
@@ -48,9 +50,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
     return (
         <div className="flex flex-col gap-6">
-            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
             <DayNav basePath="/" date={date} today={today} />
-            <Suspense key={`${date}-${branch}`} fallback={loading}>
+            <Suspense key={`${date}-${branch}`} fallback={loading(t)}>
                 <BranchesToday date={date} today={today} branchParam={branch} />
             </Suspense>
         </div>

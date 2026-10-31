@@ -5,15 +5,18 @@ import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { BranchTable } from "@/components/branches/branch-table";
 import { ApiError } from "@/lib/api-client";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
 
-export const metadata: Metadata = { title: "Branches" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).branches.title };
+}
 
 export default async function BranchesPage() {
-    const session = await getSession();
+    const [session, t] = await Promise.all([getSession(), getDictionary()]);
     const isOwner = session?.role === OWNER_ROLE;
 
     let branches: Branch[];
@@ -22,7 +25,7 @@ export default async function BranchesPage() {
         branches = await fetchApi<Branch[]>("/api/branches");
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage title="Branches" message="You don't have access to view branches." />;
+            return <AccessMessage title={t.branches.title} message={t.branches.noAccess} />;
         }
         throw error;
     }
@@ -30,18 +33,18 @@ export default async function BranchesPage() {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Branches</h1>
+                <h1 className="text-xl font-semibold">{t.branches.title}</h1>
                 {isOwner && (
                     <Link href="/branches/new" className={buttonVariants({ size: "sm" })}>
-                        Add branch
+                        {t.branches.addBranch}
                     </Link>
                 )}
             </div>
             {branches.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No branches found</EmptyTitle>
-                        <EmptyDescription>No branches exist yet.</EmptyDescription>
+                        <EmptyTitle>{t.branches.noneFound}</EmptyTitle>
+                        <EmptyDescription>{t.branches.noneYet}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : (

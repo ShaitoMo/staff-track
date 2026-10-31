@@ -13,14 +13,18 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PeriodHours } from "@/components/schedule/schedule-roster";
+import { DayHeading } from "@/components/schedule/day-heading";
+import { PeriodHours } from "@/components/schedule/period-hours";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { useLocale, useT } from "@/i18n/client";
+import { isolate } from "@/i18n/locales";
 import { ApiError } from "@/lib/api-client";
 import { copyWeek, createShift, deleteShift, setShiftRegister } from "@/lib/api/shifts";
-import { addDays, formatDay } from "@/lib/coverage-rows";
+import { addDays, formatDay, formatDayStacked } from "@/lib/coverage-rows";
 import {
     NEEDS_DOT,
     OpenRegisterRow,
@@ -62,6 +66,7 @@ function useScheduleAction() {
     const router = useRouter();
     const [pending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
+    const t = useT();
 
     function run(action: () => Promise<void>) {
         setError(null);
@@ -70,7 +75,7 @@ function useScheduleAction() {
                 await action();
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -93,7 +98,7 @@ function PersonChip({
     tag?: React.ReactNode;
 }) {
     return (
-        <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card py-0.5 pr-0.5 pl-2 text-xs">
+        <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card py-0.5 pe-0.5 ps-2 text-xs">
             {/* in a narrow day column the register wraps under the name, as on the read-only schedule */}
             <span className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
                 {person.name}
@@ -161,7 +166,7 @@ function PersonPicker({
                 size="sm"
                 aria-label={label}
                 className={cn(
-                    "-ml-1 gap-1 border-transparent px-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground data-popup-open:bg-muted data-popup-open:text-foreground [&>svg:last-child]:hidden",
+                    "-ms-1 gap-1 border-transparent px-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground data-popup-open:bg-muted data-popup-open:text-foreground [&>svg:last-child]:hidden",
                     TOUCH_HEIGHT,
                 )}
             >
@@ -196,9 +201,27 @@ function RegisterTag({
         return null;
     }
 
+    return <RegisterSelect person={person} openSeats={openSeats} where={where} disabled={disabled} onPick={onPick} />;
+}
+
+/** RegisterTag's control, split out so the early return above stays ahead of any hook. */
+function RegisterSelect({
+    person,
+    openSeats,
+    where,
+    disabled,
+    onPick,
+}: {
+    person: SchedulePerson;
+    openSeats: RegisterSeat[];
+    where: string;
+    disabled: boolean;
+    onPick: (registerId: number | null) => void;
+}) {
+    const t = useT();
     const options = [
         ...openSeats.map((seat) => ({ value: String(seat.registerId), name: seat.name })),
-        ...(person.registerId === null ? [] : [{ value: NO_REGISTER, name: "No register" }]),
+        ...(person.registerId === null ? [] : [{ value: NO_REGISTER, name: t.schedule.noRegister }]),
     ];
 
     return (
@@ -210,7 +233,9 @@ function RegisterTag({
             <SelectTrigger
                 size="sm"
                 aria-label={
-                    person.registerName ? `${person.name} is on ${person.registerName}; change register (${where})` : `Put ${person.name} on a register (${where})`
+                    person.registerName
+                        ? t.schedule.changeRegister(person.name, person.registerName, where)
+                        : t.schedule.putOnRegister(person.name, where)
                 }
                 className={cn(
                     "h-5 gap-0.5 rounded-sm px-1 py-0 text-xs data-[size=sm]:h-5 [&>svg:last-child]:hidden [@media(pointer:coarse)]:h-8",
@@ -222,11 +247,11 @@ function RegisterTag({
                 {person.registerName ?? (
                     <>
                         <PlusIcon className="size-3" aria-hidden="true" />
-                        register
+                        {t.schedule.registerTag}
                     </>
                 )}
             </SelectTrigger>
-            <PickerOptions groups={[{ label: "Register", options }]} />
+            <PickerOptions groups={[{ label: t.schedule.register, options }]} />
         </Select>
     );
 }
@@ -265,8 +290,11 @@ function RoleCellView({
     openSeats: RegisterSeat[];
 }) {
     const { pending, error, run } = useScheduleAction();
+    const t = useT();
+    const locale = useLocale();
     const cell = row.cells[cellIndex];
-    const where = `${row.roleName}, ${row.periodName}, ${formatDay(cell.date)}`;
+    // each name isolated on its own, so an English role or period doesn't reorder the Arabic around it
+    const where = [isolate(row.roleName), isolate(row.periodName), formatDay(cell.date, locale)].join(t.common.listSeparator);
     const free = staff.filter((member) => member.roleId === row.roleId && !busy.has(member.userId));
     const optionsFor = (registerId: number | null) =>
         free.map((member) => ({ value: `${member.userId}:${registerId ?? NO_REGISTER}`, name: member.name }));
@@ -290,15 +318,15 @@ function RoleCellView({
             {cell.shortfall > 0 ? (
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <span aria-hidden="true" className={NEEDS_DOT} />
-                    Needs {cell.shortfall}
-                    <span className="sr-only"> more of {cell.required}</span>
+                    {t.schedule.needs(cell.shortfall)}
+                    <span className="sr-only">{t.schedule.needsMoreOf(cell.required)}</span>
                 </span>
             ) : null}
             {cell.people.map((person) => (
                 <PersonChip
                     key={person.shiftId}
                     person={person}
-                    label={`Remove ${person.name} from ${where}`}
+                    label={t.schedule.removeFrom(person.name, where)}
                     disabled={pending}
                     onRemove={() => run(() => deleteShift(person.shiftId))}
                     tag={
@@ -313,17 +341,17 @@ function RoleCellView({
                 />
             ))}
             <PersonPicker
-                placeholder="Add"
-                label={`Add a person to ${where}`}
+                placeholder={t.schedule.add}
+                label={t.schedule.addTo(where)}
                 groups={[
-                    ...openSeats.map((seat) => ({ label: `On ${seat.name}`, options: optionsFor(seat.registerId) })),
-                    { label: "No register", options: optionsFor(null) },
+                    ...openSeats.map((seat) => ({ label: t.schedule.onRegister(seat.name), options: optionsFor(seat.registerId) })),
+                    { label: t.schedule.noRegister, options: optionsFor(null) },
                 ]}
                 disabled={pending}
                 onPick={add}
             />
             {free.length === 0 && cell.shortfall > 0 ? (
-                <span className="text-xs text-muted-foreground">No {row.roleName} free</span>
+                <span className="text-xs text-muted-foreground">{t.schedule.noneFree(row.roleName)}</span>
             ) : null}
         </CellShell>
     );
@@ -337,7 +365,7 @@ function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: numb
     return (
         <TableRow className="hover:bg-transparent">
             <TableHead scope="colgroup" colSpan={colSpan} className="h-10 pt-4 font-semibold text-foreground">
-                <span className="sticky left-2 inline-flex items-baseline gap-2">
+                <span className="sticky start-2 inline-flex items-baseline gap-2">
                     {period.name}
                     <PeriodHours period={period} />
                 </span>
@@ -352,7 +380,7 @@ function RowHeader({ title, capitalize = false }: { title: string; capitalize?: 
         <TableHead
             scope="row"
             className={cn(
-                "sticky left-0 z-10 h-auto bg-card py-2 align-top whitespace-normal",
+                "sticky start-0 z-10 h-auto bg-card py-2 align-top whitespace-normal",
                 // role names are stored lowercase; every other screen shows them capitalized
                 capitalize && "capitalize",
             )}
@@ -390,6 +418,8 @@ export function ScheduleGrid({
     slots: Record<string, SchedulePerson[]>;
 }) {
     const layout = useLayout();
+    const t = useT();
+    const locale = useLocale();
     // Who is already booked in each slot, as a Set per slot — built once per data change, not per cell render.
     const busyBySlot = useMemo(
         () => new Map(Object.entries(slots).map(([key, people]) => [key, new Set(people.map((person) => person.userId))])),
@@ -433,7 +463,7 @@ export function ScheduleGrid({
                 {/* fixed layout: the seven days share the width evenly, so the whole week fits from `xl` without scrolling */}
                 <Table className="table-fixed">
                     <TableCaption className="sr-only">
-                        Weekly schedule by shift period: people per role, with the register each person works
+                        {t.schedule.gridCaption}
                     </TableCaption>
                     <colgroup>
                         <col className="w-28" />
@@ -443,16 +473,15 @@ export function ScheduleGrid({
                     </colgroup>
                     <TableHeader>
                         <TableRow className="hover:bg-transparent">
-                            <TableHead scope="col" className="sticky left-0 z-10 bg-card">Slot</TableHead>
+                            <TableHead scope="col" className="sticky start-0 z-10 bg-card">{t.schedule.slot}</TableHead>
                             {dates.map((date) => (
                                 <TableHead
                                     key={date}
                                     scope="col"
                                     aria-current={date === today ? "date" : undefined}
-                                    className={cn("whitespace-nowrap", date === today && "bg-muted font-semibold")}
+                                    className={cn("h-auto py-2 leading-tight whitespace-nowrap", date === today && "bg-muted font-semibold")}
                                 >
-                                    {formatDay(date)}
-                                    {date === today ? <span className="ml-1.5 text-xs font-normal text-muted-foreground">Today</span> : null}
+                                    <DayHeading date={date} locale={locale} todayLabel={date === today ? t.common.today : undefined} />
                                 </TableHead>
                             ))}
                         </TableRow>
@@ -522,19 +551,21 @@ function DayView({
     children: (index: number) => React.ReactNode;
 }) {
     const [selected, setSelected] = useState(() => Math.max(0, dates.indexOf(today)));
+    const t = useT();
+    const locale = useLocale();
 
     return (
         <div className="flex flex-col gap-4 xl:hidden">
-            <div role="group" aria-label="Day" className="grid grid-cols-7 gap-1">
+            <div role="group" aria-label={t.schedule.dayGroup} className="grid grid-cols-7 gap-1">
                 {dates.map((date, index) => {
-                    const [weekday, day] = formatDay(date).split(" ");
+                    const { weekday, day } = formatDayStacked(date, locale);
                     const isSelected = index === selected;
                     return (
                         <button
                             key={date}
                             type="button"
                             aria-pressed={isSelected}
-                            aria-label={`${formatDay(date)}${date === today ? ", today" : ""}${dayNeeds[index] ? ", needs people" : ""}`}
+                            aria-label={t.schedule.dayButton(formatDay(date, locale), date === today, dayNeeds[index])}
                             onClick={() => setSelected(index)}
                             className={cn(
                                 "relative flex min-h-12 flex-col items-center justify-center rounded-md border text-xs outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
@@ -545,15 +576,15 @@ function DayView({
                             <span className={cn(!isSelected && "text-muted-foreground")}>{weekday}</span>
                             <span className="text-sm font-medium tabular-nums">{day}</span>
                             {dayNeeds[index] ? (
-                                <span aria-hidden="true" className={cn(NEEDS_DOT, "absolute top-1 right-1")} />
+                                <span aria-hidden="true" className={cn(NEEDS_DOT, "absolute top-1 end-1")} />
                             ) : null}
                         </button>
                     );
                 })}
             </div>
             <h3 className="text-sm font-medium">
-                {formatDay(dates[selected])}
-                {dates[selected] === today ? <span className="ml-2 text-xs font-normal text-muted-foreground">Today</span> : null}
+                {formatDay(dates[selected], locale)}
+                {dates[selected] === today ? <span className="ms-2 text-xs font-normal text-muted-foreground">{t.common.today}</span> : null}
             </h3>
             {children(selected)}
         </div>
@@ -561,20 +592,17 @@ function DayView({
 }
 
 /** What a copy did, in the manager's terms; the three outcomes need different next steps. */
-function copyOutcome(created: number, skipped: number, sourceLabel: string): string {
-    if (created === 0 && skipped === 0) {
-        return `Nothing to copy: the week of ${sourceLabel} has no shifts.`;
-    }
-    if (created === 0) {
-        return `Nothing new copied: all ${skipped} shifts are already booked here or their people left the branch.`;
-    }
-    const copied = `Copied ${created} ${created === 1 ? "shift" : "shifts"}`;
-    return skipped > 0 ? `${copied}; skipped ${skipped} already booked or no longer at the branch.` : `${copied}.`;
+function copyOutcome(created: number, skipped: number, sourceLabel: string, t: Dictionary): string {
+    if (created === 0 && skipped === 0) return t.schedule.copyNothing(sourceLabel);
+    if (created === 0) return t.schedule.copyNothingNew(skipped);
+    return t.schedule.copied(created, skipped);
 }
 
 /** The page's one primary action: fills this week from the one before, after a confirmation, in a single request. */
 export function CopyWeekButton({ branchId, weekStart }: { branchId: number; weekStart: string }) {
-    const sourceLabel = formatDay(addDays(weekStart, -7));
+    const t = useT();
+    const locale = useLocale();
+    const sourceLabel = formatDay(addDays(weekStart, -7), locale);
     const router = useRouter();
     const [confirming, setConfirming] = useState(false);
     const [pending, startTransition] = useTransition();
@@ -585,10 +613,10 @@ export function CopyWeekButton({ branchId, weekStart }: { branchId: number; week
         startTransition(async () => {
             try {
                 const { created, skipped } = await copyWeek(branchId, weekStart);
-                setMessage({ text: copyOutcome(created, skipped, sourceLabel), isError: false });
+                setMessage({ text: copyOutcome(created, skipped, sourceLabel, t), isError: false });
                 router.refresh();
             } catch (caught) {
-                setMessage({ text: caught instanceof ApiError ? caught.message : "Couldn't copy the week. Try again.", isError: true });
+                setMessage({ text: caught instanceof ApiError ? caught.message : t.schedule.copyFailed, isError: true });
             }
             setConfirming(false);
         });
@@ -601,22 +629,19 @@ export function CopyWeekButton({ branchId, weekStart }: { branchId: number; week
             </p>
             <Button variant="outline" size="sm" onClick={() => setConfirming(true)} disabled={pending} className={TOUCH_HEIGHT}>
                 {pending ? <Spinner data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
-                Copy previous week
+                {t.schedule.copyPrevious}
             </Button>
             <AlertDialog open={confirming} onOpenChange={setConfirming}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Copy the week of {sourceLabel}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Everyone scheduled that week gets the same shift seven days later. Shifts already in this week stay
-                            as they are; anyone who would be double-booked, or has left the branch, is skipped.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>{t.schedule.copyTitle(sourceLabel)}</AlertDialogTitle>
+                        <AlertDialogDescription>{t.schedule.copyDescription}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={pending}>{t.common.cancel}</AlertDialogCancel>
                         <AlertDialogAction disabled={pending} onClick={copy}>
                             {pending ? <Spinner data-icon="inline-start" /> : null}
-                            Copy shifts
+                            {t.schedule.copyShifts}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

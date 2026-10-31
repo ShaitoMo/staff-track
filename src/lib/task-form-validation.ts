@@ -1,3 +1,4 @@
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
 import { CreateTaskSchema, UpdateTaskSchema, type CreateTaskBody, type TaskWire, type UpdateTaskInput } from "@/types/task";
 import type { SafeUser } from "@/types/user";
 import type { UserBranch } from "@/types/user-branch";
@@ -31,13 +32,8 @@ export interface TaskFormErrors {
     weekdays?: string;
 }
 
-const FIELD_MESSAGES = {
-    title: "Title is required and can be at most 255 characters.",
-    branchId: "Branch is required.",
-    assignee: "Choose who this task is assigned to.",
-    dueDate: "Choose a valid due date.",
-    weekdays: "Choose at least one weekday.",
-} as const;
+/** One message per field, in the viewer's language; the English set is the default. */
+export type TaskFieldMessages = Dictionary["tasks"]["errors"];
 
 /** Maps the schema's snake_case issue paths onto the form's fields. */
 const PATH_TO_FIELD: Record<string, keyof TaskFormErrors> = {
@@ -55,11 +51,15 @@ function assigneeUnchosen(input: TaskFormInput): boolean {
 }
 
 /** Turns a schema's issues into per-field messages; shared by the create and edit validators. */
-function issuesToErrors(issues: readonly { path: readonly PropertyKey[] }[], errors: TaskFormErrors = {}): TaskFormErrors {
+function issuesToErrors(
+    issues: readonly { path: readonly PropertyKey[] }[],
+    messages: TaskFieldMessages,
+    errors: TaskFormErrors = {},
+): TaskFormErrors {
     for (const issue of issues) {
         const field = PATH_TO_FIELD[String(issue.path[0])];
         if (field) {
-            errors[field] = FIELD_MESSAGES[field];
+            errors[field] = messages[field];
         }
     }
 
@@ -104,14 +104,14 @@ export function buildCreateTaskBody(input: TaskFormInput): CreateTaskBody {
 }
 
 /** Validates against CreateTaskSchema (src/types/task.ts) so the rules live in one place; the route re-checks. */
-export function validateTaskForm(input: TaskFormInput): TaskFormErrors {
+export function validateTaskForm(input: TaskFormInput, messages: TaskFieldMessages = en.tasks.errors): TaskFormErrors {
     const result = CreateTaskSchema.safeParse(buildCreateTaskBody(input));
-    const errors = result.success ? {} : issuesToErrors(result.error.issues);
+    const errors = result.success ? {} : issuesToErrors(result.error.issues, messages);
 
     // the schema's either/or check on the assignee is skipped while other fields are invalid,
     // which would show this error only after a second submit
     if (assigneeUnchosen(input)) {
-        errors.assignee = FIELD_MESSAGES.assignee;
+        errors.assignee = messages.assignee;
     }
 
     return errors;
@@ -196,14 +196,18 @@ export function hasTaskChanges(body: UpdateTaskInput): boolean {
 }
 
 /** Validates an edit's patch against UpdateTaskSchema. An empty patch is not an error here: the form just has nothing to send. */
-export function validateTaskUpdate(initial: EditableTaskState, current: EditableTaskState): TaskFormErrors {
+export function validateTaskUpdate(
+    initial: EditableTaskState,
+    current: EditableTaskState,
+    messages: TaskFieldMessages = en.tasks.errors,
+): TaskFormErrors {
     const errors: TaskFormErrors = {};
     const body = buildUpdateTaskBody(initial, current);
 
     // the schema only checks a sent assignee pair is well formed; a person or role left unchosen
     // shows up as a null id on the side that was picked
     if (assigneeUnchosen(current)) {
-        errors.assignee = FIELD_MESSAGES.assignee;
+        errors.assignee = messages.assignee;
     }
 
     if (!hasTaskChanges(body)) {
@@ -212,5 +216,5 @@ export function validateTaskUpdate(initial: EditableTaskState, current: Editable
 
     const result = UpdateTaskSchema.safeParse(body);
 
-    return result.success ? errors : issuesToErrors(result.error.issues, errors);
+    return result.success ? errors : issuesToErrors(result.error.issues, messages, errors);
 }

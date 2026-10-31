@@ -3,6 +3,9 @@ import { BranchesFailedAlert, settledOrThrow } from "@/components/layout/branche
 import { TodayMark } from "@/components/layout/today-mark";
 import { WeekNav } from "@/components/layout/week-nav";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/locales";
+import { getI18n } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { formatDay, mondayOf, weekDates } from "@/lib/coverage-rows";
 import { todayDateString } from "@/lib/instance-rows";
@@ -10,9 +13,9 @@ import { branchRoster, MyShift, myShifts, RosterDay } from "@/lib/staff-schedule
 import { cn } from "@/lib/utils";
 import { BranchScheduleView } from "@/types/shift";
 
-function MyShiftList({ shifts, today, showBranch }: { shifts: MyShift[]; today: string; showBranch: boolean }) {
+function MyShiftList({ shifts, today, showBranch, t, locale }: { shifts: MyShift[]; today: string; showBranch: boolean; t: Dictionary; locale: Locale }) {
     if (shifts.length === 0) {
-        return <p className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">You&apos;re not on the schedule this week.</p>;
+        return <p className="rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">{t.schedule.notOnSchedule}</p>;
     }
 
     return (
@@ -31,15 +34,15 @@ function MyShiftList({ shifts, today, showBranch }: { shifts: MyShift[]; today: 
                         )}
                     >
                         <div className="flex w-24 shrink-0 flex-col items-start gap-1 text-sm font-medium">
-                            <span className={cn(!firstOfDay && "sr-only")}>{formatDay(shift.date)}</span>
+                            <span className={cn(!firstOfDay && "sr-only")}>{formatDay(shift.date, locale)}</span>
                             {shift.date === today && firstOfDay ? <TodayMark /> : null}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{shift.periodName ?? "Custom hours"}</p>
+                            <p className="text-sm font-medium">{shift.periodName ?? t.schedule.customHours}</p>
                             {details.length > 0 ? <p className="truncate text-xs text-muted-foreground">{details.join(" · ")}</p> : null}
                         </div>
                         <span className="shrink-0 font-mono text-sm tabular-nums">
-                            {shift.startTime}–{shift.endTime}
+                            <bdi dir="ltr">{shift.startTime}–{shift.endTime}</bdi>
                         </span>
                     </li>
                 );
@@ -48,22 +51,22 @@ function MyShiftList({ shifts, today, showBranch }: { shifts: MyShift[]; today: 
     );
 }
 
-function Roster({ days, today, userId }: { days: RosterDay[]; today: string; userId: number }) {
+function Roster({ days, today, userId, t, locale }: { days: RosterDay[]; today: string; userId: number; t: Dictionary; locale: Locale }) {
     return (
         <ol className="divide-y divide-border rounded-lg border border-border bg-card">
             {days.map((day) => (
                 <li key={day.date} className={cn("flex flex-col gap-2 px-4 py-3", day.date === today && "bg-muted")}>
                     <h3 className="flex items-center gap-2 text-sm font-medium" aria-current={day.date === today ? "date" : undefined}>
-                        {formatDay(day.date)}
+                        {formatDay(day.date, locale)}
                         {day.date === today ? <TodayMark /> : null}
                     </h3>
                     {day.groups.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No one scheduled.</p>
+                        <p className="text-sm text-muted-foreground">{t.schedule.noOneScheduled}</p>
                     ) : (
                         <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-2 text-sm">
                             {day.groups.map((group) => (
                                 <div key={group.periodId ?? "custom"} className="col-span-2 grid grid-cols-subgrid">
-                                    <dt className="pt-px text-xs font-medium text-muted-foreground">{group.name ?? "Other hours"}</dt>
+                                    <dt className="pt-px text-xs font-medium text-muted-foreground">{group.name ?? t.schedule.otherHours}</dt>
                                     <dd>
                                         <ul className="flex flex-col gap-1">
                                             {group.people.map((person) => {
@@ -75,7 +78,7 @@ function Roster({ days, today, userId }: { days: RosterDay[]; today: string; use
                                                 return (
                                                     <li key={person.shiftId}>
                                                         <span className={cn(person.userId === userId && "font-semibold")}>
-                                                            {person.userId === userId ? "You" : person.name}
+                                                            {person.userId === userId ? t.schedule.you : person.name}
                                                         </span>
                                                         <span className="text-xs text-muted-foreground"> · {details.join(" · ")}</span>
                                                     </li>
@@ -108,12 +111,14 @@ export async function StaffSchedule({
     requestedBranchId?: number;
     weekStart: string;
 }) {
+    const { t, locale } = await getI18n();
+
     if (branchIds.length === 0) {
         return (
             <Empty>
                 <EmptyHeader>
-                    <EmptyTitle>No branch yet</EmptyTitle>
-                    <EmptyDescription>You&apos;ll see the schedule once a manager adds you to a branch.</EmptyDescription>
+                    <EmptyTitle>{t.schedule.noBranchYet}</EmptyTitle>
+                    <EmptyDescription>{t.schedule.noBranchYetDescription}</EmptyDescription>
                 </EmptyHeader>
             </Empty>
         );
@@ -133,15 +138,15 @@ export async function StaffSchedule({
     return (
         <div className="flex max-w-2xl flex-col gap-6">
             <WeekNav basePath="/schedule" weekStart={weekStart} thisWeek={mondayOf(today)} query={branchQuery} />
-            <BranchesFailedAlert failed={failed} consequence="shifts there are missing below" />
+            <BranchesFailedAlert failed={failed} consequence={t.schedule.shiftsMissingConsequence} />
 
             <section aria-labelledby="my-shifts" className="flex flex-col gap-3">
-                <h2 id="my-shifts" className="text-base font-medium">Your shifts</h2>
-                <MyShiftList shifts={myShifts(schedules, userId)} today={today} showBranch={schedules.length > 1} />
+                <h2 id="my-shifts" className="text-base font-medium">{t.schedule.yourShifts}</h2>
+                <MyShiftList shifts={myShifts(schedules, userId)} today={today} showBranch={schedules.length > 1} t={t} locale={locale} />
             </section>
 
             <section aria-labelledby="branch-roster" className="flex flex-col gap-3">
-                <h2 id="branch-roster" className="text-base font-medium">Who&apos;s working at {active.branch_name}</h2>
+                <h2 id="branch-roster" className="text-base font-medium">{t.schedule.whosWorking(active.branch_name)}</h2>
                 {schedules.length > 1 ? (
                     <BranchFilter
                         basePath="/schedule"
@@ -151,7 +156,7 @@ export async function StaffSchedule({
                         showAll={false}
                     />
                 ) : null}
-                <Roster days={branchRoster(active, weekDates(weekStart))} today={today} userId={userId} />
+                <Roster days={branchRoster(active, weekDates(weekStart))} today={today} userId={userId} t={t} locale={locale} />
             </section>
         </div>
     );

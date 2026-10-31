@@ -7,6 +7,8 @@ import { FixPunchDialog } from "@/components/attendance/fix-punch-dialog";
 import { ShiftList } from "@/components/attendance/shift-list";
 import { TodayMark } from "@/components/layout/today-mark";
 import { buttonVariants } from "@/components/ui/button";
+import { useLocale, useT } from "@/i18n/client";
+import { isolate } from "@/i18n/locales";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AttendanceRow, groupByDay, needsAction, summarizeStatuses } from "@/lib/attendance-rows";
 import { formatDay } from "@/lib/coverage-rows";
@@ -40,6 +42,8 @@ export function AttendanceLog({
     staff: { userId: number; name: string }[];
     defaultDate: string;
 }) {
+    const t = useT();
+    const locale = useLocale();
     const needing = rows.filter(needsAction);
     const [filter, setFilter] = useState<Filter>(needing.length > 0 ? "needs" : "all");
     // once the last one is fixed there is nothing left to filter to
@@ -49,7 +53,8 @@ export function AttendanceLog({
     const days = grouped ? groupByDay(shown) : [{ date: "", rows: shown }];
 
     const action = (row: AttendanceRow) => {
-        const where = `${row.name}, ${formatDay(row.shiftDate)}`;
+        // each name isolated on its own, so an English name doesn't flip the Arabic date beside it
+        const where = `${isolate(row.name)}${t.common.listSeparator}${formatDay(row.shiftDate, locale)}`;
 
         if (row.fix !== null) {
             return (
@@ -70,7 +75,7 @@ export function AttendanceLog({
                     branchId={branchId}
                     staff={staff}
                     defaultDate={defaultDate}
-                    preset={{ userId: row.userId, date: row.shiftDate, clockIn: row.scheduledStart, label: `Add a punch for ${where}` }}
+                    preset={{ userId: row.userId, date: row.shiftDate, clockIn: row.scheduledStart, label: t.attendance.addPunchFor(where) }}
                 />
             );
         }
@@ -82,11 +87,11 @@ export function AttendanceLog({
         <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 {needing.length > 0 ? (
-                    <div role="group" aria-label="Show" className="flex items-center gap-1">
+                    <div role="group" aria-label={t.attendance.show} className="flex items-center gap-1">
                         {(
                             [
-                                ["needs", `Needs action · ${needing.length}`],
-                                ["all", `All shifts · ${rows.length}`],
+                                ["needs", t.attendance.needsAction(needing.length)],
+                                ["all", t.attendance.allShifts(rows.length)],
                             ] as const
                         ).map(([value, label]) => (
                             <button
@@ -107,7 +112,7 @@ export function AttendanceLog({
             {/* phones: a stacked list per day, so the status never sits behind a sideways scroll */}
             <div className="flex flex-col gap-4 md:hidden">
                 {days.map((day) => (
-                    <section key={day.date} aria-label={grouped ? formatDay(day.date) : range} className="flex flex-col gap-2">
+                    <section key={day.date} aria-label={grouped ? formatDay(day.date, locale) : range} className="flex flex-col gap-2">
                         {grouped ? <DayHeading date={day.date} today={today} /> : null}
                         <ShiftList
                             rows={day.rows}
@@ -124,16 +129,15 @@ export function AttendanceLog({
             <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
                 <Table>
                     <TableCaption className="sr-only">
-                        {active === "needs" ? `Shifts needing action, ${range}` : `Every shift, ${range}`}: scheduled hours against
-                        the clock
+                        {active === "needs" ? t.attendance.captionNeeds(range) : t.attendance.captionAll(range)}
                     </TableCaption>
                     <TableHeader>
                         <TableRow>
-                            <TableHead scope="col">Person</TableHead>
-                            <TableHead scope="col">Scheduled</TableHead>
-                            <TableHead scope="col">In</TableHead>
-                            <TableHead scope="col">Out</TableHead>
-                            <TableHead scope="col">Status</TableHead>
+                            <TableHead scope="col">{t.attendance.person}</TableHead>
+                            <TableHead scope="col">{t.attendance.scheduled}</TableHead>
+                            <TableHead scope="col">{t.attendance.in}</TableHead>
+                            <TableHead scope="col">{t.attendance.out}</TableHead>
+                            <TableHead scope="col">{t.attendance.statusHeading}</TableHead>
                         </TableRow>
                     </TableHeader>
                     {days.map((day) => (
@@ -149,7 +153,7 @@ export function AttendanceLog({
                             {day.rows.map((row) => (
                                 <TableRow key={row.shiftId}>
                                     <TableCell>{row.name}</TableCell>
-                                    <TableCell className="font-mono tabular-nums">{row.scheduled}</TableCell>
+                                    <TableCell className="font-mono tabular-nums"><bdi dir="ltr">{row.scheduled}</bdi></TableCell>
                                     <TableCell className="font-mono tabular-nums">{row.clockIn ?? "—"}</TableCell>
                                     <TableCell className="font-mono tabular-nums">{row.clockOut ?? "—"}</TableCell>
                                     <TableCell>
@@ -170,9 +174,11 @@ export function AttendanceLog({
 
 /** A week's day heading: the date, marked when it is today. */
 function DayHeading({ date, today }: { date: string; today: string }) {
+    const locale = useLocale();
+
     return (
         <span className="flex items-center gap-2 text-sm font-semibold">
-            {formatDay(date)}
+            {formatDay(date, locale)}
             {date === today ? <TodayMark /> : null}
         </span>
     );

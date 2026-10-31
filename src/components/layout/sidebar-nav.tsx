@@ -4,6 +4,7 @@ import { useId } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isActive, MANAGER_NAV_GROUPS } from "@/components/layout/nav-items";
+import { useT } from "@/i18n/client";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 
@@ -17,14 +18,15 @@ export function SidebarNav({ onCurrentPage }: { onCurrentPage?: () => void }) {
     const pathname = usePathname();
     // the bar and the phone menu can both be mounted, so each copy gets its own label ids
     const idPrefix = useId();
+    const t = useT();
 
     return (
-        <nav aria-label="Sections" className="flex flex-col gap-5">
+        <nav aria-label={t.layout.sections} className="flex flex-col gap-5">
             {MANAGER_NAV_GROUPS.map((group) => (
                 <div key={group.label} className="flex flex-col gap-0.5">
                     {/* a label, not a heading: as h2s they came before every page's h1 in the heading list */}
-                    <p id={`${idPrefix}-${group.label}`} className="px-2.5 pb-1 text-xs font-medium tracking-[0.02em] text-sidebar-muted-foreground">
-                        {group.label}
+                    <p id={`${idPrefix}-${group.label}`} className="px-2.5 pb-1 text-xs font-medium ltr:tracking-[0.02em] text-sidebar-muted-foreground">
+                        {t.nav[group.label]}
                     </p>
                     <ul aria-labelledby={`${idPrefix}-${group.label}`} className="flex flex-col gap-0.5">
                         {group.items.map(({ href, label, icon: Icon }) => {
@@ -46,7 +48,7 @@ export function SidebarNav({ onCurrentPage }: { onCurrentPage?: () => void }) {
                                         )}
                                     >
                                         <Icon aria-hidden className={cn("size-4 shrink-0", active ? "text-sidebar-accent-foreground" : "text-sidebar-muted-foreground")} />
-                                        {label}
+                                        {t.nav[label]}
                                     </Link>
                                 </li>
                             );

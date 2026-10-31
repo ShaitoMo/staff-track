@@ -1,4 +1,4 @@
-import { ApiError, request } from "@/lib/api-client";
+import { PhotoUploadError, request } from "@/lib/api-client";
 import type { GuideImageView } from "@/types/shelf-guide";
 import type { PhotoUploadView } from "@/types/task-instance";
 
@@ -15,7 +15,7 @@ export async function completeInstance(instanceId: number, photo: Blob): Promise
     const upload = await fetch(upload_url, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: photo })
         .catch(() => null);
     if (upload === null || !upload.ok) {
-        throw new ApiError("The photo didn't upload. Check your connection and try again.", upload?.status ?? 0);
+        throw new PhotoUploadError(upload?.status ?? 0);
     }
 
     await request(`/api/task-instances/${instanceId}/complete`, { method: "PATCH", json: { photo_key: key } });

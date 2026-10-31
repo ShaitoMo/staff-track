@@ -10,6 +10,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createRegister, updateRegister } from "@/lib/api/registers";
 import { isRegisterFormValid, RegisterFormErrors, validateRegisterForm } from "@/lib/register-form-validation";
@@ -32,12 +33,13 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
     const [errors, setErrors] = useState<RegisterFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
 
-        const validationErrors = validateRegisterForm({ branchId, name });
+        const validationErrors = validateRegisterForm({ branchId, name }, t.registers.errors);
         setErrors(validationErrors);
         if (!isRegisterFormValid(validationErrors)) return;
 
@@ -52,7 +54,7 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                 router.push("/registers");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -68,17 +70,17 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                 </FormAlerts>
             )}
 
-            <FormSection legend="Details" className="sm:grid-cols-2">
+            <FormSection legend={t.setup.details} className="sm:grid-cols-2">
                 <Field data-invalid={!!errors.branchId || undefined}>
-                    <FieldLabel htmlFor="branch">Branch</FieldLabel>
+                    <FieldLabel htmlFor="branch">{t.setup.branch}</FieldLabel>
                     <Select
                         value={branchId !== null ? String(branchId) : ""}
                         onValueChange={(value) => setBranchId(Number(value))}
                         disabled={pending || mode === "edit"}
                     >
                         <SelectTrigger id="branch" className="w-full" aria-invalid={!!errors.branchId || undefined}>
-                            <SelectValue placeholder="Select a branch">
-                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
+                            <SelectValue placeholder={t.setup.selectBranch}>
+                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? t.setup.selectBranch}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -93,7 +95,7 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                 </Field>
 
                 <Field data-invalid={!!errors.name || undefined}>
-                    <FieldLabel htmlFor="name">Name</FieldLabel>
+                    <FieldLabel htmlFor="name">{t.setup.name}</FieldLabel>
                     <Input
                         id="name"
                         value={name}
@@ -108,7 +110,7 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
             <FormFooter>
                 <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
-                    {mode === "create" ? "Create register" : "Save changes"}
+                    {mode === "create" ? t.registers.createRegister : t.setup.saveChanges}
                 </Button>
             </FormFooter>
         </FormCard>

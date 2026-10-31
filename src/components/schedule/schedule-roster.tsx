@@ -1,5 +1,8 @@
+import { DayHeading } from "@/components/schedule/day-heading";
+import { PeriodHours } from "@/components/schedule/period-hours";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDay } from "@/lib/coverage-rows";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { getI18n } from "@/i18n/server";
 import { NEEDS_DOT, RoleCell, RoleRow } from "@/lib/schedule-grid";
 import { cn } from "@/lib/utils";
 import { ShiftPeriodView } from "@/types/shift-period";
@@ -10,7 +13,7 @@ import { ShiftPeriodView } from "@/types/shift-period";
  * anyone. Server-rendered with no client JS, and laid out to print on one landscape page: a fixed
  * table whose seven days share the width, so the week never scrolls off the edge.
  */
-export function ScheduleRoster({
+export async function ScheduleRoster({
     dates,
     today,
     periods,
@@ -21,6 +24,7 @@ export function ScheduleRoster({
     periods: ShiftPeriodView[];
     roleRows: RoleRow[];
 }) {
+    const { t, locale } = await getI18n();
     // a role nobody works and nothing needs all week is a row of dashes: the screen drops it, and paper,
     // which shows only who works, drops every row without a name (and a period left with none)
     const groups = periods.flatMap((period) => {
@@ -31,13 +35,13 @@ export function ScheduleRoster({
     // today keeps the editing grid's tint on screen; a printed week has no "today", so paper drops it
     const dayCell = (date: string) => cn("align-top whitespace-normal print:py-1", date === today && "bg-muted print:bg-transparent");
     // the slot column stays put while a narrow screen scrolls the days under it
-    const slotCell = "sticky left-0 z-10 border-r border-border bg-card print:static";
+    const slotCell = "sticky start-0 z-10 border-e border-border bg-card print:static";
 
     return (
         <div className="overflow-x-auto rounded-lg border border-border bg-card print:overflow-visible print:rounded-none print:border-0">
             <Table className="min-w-[56rem] table-fixed print:min-w-0 print:text-xs">
                 <TableCaption className="sr-only">
-                    Weekly schedule by shift period: who works each role, and the register each person is on
+                    {t.schedule.rosterCaption}
                 </TableCaption>
                 <colgroup>
                     <col className="w-28 print:w-24" />
@@ -48,16 +52,16 @@ export function ScheduleRoster({
                 <TableHeader>
                     <TableRow className="hover:bg-transparent">
                         <TableHead scope="col" className={cn(slotCell, "text-xs text-muted-foreground")}>
-                            Slot
+                            {t.schedule.slot}
                         </TableHead>
                         {dates.map((date) => (
                             <TableHead
                                 key={date}
                                 scope="col"
                                 aria-current={date === today ? "date" : undefined}
-                                className={cn("whitespace-nowrap", date === today && "bg-muted font-semibold print:bg-transparent print:font-medium")}
+                                className={cn("h-auto py-2 leading-tight whitespace-nowrap print:py-1", date === today && "bg-muted font-semibold print:bg-transparent print:font-medium")}
                             >
-                                {formatDay(date)}
+                                <DayHeading date={date} locale={locale} />
                             </TableHead>
                         ))}
                     </TableRow>
@@ -71,7 +75,7 @@ export function ScheduleRoster({
                         {/* the week's main division: weight and space above it, no fill (today's column is the one tint) */}
                         <TableRow className="hover:bg-transparent">
                             <TableHead scope="colgroup" colSpan={dates.length + 1} className="h-10 pt-4 font-semibold text-foreground print:h-7 print:pt-2">
-                                <span className="sticky left-2 inline-flex items-baseline gap-2 print:static">
+                                <span className="sticky start-2 inline-flex items-baseline gap-2 print:static">
                                     {period.name}
                                     <PeriodHours period={period} />
                                 </span>
@@ -84,7 +88,7 @@ export function ScheduleRoster({
                                 </TableHead>
                                 {row.cells.map((cell) => (
                                     <TableCell key={cell.date} className={dayCell(cell.date)}>
-                                        <RoleCellText cell={cell} />
+                                        <RoleCellText cell={cell} t={t} />
                                     </TableCell>
                                 ))}
                             </TableRow>
@@ -96,15 +100,6 @@ export function ScheduleRoster({
     );
 }
 
-/** A period's default hours beside its name; shared with the editing grid so both headings match. */
-export function PeriodHours({ period }: { period: ShiftPeriodView }) {
-    return (
-        <span className="font-mono text-xs font-normal text-muted-foreground tabular-nums">
-            {period.defaultStart}–{period.defaultEnd}
-        </span>
-    );
-}
-
 const hasPeople = (row: RoleRow) => row.cells.some((cell) => cell.people.length > 0);
 const hasNeed = (row: RoleRow) => row.cells.some((cell) => cell.shortfall > 0);
 
@@ -112,7 +107,7 @@ const hasNeed = (row: RoleRow) => row.cells.some((cell) => cell.shortfall > 0);
  * Names, each with its register when it has one; then, on screen only, what the slot still needs.
  * An empty slot is a quiet dash: always when nothing is needed, and on paper, where the need is hidden.
  */
-function RoleCellText({ cell }: { cell: RoleCell }) {
+function RoleCellText({ cell, t }: { cell: RoleCell; t: Dictionary }) {
     const dash = <span className="text-muted-foreground">—</span>;
 
     if (cell.people.length === 0 && cell.shortfall === 0) {
@@ -122,12 +117,12 @@ function RoleCellText({ cell }: { cell: RoleCell }) {
     return (
         <>
             {cell.people.length === 0 ? <span className="hidden print:inline">{dash}</span> : null}
-            <RoleCellList cell={cell} />
+            <RoleCellList cell={cell} t={t} />
         </>
     );
 }
 
-function RoleCellList({ cell }: { cell: RoleCell }) {
+function RoleCellList({ cell, t }: { cell: RoleCell; t: Dictionary }) {
     return (
         <ul className="flex flex-col gap-1.5 print:gap-0.5">
             {cell.people.map((person) => (
@@ -141,7 +136,7 @@ function RoleCellList({ cell }: { cell: RoleCell }) {
             {cell.shortfall > 0 ? (
                 <li className="flex items-center gap-1.5 text-xs text-muted-foreground print:hidden">
                     <span aria-hidden="true" className={NEEDS_DOT} />
-                    Needs {cell.shortfall}
+                    {t.schedule.needs(cell.shortfall)}
                 </li>
             ) : null}
         </ul>

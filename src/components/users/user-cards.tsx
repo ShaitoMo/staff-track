@@ -2,10 +2,13 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getDictionary } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 import { UserRow } from "@/lib/user-rows";
 
-export function UserCards({ rows }: { rows: UserRow[] }) {
+export async function UserCards({ rows }: { rows: UserRow[] }) {
+    const t = await getDictionary();
+
     return (
         <div className="flex flex-col gap-3 md:hidden">
             {rows.map((row) => (
@@ -14,10 +17,10 @@ export function UserCards({ rows }: { rows: UserRow[] }) {
                         <div className="flex items-start justify-between gap-2">
                             <div>
                                 <div className="font-medium">{row.name}</div>
-                                <div className="font-mono text-xs text-muted-foreground">{row.phone}</div>
+                                <div className="font-mono text-xs text-muted-foreground"><bdi dir="ltr">{row.phone}</bdi></div>
                             </div>
                             <Badge variant="outline" className={cn(!row.isActive && "border-dashed text-muted-foreground")}>
-                                {row.isActive ? "Active" : "Inactive"}
+                                {row.isActive ? t.setup.active : t.setup.inactive}
                             </Badge>
                         </div>
                         <div className="text-sm capitalize">{row.roleName}</div>
@@ -30,7 +33,7 @@ export function UserCards({ rows }: { rows: UserRow[] }) {
                             href={`/users/${row.userId}/edit`}
                             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-1 w-fit")}
                         >
-                            Edit
+                            {t.common.edit}
                         </Link>
                     </CardContent>
                 </Card>

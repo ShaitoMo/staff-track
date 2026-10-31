@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDownIcon } from "lucide-react";
+import { getDictionary } from "@/i18n/server";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
@@ -10,7 +11,7 @@ import { Branch } from "@/types/branch";
  * another. Each folds away (a native <details>, so no client JS) and can be opened on its own.
  * `query` carries the page's other params (e.g. week) into that link.
  */
-export function BranchStack({
+export async function BranchStack({
     branches,
     basePath,
     query,
@@ -23,6 +24,8 @@ export function BranchStack({
     heading?: "h2" | "h3";
     children: (branch: Branch) => ReactNode;
 }) {
+    const t = await getDictionary();
+
     return (
         <div className="flex flex-col gap-8">
             {branches.map((branch) => (
@@ -44,7 +47,7 @@ export function BranchStack({
                             href={`${basePath}?${new URLSearchParams({ ...query, branch: String(branch.branchId) })}`}
                             className={cn("inline-flex shrink-0 items-center text-sm text-primary underline-offset-4 hover:underline print:hidden", TOUCH_HEIGHT)}
                         >
-                            Only this branch
+                            {t.layout.onlyThisBranch}
                         </Link>
                     </summary>
                     <div className="pt-4">{children(branch)}</div>

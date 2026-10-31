@@ -6,7 +6,8 @@ import { AlertCircleIcon, CameraIcon, ImageIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ApiError } from "@/lib/api-client";
+import { useT } from "@/i18n/client";
+import { ApiError, PhotoUploadError } from "@/lib/api-client";
 import { completeInstance } from "@/lib/api/task-instances";
 import { compressPhoto, UnreadablePhotoError } from "@/lib/compress-photo";
 import { MAX_PHOTO_BYTES } from "@/lib/photo-limits";
@@ -26,6 +27,7 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
     // which picker's photo is being compressed: its button shows the spinner, and both stay disabled
     const [compressing, setCompressing] = useState<"camera" | "library" | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     // an object URL holds the photo in memory until it is revoked
     useEffect(() => () => {
@@ -48,7 +50,7 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
 
         // an empty type is let through: some phones leave it blank for HEIC, and compressPhoto decodes it or refuses
         if (chosen.type !== "" && !chosen.type.startsWith("image/")) {
-            setError("That file isn't a photo.");
+            setError(t.tasks.notAPhoto);
             return;
         }
 
@@ -58,13 +60,14 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
         try {
             compressed = await compressPhoto(chosen);
         } catch (caught) {
-            setError(caught instanceof UnreadablePhotoError ? caught.message : "Couldn't read that photo.");
+            // the unreadable-photo message names a retake; anything else is a plain failure to read
+            setError(caught instanceof UnreadablePhotoError ? t.tasks.unreadablePhoto : t.common.somethingWentWrong);
             return;
         } finally {
             setCompressing(null);
         }
         if (compressed.size > MAX_PHOTO_BYTES) {
-            setError(`That photo is over ${MAX_PHOTO_BYTES / (1024 * 1024)} MB even after shrinking it. Try another one.`);
+            setError(t.tasks.photoTooBig(MAX_PHOTO_BYTES / (1024 * 1024)));
             return;
         }
 
@@ -88,7 +91,13 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
                 await completeInstance(instanceId, file);
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(
+                    caught instanceof PhotoUploadError
+                        ? t.common.photoUploadFailed
+                        : caught instanceof ApiError
+                          ? caught.message
+                          : t.common.somethingWentWrong,
+                );
             }
         });
     }
@@ -119,7 +128,7 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
 
             {previewUrl !== null ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a local blob URL; next/image cannot optimise it
-                <img src={previewUrl} alt="Your photo" className="max-h-64 w-full rounded-lg border border-border object-cover" />
+                <img src={previewUrl} alt={t.tasks.yourPhoto} className="max-h-64 w-full rounded-lg border border-border object-cover" />
             ) : null}
 
             {error !== null ? (
@@ -136,42 +145,42 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
                         variant="outline"
                         size="lg"
                         className="h-11 flex-1"
-                        aria-label={`Take photo for ${taskLabel}`}
+                        aria-label={t.tasks.takePhotoFor(taskLabel)}
                         disabled={compressing !== null}
                         onClick={() => cameraRef.current?.click()}
                     >
                         {compressing === "camera" ? <Spinner data-icon="inline-start" /> : <CameraIcon data-icon="inline-start" />}
-                        Take photo
+                        {t.tasks.takePhoto}
                     </Button>
                     <Button
                         type="button"
                         variant="outline"
                         size="lg"
                         className="h-11 flex-1"
-                        aria-label={`Choose photo for ${taskLabel}`}
+                        aria-label={t.tasks.choosePhotoFor(taskLabel)}
                         disabled={compressing !== null}
                         onClick={() => libraryRef.current?.click()}
                     >
                         {compressing === "library" ? <Spinner data-icon="inline-start" /> : <ImageIcon data-icon="inline-start" />}
-                        Choose photo
+                        {t.tasks.choosePhoto}
                     </Button>
                 </div>
             ) : (
                 <div className="flex gap-2">
-                    <Button type="button" size="lg" className="h-11 flex-1" aria-label={`Mark as done: ${taskLabel}`} disabled={pending} onClick={submit}>
+                    <Button type="button" size="lg" className="h-11 flex-1" aria-label={t.tasks.markDoneFor(taskLabel)} disabled={pending} onClick={submit}>
                         {pending ? <Spinner data-icon="inline-start" /> : null}
-                        Mark as done
+                        {t.tasks.markDone}
                     </Button>
                     <Button
                         type="button"
                         variant="outline"
                         size="lg"
                         className="h-11"
-                        aria-label={`Retake photo for ${taskLabel}`}
+                        aria-label={t.tasks.retakeFor(taskLabel)}
                         disabled={pending}
                         onClick={retake}
                     >
-                        Retake
+                        {t.tasks.retake}
                     </Button>
                 </div>
             )}

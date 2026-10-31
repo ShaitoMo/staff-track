@@ -9,30 +9,26 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { importAttendance } from "@/lib/api/attendance";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import type { ImportAttendanceResult } from "@/types/attendance-import";
 
-function plural(count: number, one: string, many: string): string {
-    return `${count} ${count === 1 ? one : many}`;
-}
-
 /** What the upload did, then every row it couldn't use, so the manager can fix them in the file. */
 function ImportOutcome({ result }: { result: ImportAttendanceResult }) {
+    const t = useT();
+
     return (
         <div className="flex flex-col gap-2 text-sm" role="status">
-            <p>
-                {plural(result.records_created, "punch", "punches")} added
-                {result.records_skipped > 0 ? `, ${result.records_skipped} already recorded` : ""}.
-            </p>
+            <p>{t.attendance.punchesAdded(result.records_created, result.records_skipped)}</p>
             {result.errors.length > 0 ? (
                 <div className="flex flex-col gap-1">
-                    <p className="text-destructive">{plural(result.errors.length, "row", "rows")} could not be imported:</p>
+                    <p className="text-destructive">{t.attendance.rowsFailed(result.errors.length)}</p>
                     <ul className="max-h-48 overflow-y-auto rounded-md border border-border px-3 py-2 text-xs">
                         {result.errors.map((error, index) => (
                             <li key={`${error.row}-${index}`}>
-                                <span className="font-mono tabular-nums">Row {error.row}</span>: {error.message}
+                                <span className="font-mono tabular-nums">{t.attendance.row(error.row)}</span>: {error.message}
                             </li>
                         ))}
                     </ul>
@@ -55,6 +51,7 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [result, setResult] = useState<ImportAttendanceResult | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleOpenChange(next: boolean) {
         if (pending) return;
@@ -72,7 +69,7 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
         setSubmitError(null);
 
         if (file === null) {
-            setFileError("Choose a file to import.");
+            setFileError(t.attendance.chooseFile);
             return;
         }
 
@@ -81,7 +78,7 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
                 setResult(await importAttendance(branchId, file));
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Couldn't import the file. Try again.");
+                setSubmitError(error instanceof ApiError ? error.message : t.attendance.importFailed);
             }
         });
     }
@@ -90,15 +87,12 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger render={<Button size="sm" variant={quiet ? "outline" : "default"} className={TOUCH_HEIGHT} />}>
                 <UploadIcon data-icon="inline-start" />
-                Import file
+                {t.attendance.importFile}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Import attendance</DialogTitle>
-                    <DialogDescription>
-                        Upload the clock machine&apos;s export (.csv, .xls or .xlsx). Punches already recorded are skipped, so the same
-                        file can be imported twice safely.
-                    </DialogDescription>
+                    <DialogTitle>{t.attendance.importTitle}</DialogTitle>
+                    <DialogDescription>{t.attendance.importDescription}</DialogDescription>
                 </DialogHeader>
                 {result !== null ? (
                     <>
@@ -112,9 +106,9 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
                                     setResult(null);
                                 }}
                             >
-                                Import another
+                                {t.attendance.importAnother}
                             </Button>
-                            <Button onClick={() => setOpen(false)}>Done</Button>
+                            <Button onClick={() => setOpen(false)}>{t.attendance.done}</Button>
                         </DialogFooter>
                     </>
                 ) : (
@@ -126,7 +120,7 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
                             </Alert>
                         ) : null}
                         <Field data-invalid={fileError !== null || undefined}>
-                            <FieldLabel htmlFor="attendance-file">File</FieldLabel>
+                            <FieldLabel htmlFor="attendance-file">{t.attendance.file}</FieldLabel>
                             <Input
                                 id="attendance-file"
                                 type="file"
@@ -142,7 +136,7 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
                         <DialogFooter>
                             <Button type="submit" disabled={pending}>
                                 {pending ? <Spinner data-icon="inline-start" /> : null}
-                                Import
+                                {t.attendance.import}
                             </Button>
                         </DialogFooter>
                     </form>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useT } from "@/i18n/client";
 import { getBranchSections, getFolderTree } from "@/lib/api/shelf-guide";
 import { folderPathOptions } from "@/lib/guide-folder-paths";
 import type { BranchSectionView } from "@/types/shelf-guide";
@@ -40,6 +41,7 @@ export function TaskReferencePicker({
     const [loadedSections, setLoadedSections] = useState<{ branchId: number; sections: BranchSectionView[] } | null>(null);
     const [loadedFolders, setLoadedFolders] = useState<{ sectionId: number; folders: FolderOption[] } | null>(null);
     const sections = loadedSections !== null && loadedSections.branchId === branchId ? loadedSections.sections : [];
+    const t = useT();
     const folders = loadedFolders !== null && loadedFolders.sectionId === value.sectionId ? loadedFolders.folders : [];
 
     // a failed load just leaves nothing to pick: the reference is optional
@@ -69,7 +71,7 @@ export function TaskReferencePicker({
     return (
         <>
             <Field>
-                <FieldLabel htmlFor="reference-section">Shelf-guide section (optional)</FieldLabel>
+                <FieldLabel htmlFor="reference-section">{t.tasks.sectionOptional}</FieldLabel>
                 <Select
                     value={value.sectionId !== null ? String(value.sectionId) : NONE}
                     onValueChange={(next) => onChange({ sectionId: next === null || next === NONE ? null : Number(next), folderId: null })}
@@ -77,11 +79,11 @@ export function TaskReferencePicker({
                 >
                     <SelectTrigger id="reference-section" className="w-full">
                         <SelectValue>
-                            {(id: string) => (id === NONE ? (branchId === null ? "Choose a branch first" : "None") : sectionName(id) ?? "None")}
+                            {(id: string) => (id === NONE ? (branchId === null ? t.tasks.chooseBranchFirst : t.tasks.none) : sectionName(id) ?? t.tasks.none)}
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value={NONE}>None</SelectItem>
+                        <SelectItem value={NONE}>{t.tasks.none}</SelectItem>
                         {sections.map((section) => (
                             <SelectItem key={section.branchSectionId} value={String(section.branchSectionId)}>
                                 {section.name}
@@ -90,13 +92,13 @@ export function TaskReferencePicker({
                     </SelectContent>
                 </Select>
                 <FieldDescription>
-                    {noSections ? "This branch has no shelf-guide sections yet." : "Staff see its photos of how the work should look."}
+                    {noSections ? t.tasks.noSections : t.tasks.sectionHint}
                 </FieldDescription>
             </Field>
 
             {value.sectionId !== null && folders.length > 0 ? (
                 <Field>
-                    <FieldLabel htmlFor="reference-folder">Folder (optional)</FieldLabel>
+                    <FieldLabel htmlFor="reference-folder">{t.tasks.folderOptional}</FieldLabel>
                     <Select
                         value={value.folderId !== null ? String(value.folderId) : NONE}
                         onValueChange={(next) => onChange({ ...value, folderId: next === null || next === NONE ? null : Number(next) })}
@@ -104,11 +106,11 @@ export function TaskReferencePicker({
                     >
                         <SelectTrigger id="reference-folder" className="w-full">
                             <SelectValue>
-                                {(id: string) => (id === NONE ? "The section's own photos" : folderName(id) ?? "The section's own photos")}
+                                {(id: string) => (id === NONE ? t.tasks.sectionOwnPhotos : folderName(id) ?? t.tasks.sectionOwnPhotos)}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value={NONE}>The section&apos;s own photos</SelectItem>
+                            <SelectItem value={NONE}>{t.tasks.sectionOwnPhotos}</SelectItem>
                             {folders.map((folder) => (
                                 <SelectItem key={folder.folderId} value={String(folder.folderId)}>
                                     {folder.label}

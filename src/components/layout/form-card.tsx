@@ -30,7 +30,7 @@ export function FormAlerts({ children }: { children: React.ReactNode }) {
 export function FormSection({ legend, className, children }: { legend: string; className?: string; children: React.ReactNode }) {
     return (
         <FieldSet className="grid gap-x-8 gap-y-4 border-t border-border px-4 py-6 first-of-type:border-t-0 sm:px-6 md:grid-cols-[10rem_minmax(0,1fr)]">
-            <FieldLegend className="float-left mb-0 font-semibold">{legend}</FieldLegend>
+            <FieldLegend className="float-start mb-0 font-semibold">{legend}</FieldLegend>
             <div className={cn("grid min-w-0 content-start items-start gap-x-4 gap-y-5", className)}>{children}</div>
         </FieldSet>
     );

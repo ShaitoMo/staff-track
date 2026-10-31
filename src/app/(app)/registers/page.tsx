@@ -5,19 +5,22 @@ import { RegisterRow, RegisterTable } from "@/components/registers/register-tabl
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { ApiError } from "@/lib/api-client";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { getSelectedBranchId } from "@/lib/session";
 import { Branch } from "@/types/branch";
 import { Register } from "@/types/register";
 
-export const metadata: Metadata = { title: "Registers" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).registers.title };
+}
 
 export default async function RegistersPage({
     searchParams,
 }: {
     searchParams: Promise<{ branch?: string }>;
 }) {
-    const { branch } = await searchParams;
+    const [{ branch }, t] = await Promise.all([searchParams, getDictionary()]);
     let branchId: number | undefined;
     let branches: Branch[];
     let registersByBranch: Register[][];
@@ -31,7 +34,7 @@ export default async function RegistersPage({
         );
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage title="Registers" message="You don't have access to view registers." />;
+            return <AccessMessage title={t.registers.title} message={t.registers.noAccess} />;
         }
         throw error;
     }
@@ -40,24 +43,22 @@ export default async function RegistersPage({
     const rows: RegisterRow[] = registersByBranch.flat().map((register) => ({
         registerId: register.registerId,
         name: register.name,
-        branchName: branchNames.get(register.branchId) ?? `Branch ${register.branchId}`,
+        branchName: branchNames.get(register.branchId) ?? `#${register.branchId}`,
     }));
 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Registers</h1>
+                <h1 className="text-xl font-semibold">{t.registers.title}</h1>
                 <Link href="/registers/new" className={buttonVariants({ size: "sm" })}>
-                    Add register
+                    {t.registers.addRegister}
                 </Link>
             </div>
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No registers found</EmptyTitle>
-                        <EmptyDescription>
-                            {branchId !== undefined ? "This branch has no registers yet." : "No registers exist yet."}
-                        </EmptyDescription>
+                        <EmptyTitle>{t.registers.noneFound}</EmptyTitle>
+                        <EmptyDescription>{branchId !== undefined ? t.registers.noneAtBranch : t.registers.noneYet}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : (

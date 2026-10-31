@@ -1,4 +1,4 @@
-import { ApiError, request } from "@/lib/api-client";
+import { PhotoUploadError, request } from "@/lib/api-client";
 import { compressPhoto, THUMB_EDGE_PX } from "@/lib/compress-photo";
 import type {
     BranchSectionView,
@@ -29,7 +29,7 @@ async function uploadPhotoPair(branchSectionId: number, file: Blob): Promise<{ p
 
     // a network or CORS failure rejects instead of returning a response, so treat both alike
     if (results.some((result) => result === null || !result.ok)) {
-        throw new ApiError("The photo didn't upload. Check your connection and try again.", 0);
+        throw new PhotoUploadError();
     }
 
     return { photoKey: upload.photo.key, thumbKey: upload.thumb.key };

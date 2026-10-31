@@ -6,6 +6,9 @@ import { WeekNav } from "@/components/layout/week-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/locales";
+import { getI18n } from "@/i18n/server";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { addDays, formatDay, formatWeekRange, mondayOf, sortPeriods, weekDates } from "@/lib/coverage-rows";
@@ -31,17 +34,13 @@ import { ShiftPeriodView } from "@/types/shift-period";
 import { SafeUser } from "@/types/user";
 import { cn } from "@/lib/utils";
 
-function plural(count: number, one: string, many: string): string {
-    return `${count} ${count === 1 ? one : many}`;
-}
-
 /** The week's missing people in one line, so the "Needs" cells don't have to be counted by eye. */
-function CoverageSummary({ summary }: { summary: WeekSummary }) {
+function CoverageSummary({ summary, t }: { summary: WeekSummary; t: Dictionary }) {
     if (summary.shortSlots === 0) {
         return (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CircleCheckIcon className="size-4 shrink-0" aria-hidden="true" />
-                Every slot this week is covered.
+                {t.schedule.allCovered}
             </p>
         );
     }
@@ -49,9 +48,7 @@ function CoverageSummary({ summary }: { summary: WeekSummary }) {
     return (
         <p className="flex items-start gap-2 text-sm">
             <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
-            <span>
-                {plural(summary.shortSlots, "role slot", "role slots")} short ({plural(summary.peopleShort, "person", "people")})
-            </span>
+            <span>{t.schedule.slotsShort(summary.shortSlots, summary.peopleShort)}</span>
         </p>
     );
 }
@@ -61,22 +58,22 @@ function LegendSwatch({ className }: { className: string }) {
 }
 
 /** Keys the editing grid's marks: the needs dot, today's tint, and the register tag. */
-function GridLegend() {
+function GridLegend({ t }: { t: Dictionary }) {
     return (
-        <ul aria-label="Legend" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <ul aria-label={t.schedule.legend} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <li className="flex items-center gap-1.5">
                 <span aria-hidden="true" className={NEEDS_DOT} />
-                Needs people (the cell says how many)
+                {t.schedule.legendNeeds}
             </li>
             <li className="flex items-center gap-1.5">
                 <LegendSwatch className="border-foreground/20 bg-muted" />
-                Today
+                {t.schedule.legendToday}
             </li>
             <li className="flex items-center gap-1.5">
                 <span aria-hidden="true" className="rounded-sm border border-foreground/15 bg-muted px-1 text-foreground">
-                    Register 1
+                    {t.schedule.legendRegisterSample}
                 </span>
-                Working that register (select it to change)
+                {t.schedule.legendRegister}
             </li>
         </ul>
     );
@@ -101,6 +98,7 @@ export async function ScheduleSection({
     /** False when the page shows one week nav over several stacked branches. */
     showWeekNav?: boolean;
 }) {
+    const { t, locale } = await getI18n();
     const weekEnd = addDays(weekStart, 6);
 
     let periods: ShiftPeriodView[];
@@ -122,7 +120,7 @@ export async function ScheduleSection({
             return (
                 <Alert variant="destructive">
                     <AlertCircleIcon />
-                    <AlertDescription>You don&apos;t have access to this branch&apos;s schedule.</AlertDescription>
+                    <AlertDescription>{t.schedule.noBranchAccess}</AlertDescription>
                 </Alert>
             );
         }
@@ -159,18 +157,17 @@ export async function ScheduleSection({
                 {toolbar}
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No shift periods</EmptyTitle>
+                        <EmptyTitle>{t.schedule.noPeriods}</EmptyTitle>
                         <EmptyDescription>
-                            The schedule is filled per shift period, and none is active for this branch. Add or activate one
-                            on the{" "}
-                            <Link href="/periods" className="text-primary underline-offset-4 hover:underline">
-                                Periods page
-                            </Link>
-                            .
+                            {t.schedule.noPeriodsDescription(
+                                <Link href="/periods" className="text-primary underline-offset-4 hover:underline">
+                                    {t.schedule.periodsPage}
+                                </Link>,
+                            )}
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
-                <OtherShiftsTable shifts={otherShifts} />
+                <OtherShiftsTable shifts={otherShifts} t={t} locale={locale} />
             </div>
         );
     }
@@ -182,10 +179,8 @@ export async function ScheduleSection({
                 {toolbar}
                 <Empty className="border border-dashed border-border print:hidden">
                     <EmptyHeader>
-                        <EmptyTitle>Nothing scheduled for {formatWeekRange(weekStart)}</EmptyTitle>
-                        <EmptyDescription>
-                            Start from the week before, then adjust it in Edit schedule. Or fill the week from scratch there.
-                        </EmptyDescription>
+                        <EmptyTitle>{t.schedule.nothingScheduled(formatWeekRange(weekStart, locale))}</EmptyTitle>
+                        <EmptyDescription>{t.schedule.nothingScheduledDescription}</EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
                         <CopyWeekButton branchId={branchId} weekStart={weekStart} />
@@ -199,18 +194,18 @@ export async function ScheduleSection({
         <div className="flex flex-col gap-4">
             {toolbar}
             {/* paper carries no week nav, so it says which week it is */}
-            <p className="hidden text-sm font-medium print:-mt-2 print:block">Week of {formatWeekRange(weekStart)}</p>
+            <p className="hidden text-sm font-medium print:-mt-2 print:block">{t.schedule.weekOf(formatWeekRange(weekStart, locale))}</p>
             <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 print:hidden">
-                <CoverageSummary summary={summarizeWeek(roleRows)} />
-                {editing ? <GridLegend /> : null}
+                <CoverageSummary summary={summarizeWeek(roleRows)} t={t} />
+                {editing ? <GridLegend t={t} /> : null}
             </div>
             {requirements.length === 0 ? (
                 <p className="text-sm text-muted-foreground print:hidden">
-                    No coverage requirements yet. Set how many people each role needs on{" "}
-                    <Link href={`/roles?branch=${branchId}`} className="font-medium text-primary underline-offset-4 hover:underline">
-                        Roles
-                    </Link>{" "}
-                    so the schedule shows who is still needed.
+                    {t.schedule.noRequirements(
+                        <Link href={`/roles?branch=${branchId}`} className="font-medium text-primary underline-offset-4 hover:underline">
+                            {t.schedule.rolesLink}
+                        </Link>,
+                    )}
                 </p>
             ) : null}
             {editing ? (
@@ -234,35 +229,35 @@ export async function ScheduleSection({
                     periods={sortedPeriods}
                 />
             )}
-            <OtherShiftsTable shifts={otherShifts} />
+            <OtherShiftsTable shifts={otherShifts} t={t} locale={locale} />
         </div>
     );
 }
 
-function OtherShiftsTable({ shifts }: { shifts: OtherShift[] }) {
+function OtherShiftsTable({ shifts, t, locale }: { shifts: OtherShift[]; t: Dictionary; locale: Locale }) {
     if (shifts.length === 0) return null;
 
     return (
         <section aria-labelledby="custom-hours" className="flex flex-col gap-2 pt-2">
             <h3 id="custom-hours" className="text-sm font-medium">
-                Custom-hours shifts
-                <span className="ml-2 text-xs font-normal text-muted-foreground">Not on an active period, so not counted above</span>
+                {t.schedule.customHoursShifts}
+                <span className="ms-2 text-xs font-normal text-muted-foreground">{t.schedule.customHoursNote}</span>
             </h3>
             <div className="overflow-x-auto rounded-lg border border-border bg-card sm:max-w-xl">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead scope="col">Day</TableHead>
-                            <TableHead scope="col">Hours</TableHead>
-                            <TableHead scope="col">Person</TableHead>
+                            <TableHead scope="col">{t.schedule.day}</TableHead>
+                            <TableHead scope="col">{t.schedule.hours}</TableHead>
+                            <TableHead scope="col">{t.schedule.person}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {shifts.map((shift) => (
                             <TableRow key={shift.shiftId}>
-                                <TableCell>{formatDay(shift.date)}</TableCell>
+                                <TableCell>{formatDay(shift.date, locale)}</TableCell>
                                 <TableCell className="font-mono tabular-nums">
-                                    {shift.startTime}–{shift.endTime}
+                                    <bdi dir="ltr">{shift.startTime}–{shift.endTime}</bdi>
                                 </TableCell>
                                 <TableCell>{shift.name}</TableCell>
                             </TableRow>

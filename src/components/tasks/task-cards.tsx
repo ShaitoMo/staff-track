@@ -2,28 +2,31 @@ import { TaskRowActions } from "@/components/tasks/task-row-actions";
 import type { TaskRow } from "@/components/tasks/task-table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { getDictionary } from "@/i18n/server";
 import { cn } from "@/lib/utils";
 
 /** The phone layout of TaskTable: the table's five columns and its actions do not fit a narrow screen. */
-export function TaskCards({ rows }: { rows: TaskRow[] }) {
+export async function TaskCards({ rows }: { rows: TaskRow[] }) {
+    const t = await getDictionary();
+
     return (
         <div className="flex flex-col gap-3 md:hidden">
             {rows.map((row) => (
                 <Card key={row.taskId}>
                     <CardContent className="flex flex-col gap-2">
                         <div className="flex items-start justify-between gap-2">
-                            <div className="font-medium">{row.title}</div>
+                            <div className="font-medium"><bdi>{row.title}</bdi></div>
                             <Badge variant="outline" className={cn(!row.active && "border-dashed text-muted-foreground")}>
-                                {row.active ? "Active" : "Inactive"}
+                                {row.active ? t.tasks.active : t.tasks.inactive}
                             </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">{row.branchName}</div>
                         <div className="text-sm">
-                            <span className="text-muted-foreground">Assigned to </span>
+                            <span className="text-muted-foreground">{t.tasks.assignedToLead}</span>
                             <span className="capitalize">{row.assignee}</span>
                         </div>
                         <div className="text-sm">
-                            <span className="text-muted-foreground">Repeats </span>
+                            <span className="text-muted-foreground">{t.tasks.repeatsLead}</span>
                             {row.schedule}
                         </div>
                         <div className="mt-1 flex justify-end">

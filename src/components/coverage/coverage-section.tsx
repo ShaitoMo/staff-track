@@ -6,6 +6,7 @@ import { WeekNav } from "@/components/layout/week-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
+import { getI18n } from "@/i18n/server";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { buildRequirementGrid, formatWeekRange, mondayOf, sortPeriods } from "@/lib/coverage-rows";
@@ -27,6 +28,7 @@ export async function CoverageSection({
     /** False when the page shows one week nav over several stacked branches. */
     showWeekNav?: boolean;
 }) {
+    const { t, locale } = await getI18n();
     let requirements: CoverageRequirementView[];
     let periods: ShiftPeriodView[];
 
@@ -40,7 +42,7 @@ export async function CoverageSection({
             return (
                 <Alert variant="destructive">
                     <AlertCircleIcon />
-                    <AlertDescription>You don&apos;t have access to this branch&apos;s coverage.</AlertDescription>
+                    <AlertDescription>{t.coverage.noBranchAccess}</AlertDescription>
                 </Alert>
             );
         }
@@ -53,10 +55,8 @@ export async function CoverageSection({
         return (
             <Empty>
                 <EmptyHeader>
-                    <EmptyTitle>Nothing to set requirements for yet</EmptyTitle>
-                    <EmptyDescription>
-                        Coverage needs at least one role and one shift period for this branch.
-                    </EmptyDescription>
+                    <EmptyTitle>{t.coverage.nothingToSet}</EmptyTitle>
+                    <EmptyDescription>{t.coverage.nothingToSetDescription}</EmptyDescription>
                 </EmptyHeader>
             </Empty>
         );
@@ -65,7 +65,7 @@ export async function CoverageSection({
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium">People required per period</h3>
+                <h3 className="text-sm font-medium">{t.coverage.perPeriod}</h3>
                 <RequirementsGrid
                     branchId={branchId}
                     periods={sortedPeriods.map(({ periodId, name, defaultStart, defaultEnd }) => ({
@@ -76,9 +76,7 @@ export async function CoverageSection({
                     }))}
                     rows={buildRequirementGrid(roles, sortedPeriods, requirements)}
                 />
-                <p className="text-xs text-muted-foreground">
-                    Blank means not set yet. Enter 0 if the role isn&apos;t needed in that period.
-                </p>
+                <p className="text-xs text-muted-foreground">{t.coverage.blankHint}</p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -92,15 +90,15 @@ export async function CoverageSection({
                             heading="h3"
                         />
                     ) : (
-                        <h3 className="text-sm font-medium tabular-nums">{formatWeekRange(weekStart)}</h3>
+                        <h3 className="text-sm font-medium tabular-nums">{formatWeekRange(weekStart, locale)}</h3>
                     )}
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        Counts are scheduled / required;
+                        {t.coverage.countsAre}
                         <span aria-hidden="true" className="flex items-center gap-1.5">
                             <span className={NEEDS_DOT} />
-                            short
+                            {t.coverage.short}
                         </span>
-                        <span className="sr-only">a short slot says by how many.</span>
+                        <span className="sr-only">{t.coverage.shortSr}</span>
                     </span>
                 </div>
                 {/* Keyed by week only, so changing the week reloads just this table and leaves the grid in place. */}
@@ -108,7 +106,7 @@ export async function CoverageSection({
                     key={weekStart}
                     fallback={
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Spinner /> Loading…
+                            <Spinner /> {t.coverage.loading}
                         </div>
                     }
                 >
