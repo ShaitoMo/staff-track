@@ -1,3 +1,4 @@
+import { en } from "@/i18n/dictionaries/en";
 import { sortPeriods } from "@/lib/coverage-rows";
 import type { Branch } from "@/types/branch";
 import type { ShiftPeriodView } from "@/types/shift-period";
@@ -19,7 +20,12 @@ export interface PeriodRow {
  * "All branches" would show them once per branch without the dedupe. Ordered the way the
  * schedule lists them (`sortPeriods`).
  */
-export function buildPeriodRows(periodsByBranch: ShiftPeriodView[][], branches: Branch[], isOwner: boolean): PeriodRow[] {
+export function buildPeriodRows(
+    periodsByBranch: ShiftPeriodView[][],
+    branches: Branch[],
+    isOwner: boolean,
+    allBranches = en.periods.allBranches,
+): PeriodRow[] {
     const branchNames = new Map(branches.map((branch) => [branch.branchId, branch.name]));
     const unique = new Map(periodsByBranch.flat().map((period) => [period.periodId, period]));
 
@@ -27,7 +33,7 @@ export function buildPeriodRows(periodsByBranch: ShiftPeriodView[][], branches: 
         periodId: period.periodId,
         name: period.name,
         hours: `${period.defaultStart}–${period.defaultEnd}`,
-        branchName: period.branchId === null ? "All branches" : branchNames.get(period.branchId) ?? `Branch ${period.branchId}`,
+        branchName: period.branchId === null ? allBranches : branchNames.get(period.branchId) ?? `#${period.branchId}`,
         active: period.active,
         canChange: period.branchId !== null || isOwner,
     }));

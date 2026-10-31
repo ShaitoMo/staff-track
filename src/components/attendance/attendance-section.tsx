@@ -5,6 +5,9 @@ import { ImportAttendanceDialog } from "@/components/attendance/import-attendanc
 import { AttendanceRange } from "@/components/attendance/range-switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/locales";
+import { getI18n } from "@/i18n/server";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { buildAttendanceRows, formatLatestPunch } from "@/lib/attendance-rows";
@@ -15,15 +18,15 @@ import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 import { SafeUser } from "@/types/user";
 
 /** How far the clock data goes, and what that means for the shifts after it. */
-function ClockDataNote({ latest, notImported }: { latest: Date | null; notImported: number }) {
+function ClockDataNote({ latest, notImported, t, locale }: { latest: Date | null; notImported: number; t: Dictionary; locale: Locale }) {
     if (latest === null) {
-        return <p className="text-sm text-muted-foreground">No clock-machine punches recorded at this branch yet.</p>;
+        return <p className="text-sm text-muted-foreground">{t.attendance.noClockData}</p>;
     }
 
     return (
         <p className="text-sm text-muted-foreground">
-            Clock punches recorded through <span className="font-medium text-foreground">{formatLatestPunch(latest)}</span>.
-            {notImported > 0 ? " Import the machine's file to fill in the shifts after that." : null}
+            {t.attendance.clockDataThrough} <span className="font-medium text-foreground">{formatLatestPunch(latest, locale)}</span>.
+            {notImported > 0 ? t.attendance.importToFill : null}
         </p>
     );
 }
@@ -47,6 +50,7 @@ export async function AttendanceSection({
     /** True when several branches stack on one page, so each one's Import stays quiet (one blue per screen). */
     stacked?: boolean;
 }) {
+    const { t, locale } = await getI18n();
     let report: ScheduleVsActualRow[];
     let users: SafeUser[];
     let freshness: AttendanceFreshnessView;
@@ -62,7 +66,7 @@ export async function AttendanceSection({
             return (
                 <Alert variant="destructive">
                     <AlertCircleIcon />
-                    <AlertDescription>You don&apos;t have access to this branch&apos;s attendance.</AlertDescription>
+                    <AlertDescription>{t.attendance.noBranchAccess}</AlertDescription>
                 </Alert>
             );
         }
@@ -70,7 +74,7 @@ export async function AttendanceSection({
     }
 
     const latest = freshness.latest_punch === null ? null : new Date(freshness.latest_punch);
-    const rows = buildAttendanceRows(report, users, { latestPunches: new Map([[branchId, latest]]) });
+    const rows = buildAttendanceRows(report, users, { latestPunches: new Map([[branchId, latest]]), words: t.attendance.rows });
     const staff = users
         .filter((user) => user.isActive)
         .map((user) => ({ userId: user.userId, name: user.name }))
@@ -78,14 +82,14 @@ export async function AttendanceSection({
     const today = todayDateString();
     // a punch added while looking at another day or week is most likely for that one
     const defaultDate = today >= from && today <= to ? today : from;
-    const range = view === "day" ? formatDay(from) : formatWeekRange(from);
+    const range = view === "day" ? formatDay(from, locale) : formatWeekRange(from, locale);
     // "on Sat 24 Oct", but "5 Oct – 11 Oct" reads on its own
-    const during = view === "day" ? `on ${range}` : range;
+    const during = view === "day" ? t.attendance.onDay(range) : range;
 
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <ClockDataNote latest={latest} notImported={rows.filter((row) => row.status === "not_imported").length} />
+                <ClockDataNote t={t} locale={locale} latest={latest} notImported={rows.filter((row) => row.status === "not_imported").length} />
                 <div className="flex flex-wrap items-center gap-2">
                     <AddPunchDialog branchId={branchId} staff={staff} defaultDate={defaultDate} />
                     <ImportAttendanceDialog branchId={branchId} quiet={stacked} />
@@ -94,10 +98,8 @@ export async function AttendanceSection({
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No shifts {during}</EmptyTitle>
-                        <EmptyDescription>
-                            Attendance is compared against the schedule, and nobody is scheduled at this branch {during}.
-                        </EmptyDescription>
+                        <EmptyTitle>{t.attendance.noShifts(during)}</EmptyTitle>
+                        <EmptyDescription>{t.attendance.noShiftsDescription(during)}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : (

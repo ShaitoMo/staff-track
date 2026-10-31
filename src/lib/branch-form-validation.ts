@@ -1,3 +1,4 @@
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
 import { CreateBranchSchema } from "@/types/branch";
 
 export interface BranchFormInput {
@@ -10,17 +11,16 @@ export interface BranchFormErrors {
     location?: string;
 }
 
-const FIELD_MESSAGES = {
-    name: "Name must be between 3 and 50 characters.",
-    location: "Location must be between 3 and 100 characters.",
-} as const;
-
 /**
  * Validates against CreateBranchSchema (src/types/branch.ts) so the limits live in one place. The one
  * rule the schema can't express: its update variant has no way to clear a location, so a location
  * that was already set can't be blanked on edit.
  */
-export function validateBranchForm(input: BranchFormInput, options: { hadLocation: boolean }): BranchFormErrors {
+export function validateBranchForm(
+    input: BranchFormInput,
+    options: { hadLocation: boolean },
+    messages: Dictionary["branches"]["errors"] = en.branches.errors,
+): BranchFormErrors {
     const errors: BranchFormErrors = {};
 
     const result = CreateBranchSchema.safeParse({
@@ -32,13 +32,13 @@ export function validateBranchForm(input: BranchFormInput, options: { hadLocatio
         for (const issue of result.error.issues) {
             const field = issue.path[0];
             if (field === "name" || field === "location") {
-                errors[field] = FIELD_MESSAGES[field];
+                errors[field] = messages[field];
             }
         }
     }
 
     if (input.location.length === 0 && options.hadLocation) {
-        errors.location = "Location can't be cleared once set.";
+        errors.location = messages.locationCleared;
     }
 
     return errors;

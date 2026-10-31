@@ -114,6 +114,17 @@ both ending in `/api/*` and both throwing `ApiError` (built by the shared `throw
 - Hooks (SWR/TanStack Query) are not used; add them for a screen only if it needs client-side refetching,
   polling, or optimistic updates, wrapping these same functions. Form field state (`useState`) is unrelated.
 
+**Languages (`src/i18n/`):** Arabic (default, RTL) and English, chosen by the `locale` cookie that the
+language switcher writes; URLs carry no locale. Every UI string lives in `src/i18n/dictionaries/{en,ar}/*`
+(`ar` is typed against `en`, so a missing translation fails `tsc`); a term used by several screens is
+written once in `words.ts` and pointed at (`role: words.role`), unless Arabic needs another form there.
+Server Components read `await getDictionary()`, or `await getI18n()` for `{ t, locale }` together, from
+`src/i18n/server.ts`; Client Components use `useT()` / `useLocale()` from `src/i18n/client.tsx`. A
+component with no directive that both sides import can do neither, so it is made a client component or
+split. Dates go through the locale-aware formatters in `src/lib/coverage-rows.ts` / `attendance-rows.ts`,
+whose `locale` is required. Counts go through `plural()` (`src/i18n/locales.ts`) in both languages. API
+error text stays English for now.
+
 **Shared contracts (`src/types/*`):** one file per domain, each a Zod schema plus its inferred type.
 Wire format is mixed, per file: snake_case (`branch_id`, `assigned_to`, ...) in `task`, `task-instance`,
 `media`, `shift`, `attendance`, `import-batch`, `dashboard` and `schedule-vs-actual`; camelCase in `user`,

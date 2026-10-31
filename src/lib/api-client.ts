@@ -6,6 +6,13 @@ export class ApiError extends Error {
     }
 }
 
+/** The direct-to-storage photo PUT failed (network, CORS, or the bucket refused it): no server message to show. */
+export class PhotoUploadError extends ApiError {
+    constructor(status = 0) {
+        super("The photo didn't upload. Check your connection and try again.", status);
+    }
+}
+
 /** Throws an ApiError carrying the response's `error` message, or `fallback` when the body has none. */
 export async function throwApiError(res: Response, fallback: string): Promise<never> {
     const body: unknown = await res.json().catch(() => null);

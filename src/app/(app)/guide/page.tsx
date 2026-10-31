@@ -4,23 +4,27 @@ import { AddSectionForm } from "@/components/guide/add-section-form";
 import { GuideLinkList } from "@/components/guide/guide-link-list";
 import { BranchStack } from "@/components/layout/branch-stack";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { getDictionary } from "@/i18n/server";
+import type { Dictionary } from "@/i18n/dictionaries";
 import { fetchApi } from "@/lib/api-server";
 import { canEditGuide, OWNER_ROLE } from "@/lib/rbac";
 import { getSelectedBranchId, getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
 import { BranchSectionView, SectionTypeView } from "@/types/shelf-guide";
 
-export const metadata: Metadata = { title: "Shelf guide" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).guide.title };
+}
 
 const toLinks = (sections: BranchSectionView[]) =>
     sections.map((section) => ({ href: `/guide/${section.branchSectionId}`, name: section.name, active: section.isActive }));
 
 /** Reference photos of how each area should look (FR12). Staff see every branch they work at; owners and managers follow the branch switcher. */
 export default async function GuidePage({ searchParams }: { searchParams: Promise<{ branch?: string }> }) {
-    const session = await getSession();
+    const [session, t] = await Promise.all([getSession(), getDictionary()]);
 
     if (session === null || !canEditGuide(session)) {
-        return <StaffGuide branchIds={session?.branchIds ?? []} />;
+        return <StaffGuide branchIds={session?.branchIds ?? []} t={t} />;
     }
 
     const { branch } = await searchParams;
@@ -34,34 +38,31 @@ export default async function GuidePage({ searchParams }: { searchParams: Promis
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-semibold">Shelf guide</h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-                Reference photos of how each area of a branch should look. Staff see the active sections of their branches.
-            </p>
+            <h1 className="text-xl font-semibold">{t.guide.title}</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">{t.guide.intro}</p>
             {types.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                    {isOwner ? (
-                        <>
-                            Start by adding the kinds of area your branches have under{" "}
-                            <Link href="/section-types" className="text-primary hover:underline">Section types</Link>.
-                        </>
-                    ) : (
-                        "The owner hasn't added any section types yet."
-                    )}
+                    {isOwner
+                        ? t.guide.startWithTypes(
+                              <Link href="/section-types" className="text-primary hover:underline">
+                                  {t.guide.sectionTypesLink}
+                              </Link>,
+                          )
+                        : t.guide.noTypesYet}
                 </p>
             ) : null}
             {shown !== undefined ? (
-                <ManagedBranch branchId={shown.branchId} types={types} primary />
+                <ManagedBranch branchId={shown.branchId} types={types} primary t={t} />
             ) : (
                 <BranchStack branches={branches} basePath="/guide" query={{}}>
-                    {(b) => <ManagedBranch branchId={b.branchId} types={types} primary={false} />}
+                    {(b) => <ManagedBranch branchId={b.branchId} types={types} primary={false} t={t} />}
                 </BranchStack>
             )}
         </div>
     );
 }
 
-async function ManagedBranch({ branchId, types, primary }: { branchId: number; types: SectionTypeView[]; primary: boolean }) {
+async function ManagedBranch({ branchId, types, primary, t }: { branchId: number; types: SectionTypeView[]; primary: boolean; t: Dictionary }) {
     const sections = await fetchApi<BranchSectionView[]>(`/api/branches/${branchId}/sections?includeInactive=true`);
     const taken = new Set(sections.map((section) => section.sectionTypeId));
     const available = types.filter((type) => !taken.has(type.sectionTypeId));
@@ -69,7 +70,7 @@ async function ManagedBranch({ branchId, types, primary }: { branchId: number; t
     return (
         <div className="flex flex-col gap-4">
             {sections.length === 0 ? (
-                <p className="text-sm text-muted-foreground">This branch has no sections yet.</p>
+                <p className="text-sm text-muted-foreground">{t.guide.noSectionsYet}</p>
             ) : (
                 <GuideLinkList items={toLinks(sections)} kind="section" />
             )}
@@ -78,7 +79,7 @@ async function ManagedBranch({ branchId, types, primary }: { branchId: number; t
     );
 }
 
-async function StaffGuide({ branchIds }: { branchIds: number[] }) {
+async function StaffGuide({ branchIds, t }: { branchIds: number[]; t: Dictionary }) {
     const perBranch = await Promise.all(
         branchIds.map((id) => fetchApi<BranchSectionView[]>(`/api/branches/${id}/sections`)),
     );
@@ -86,12 +87,12 @@ async function StaffGuide({ branchIds }: { branchIds: number[] }) {
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-semibold">Shelf guide</h1>
+            <h1 className="text-xl font-semibold">{t.guide.title}</h1>
             {withSections.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No guide yet</EmptyTitle>
-                        <EmptyDescription>Your manager hasn&apos;t added reference photos for your branch.</EmptyDescription>
+                        <EmptyTitle>{t.guide.noGuideYet}</EmptyTitle>
+                        <EmptyDescription>{t.guide.noGuideYetDescription}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : withSections.length === 1 ? (

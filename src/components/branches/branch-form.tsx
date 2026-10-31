@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createBranch, updateBranch } from "@/lib/api/branches";
 import { BranchFormErrors, isBranchFormValid, validateBranchForm } from "@/lib/branch-form-validation";
@@ -31,6 +32,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -40,6 +42,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
         const validationErrors = validateBranchForm(
             { name, location },
             { hadLocation: !!initialValues?.location },
+            t.branches.errors,
         );
         setErrors(validationErrors);
         if (!isBranchFormValid(validationErrors)) return;
@@ -54,7 +57,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                     if (location && location !== initialValues?.location) patch.location = location;
 
                     if (Object.keys(patch).length === 0) {
-                        setNotice("No changes to save.");
+                        setNotice(t.branches.noChanges);
                         return;
                     }
                     await updateBranch(branchId!, patch);
@@ -63,7 +66,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                 router.push("/branches");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -86,9 +89,9 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                 </FormAlerts>
             ) : null}
 
-            <FormSection legend="Details" className="sm:grid-cols-2">
+            <FormSection legend={t.setup.details} className="sm:grid-cols-2">
                 <Field data-invalid={!!errors.name || undefined}>
-                    <FieldLabel htmlFor="name">Name</FieldLabel>
+                    <FieldLabel htmlFor="name">{t.setup.name}</FieldLabel>
                     <Input
                         id="name"
                         value={name}
@@ -100,7 +103,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                 </Field>
 
                 <Field data-invalid={!!errors.location || undefined}>
-                    <FieldLabel htmlFor="location">Location (optional)</FieldLabel>
+                    <FieldLabel htmlFor="location">{t.branches.locationOptional}</FieldLabel>
                     <Input
                         id="location"
                         value={location}
@@ -115,7 +118,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
             <FormFooter>
                 <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
-                    {mode === "create" ? "Create branch" : "Save changes"}
+                    {mode === "create" ? t.branches.createBranch : t.setup.saveChanges}
                 </Button>
             </FormFooter>
         </FormCard>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 
@@ -29,11 +30,12 @@ export function InlineNameForm({
     const [name, setName] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         const trimmed = name.trim();
-        setError(trimmed === "" ? "Enter a name." : null);
+        setError(trimmed === "" ? t.guide.enterName : null);
         if (trimmed === "") return;
 
         startTransition(async () => {
@@ -42,7 +44,7 @@ export function InlineNameForm({
                 setName("");
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             }
         });
     }

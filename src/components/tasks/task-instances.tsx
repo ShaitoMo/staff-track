@@ -3,6 +3,7 @@ import { InstanceCards } from "@/components/tasks/instance-cards";
 import { InstanceTable } from "@/components/tasks/instance-table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { ApiError } from "@/lib/api-client";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { buildInstanceRows } from "@/lib/instance-rows";
 import { getSession } from "@/lib/session";
@@ -16,6 +17,7 @@ export async function TaskInstances({ date, branchId }: { date: string; branchId
         query.set("branch_id", String(branchId));
     }
 
+    const t = await getDictionary();
     let instances: TaskInstanceListView[];
     let roles: Role[];
     let session: Awaited<ReturnType<typeof getSession>>;
@@ -28,7 +30,7 @@ export async function TaskInstances({ date, branchId }: { date: string; branchId
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage title="Tasks" message="You don't have access to view task instances." />;
+            return <AccessMessage title={t.tasks.title} message={t.tasks.noInstanceAccess} />;
         }
         throw error;
     }
@@ -38,15 +40,15 @@ export async function TaskInstances({ date, branchId }: { date: string; branchId
         throw new Error("Instances view rendered without a session");
     }
 
-    const rows = buildInstanceRows(instances, roles, session.userId);
+    const rows = buildInstanceRows(instances, roles, session.userId, t.tasks);
 
     return (
         <div className="flex flex-col gap-4">
             {rows.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No tasks due</EmptyTitle>
-                        <EmptyDescription>Nothing is due on {date}.</EmptyDescription>
+                        <EmptyTitle>{t.tasks.noTasksDue}</EmptyTitle>
+                        <EmptyDescription>{t.tasks.nothingDueOn(date)}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : (

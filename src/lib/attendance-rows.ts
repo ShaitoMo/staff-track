@@ -1,3 +1,5 @@
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
+import type { Locale } from "@/i18n/locales";
 import { formatDay } from "@/lib/coverage-rows";
 import { MACHINE_TIME_ZONE, machineDayOf, machineTimeToUtc } from "@/lib/machine-time";
 import { scheduledInstant } from "@/lib/schedule-vs-actual";
@@ -24,18 +26,6 @@ export const STATUS_ORDER: AttendanceStatus[] = [
     "upcoming",
 ];
 
-export const STATUS_LABELS: Record<AttendanceStatus, string> = {
-    on_time: "On time",
-    late: "Late",
-    left_early: "Left early",
-    missing_clock_in: "Missing clock-in",
-    missing_clock_out: "Missing clock-out",
-    no_show: "No-show",
-    not_imported: "Not imported yet",
-    not_in_yet: "Not in yet",
-    upcoming: "Upcoming",
-};
-
 /** What a manager has to act on: a punch missing an end, or a shift nobody clocked. */
 const NEEDS_ACTION: AttendanceStatus[] = ["missing_clock_in", "missing_clock_out", "no_show"];
 
@@ -60,8 +50,9 @@ export function groupByDay(rows: AttendanceRow[]): { date: string; rows: Attenda
 export type LatestPunches = Map<number, Date | null>;
 
 /** 'Sun 11 Oct, 22:14' on the branch clock — how far a branch's clock data goes. */
-export function formatLatestPunch(instant: Date): string {
-    return `${formatDay(machineDayOf(instant).toISOString().slice(0, 10))}, ${formatMachineTime(instant)}`;
+export function formatLatestPunch(instant: Date, locale: Locale): string {
+    const separator = locale === "ar" ? "، " : ", ";
+    return `${formatDay(machineDayOf(instant).toISOString().slice(0, 10), locale)}${separator}${formatMachineTime(instant)}`;
 }
 
 /** Which end of a punch the Fix dialog fills in, from the row's status. */
@@ -174,7 +165,11 @@ export interface AttendanceRow {
 export function buildAttendanceRows(
     rows: ScheduleVsActualRow[],
     users: { userId: number; name: string }[],
-    { now = new Date(), latestPunches = new Map() }: { now?: Date; latestPunches?: LatestPunches } = {},
+    {
+        now = new Date(),
+        latestPunches = new Map(),
+        words = en.attendance.rows,
+    }: { now?: Date; latestPunches?: LatestPunches; words?: Dictionary["attendance"]["rows"] } = {},
 ): AttendanceRow[] {
     const names = new Map(users.map((user) => [user.userId, user.name]));
 
@@ -187,7 +182,7 @@ export function buildAttendanceRows(
                 shiftDate: row.shift_date,
                 branchId: row.branch_id,
                 userId: row.user_id,
-                name: names.get(row.user_id) ?? `User ${row.user_id}`,
+                name: names.get(row.user_id) ?? words.unknownUser(row.user_id),
                 scheduledStart: row.scheduled_start.slice(0, 5),
                 scheduled: `${row.scheduled_start.slice(0, 5)}–${row.scheduled_end.slice(0, 5)}`,
                 clockIn: row.actual_clock_in === null ? null : formatMachineTime(row.actual_clock_in),
@@ -195,7 +190,7 @@ export function buildAttendanceRows(
                 status,
                 // an end that may still be on its way isn't fixed by hand
                 fix: status === "not_imported" ? null : fixFor(row),
-                detail: slipDetail(row),
+                detail: slipDetail(row, words),
                 isLate: row.is_late,
                 leftEarly: row.left_early,
             };
@@ -235,10 +230,10 @@ function fixFor(row: ScheduleVsActualRow): AttendanceRow["fix"] {
 const lateBy = (row: ScheduleVsActualRow) => (row.is_late ? (row.late_minutes ?? 0) : 0);
 const earlyBy = (row: ScheduleVsActualRow) => (row.left_early ? (row.early_leave_minutes ?? 0) : 0);
 
-function slipDetail(row: ScheduleVsActualRow): string | null {
+function slipDetail(row: ScheduleVsActualRow, words: Dictionary["attendance"]["rows"]): string | null {
     const parts = [
-        row.is_late ? `${lateBy(row)} min late` : null,
-        row.left_early ? `left ${earlyBy(row)} min early` : null,
+        row.is_late ? words.late(lateBy(row)) : null,
+        row.left_early ? words.leftEarly(earlyBy(row)) : null,
     ].filter((part) => part !== null);
 
     return parts.length === 0 ? null : parts.join(" · ");
@@ -255,11 +250,12 @@ export function missedMinutes(rows: ScheduleVsActualRow[]): number {
         .reduce((total, row) => total + lateBy(row) + earlyBy(row), 0);
 }
 
-/** '45 min', '1 h', '1 h 17 min'. */
-export function formatMinutes(minutes: number): string {
+/** '45 min', '1 h', '1 h 17 min' ('45 د', '1 س 17 د'). */
+export function formatMinutes(minutes: number, locale: Locale): string {
     const hours = Math.floor(minutes / 60);
     const rest = minutes % 60;
+    const [h, min] = locale === "ar" ? ["س", "د"] : ["h", "min"];
 
-    if (hours === 0) return `${rest} min`;
-    return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+    if (hours === 0) return `${rest} ${min}`;
+    return rest === 0 ? `${hours} ${h}` : `${hours} ${h} ${rest} ${min}`;
 }

@@ -101,6 +101,7 @@ Status color marks, it doesn't fill. In the schedule grid a slot still needing s
 
 **UI Font:** Geist Sans (`next/font/google`, wired in `src/app/layout.tsx` as `--font-geist-sans`), system-ui fallback.
 **Tabular/Mono Font:** Geist Mono (`--font-geist-mono`), for IDs, phone numbers, timestamps, and anything meant to align in a column.
+**Arabic:** IBM Plex Sans Arabic, self-hosted from `src/app/fonts/` via `next/font/local` (family `plexArabic`, `--font-arabic`), placed after Geist in every font stack in `globals.css`. Geist has no Arabic glyphs, so Latin text stays in Geist and only Arabic falls through to Plex; one stack serves both languages. At Geist's size and weight Plex reads smaller and fainter than the Latin beside it, so Arabic is set one step heavier and a little larger: the faces are mapped up a weight (Plex 500 serves 400, 600 serves 500, 700 serves 600) and carry `size-adjust: 108%`, with a `unicode-range` so none of it touches Latin. The stacks name the families directly (`"Geist", plexArabic, "Geist Fallback", …`) rather than using the next/font vars, because each var ends in a local-Arial fallback face that has Arabic glyphs and would catch the Arabic before Plex (Turbopack ignores `adjustFontFallback: false`). An Arabic date runs about twice the length of the English one, so the week grid's day headers stack the weekday over the date. Arabic text takes no letter-spacing (it breaks the joins), so tracking utilities are `ltr:`-only. Arabic mode keeps Western digits (0–9) and Lebanese month names (أيلول, تشرين الأول: `ar-LB`).
 
 **Character:** A plain, highly legible grotesque built for interfaces, not editorial display — chosen because it's already the project's font and because Operate-mode surfaces are better served by a workhorse face than an expressive one.
 
@@ -111,6 +112,8 @@ Status color marks, it doesn't fill. In the schedule grid a slot still needing s
 
 ### Named Rules
 **The No-Display-Face Rule.** Nothing on an Operate screen is set in a font chosen for personality. If a heading wants more presence, that's a weight/size change, never a new typeface.
+
+**The Logical-Sides Rule.** The app runs right to left in Arabic (the default) and left to right in English, so spacing and position use logical classes — `ms-`/`me-`, `ps-`/`pe-`, `start-`/`end-`, `text-start`/`text-end`, `border-s`/`border-e` — never `ml-`/`pr-`/`left-`/`text-right`. An icon that points along the reading direction (chevrons, arrows) gets `rtl:rotate-180`. A phone number is `<bdi dir="ltr">` inside a block that keeps the page's alignment. Text people type (task titles, descriptions, photo titles) is wrapped in `<bdi>`, and a name interpolated into a sentence goes through `isolate()` (`src/i18n/locales.ts`), so an English name inside Arabic keeps its punctuation in place. No UI string is written inline: it lives in `src/i18n/dictionaries/{en,ar}/*`.
 
 ## Layout
 

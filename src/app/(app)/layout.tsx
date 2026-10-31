@@ -6,6 +6,7 @@ import { BranchSwitcher } from "@/components/layout/branch-switcher";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { StaffNav, StaffTabBar } from "@/components/layout/staff-nav";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
 import { getBranchPreference, getSession } from "@/lib/session";
@@ -40,6 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             : Promise.resolve([]),
         getBranchPreference(),
     ]);
+    const t = await getDictionary();
     const branches = branchesResult.map(({ branchId, name }) => ({ branchId, name }));
 
     return (
@@ -47,9 +49,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {/* the first Tab stop: past the switcher, the left bar and the account menu, straight to the page */}
             <a
                 href="#main"
-                className="sr-only rounded-md bg-card px-3 py-2 text-sm font-medium text-primary ring-1 ring-foreground/10 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50"
+                className="sr-only rounded-md bg-card px-3 py-2 text-sm font-medium text-primary ring-1 ring-foreground/10 focus:not-sr-only focus:fixed focus:top-2 focus:start-2 focus:z-50"
             >
-                Skip to content
+                {t.layout.skipToContent}
             </a>
             <header
                 className={cn(
@@ -62,10 +64,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {/* on a wide screen the brand tops the dark left bar, so the switcher lines up with the page */}
                 <div
                     className={cn(
-                        "flex h-full shrink-0 items-center gap-1 pr-3",
+                        "flex h-full shrink-0 items-center gap-1 pe-3",
                         canManage
-                            ? "pl-2 lg:w-56 lg:bg-sidebar lg:pl-5 lg:text-sidebar-foreground"
-                            : "pl-4 lg:pl-6",
+                            ? "ps-2 lg:w-56 lg:bg-sidebar lg:ps-5 lg:text-sidebar-foreground"
+                            : "ps-4 lg:ps-6",
                     )}
                 >
                     {canManage ? (
@@ -74,10 +76,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         </div>
                     ) : null}
                     <Link href="/" className="text-base font-semibold whitespace-nowrap">
-                        StaffTrack
+                        {t.common.appName}
                     </Link>
                 </div>
-                <div className={cn("flex h-full min-w-0 flex-1 items-center gap-3 pr-2 lg:px-6", canManage && "lg:border-b lg:border-border")}>
+                <div className={cn("flex h-full min-w-0 flex-1 items-center gap-3 pe-2 lg:px-6", canManage && "lg:border-b lg:border-border")}>
                     {canManage ? (
                         <Suspense>
                             <BranchSwitcher branches={branches} preference={preference} />
@@ -85,7 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     ) : (
                         <StaffNav />
                     )}
-                    <div className="ml-auto shrink-0">
+                    <div className="ms-auto shrink-0">
                         <AccountMenu name={userResult?.name ?? null} role={session.role} />
                     </div>
                 </div>

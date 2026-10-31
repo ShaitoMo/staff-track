@@ -11,6 +11,8 @@ import { StaffSchedule } from "@/components/schedule/staff-schedule";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
+import type { Dictionary } from "@/i18n/dictionaries";
+import { getDictionary } from "@/i18n/server";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { mondayOf } from "@/lib/coverage-rows";
@@ -22,19 +24,21 @@ import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 
-const loading = (
+const loading = (t: Dictionary) => (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Spinner /> Loading…
+        <Spinner /> {t.schedule.loading}
     </div>
 );
 
-export const metadata: Metadata = { title: "Schedule" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).schedule.title };
+}
 
 /**
  * The page's title and its two modes. Reading (the default) shows the finished week with Print;
  * Edit schedule opens the editing grid on the same branch and week, and Done editing comes back.
  */
-function ScheduleHeader({ title, editing, query }: { title: string; editing: boolean; query: Record<string, string> }) {
+function ScheduleHeader({ title, editing, query, t }: { title: string; editing: boolean; query: Record<string, string>; t: Dictionary }) {
     const href = (mode: "edit" | null) => `/schedule?${new URLSearchParams({ ...query, ...(mode && { mode }) })}`;
 
     return (
@@ -44,14 +48,14 @@ function ScheduleHeader({ title, editing, query }: { title: string; editing: boo
                 {editing ? (
                     <Link href={href(null)} className={cn(buttonVariants({ size: "sm" }), TOUCH_HEIGHT)}>
                         <CheckIcon data-icon="inline-start" />
-                        Done editing
+                        {t.schedule.doneEditing}
                     </Link>
                 ) : (
                     <>
                         <PrintButton />
                         <Link href={href("edit")} className={cn(buttonVariants({ size: "sm" }), TOUCH_HEIGHT)}>
                             <PencilIcon data-icon="inline-start" />
-                            Edit schedule
+                            {t.schedule.editSchedule}
                         </Link>
                     </>
                 )}
@@ -65,7 +69,7 @@ export default async function SchedulePage({
 }: {
     searchParams: Promise<{ branch?: string; week?: string; mode?: string }>;
 }) {
-    const [{ branch, week, mode }, session] = await Promise.all([searchParams, getSession()]);
+    const [{ branch, week, mode }, session, t] = await Promise.all([searchParams, getSession(), getDictionary()]);
     const requestedBranchId = branch && /^\d+$/.test(branch) ? Number(branch) : undefined;
     const weekStart = mondayOf(parseDateParam(week));
     const editing = mode === "edit";
@@ -74,8 +78,8 @@ export default async function SchedulePage({
     if (session && session.role !== OWNER_ROLE && session.role !== MANAGER_ROLE) {
         return (
             <div className="flex flex-col gap-6">
-                <h1 className="text-xl font-semibold">Schedule</h1>
-                <Suspense key={`${branch}-${weekStart}`} fallback={loading}>
+                <h1 className="text-xl font-semibold">{t.schedule.title}</h1>
+                <Suspense key={`${branch}-${weekStart}`} fallback={loading(t)}>
                     <StaffSchedule
                         userId={session.userId}
                         branchIds={session.branchIds}
@@ -97,7 +101,7 @@ export default async function SchedulePage({
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage title="Schedule" message="You don't have access to the schedule." />;
+            return <AccessMessage title={t.schedule.title} message={t.schedule.noAccess} />;
         }
         throw error;
     }
@@ -110,11 +114,11 @@ export default async function SchedulePage({
     if (branches.length === 0) {
         return (
             <div className="flex flex-col gap-6">
-                <h1 className="text-xl font-semibold">Schedule</h1>
+                <h1 className="text-xl font-semibold">{t.schedule.title}</h1>
                 <Empty>
                     <EmptyHeader>
-                        <EmptyTitle>No branches</EmptyTitle>
-                        <EmptyDescription>The schedule is set per branch, and there are no branches to show.</EmptyDescription>
+                        <EmptyTitle>{t.schedule.noBranches}</EmptyTitle>
+                        <EmptyDescription>{t.schedule.noBranchesDescription}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             </div>
@@ -128,7 +132,7 @@ export default async function SchedulePage({
     if (branchId === undefined) {
         return (
             <div data-print-target className="flex flex-col gap-6">
-                <ScheduleHeader title="Schedule" editing={editing} query={viewQuery} />
+                <ScheduleHeader title={t.schedule.title} editing={editing} query={viewQuery} t={t} />
                 <div className="print:hidden">
                     <WeekNav
                         basePath="/schedule"
@@ -139,7 +143,7 @@ export default async function SchedulePage({
                 </div>
                 <BranchStack branches={branches} basePath="/schedule" query={{ week: weekStart, ...(editing && { mode: "edit" }) }}>
                     {(b) => (
-                        <Suspense key={`${b.branchId}-${weekStart}`} fallback={loading}>
+                        <Suspense key={`${b.branchId}-${weekStart}`} fallback={loading(t)}>
                             <ScheduleSection
                                 branchId={b.branchId}
                                 weekStart={weekStart}
@@ -156,8 +160,8 @@ export default async function SchedulePage({
 
     return (
         <div data-print-target className="flex flex-col gap-6">
-            <ScheduleHeader title={`Schedule for ${branchName}`} editing={editing} query={viewQuery} />
-            <Suspense key={`${branchId}-${weekStart}`} fallback={loading}>
+            <ScheduleHeader title={t.schedule.titleFor(branchName ?? "")} editing={editing} query={viewQuery} t={t} />
+            <Suspense key={`${branchId}-${weekStart}`} fallback={loading(t)}>
                 <ScheduleSection branchId={branchId} weekStart={weekStart} roles={visibleRoles} editing={editing} />
             </Suspense>
         </div>

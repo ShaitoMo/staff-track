@@ -1,4 +1,5 @@
 import { machineDayOf } from "@/lib/machine-time";
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
 import { describeRecurrence } from "@/lib/recurrence-label";
 import { Role } from "@/types/role";
 import { DateOnlySchema, toDateOnlyString } from "@/types/date-only";
@@ -48,7 +49,12 @@ export function parseDateParam(value: string | undefined, now = new Date()): str
 }
 
 /** Shared-role instances have no named assignee, so they show the role they are pooled under. */
-export function buildInstanceRows(instances: TaskInstanceListView[], roles: Role[], viewerUserId: number): InstanceRow[] {
+export function buildInstanceRows(
+    instances: TaskInstanceListView[],
+    roles: Role[],
+    viewerUserId: number,
+    words: Dictionary["tasks"] = en.tasks,
+): InstanceRow[] {
     const roleNames = new Map(roles.map((role) => [role.roleId, role.name]));
 
     const rows = instances.map((instance): InstanceRow => {
@@ -60,8 +66,8 @@ export function buildInstanceRows(instances: TaskInstanceListView[], roles: Role
             description: instance.task.description,
             branchName: instance.task.branch_name,
             assignee: instance.assignee?.name
-                ?? (roleId !== null ? (roleNames.get(roleId) ?? `Role #${roleId}`) : "Unassigned"),
-            schedule: describeRecurrence(instance.task.recurrence),
+                ?? (roleId !== null ? (roleNames.get(roleId) ?? `#${roleId}`) : words.unassigned),
+            schedule: describeRecurrence(instance.task.recurrence, words.recurrence),
             dueDate: instance.due_date,
             status: instance.status,
             completedByName: instance.completed_by_name,

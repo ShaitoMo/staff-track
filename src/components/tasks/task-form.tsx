@@ -12,9 +12,9 @@ import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createTask, updateTask } from "@/lib/api/tasks";
-import { WEEKDAY_LABELS } from "@/lib/recurrence-label";
 import {
     AssigneeCandidate,
     assigneeOptionsForBranch,
@@ -45,17 +45,6 @@ interface TaskFormProps {
     initialValues?: EditableTaskState;
 }
 
-const ASSIGNEE_KINDS: { value: AssigneeKind; label: string }[] = [
-    { value: "person", label: "A person" },
-    { value: "role", label: "A role" },
-];
-
-const SCHEDULES: { value: Schedule; label: string }[] = [
-    { value: "one_off", label: "Once" },
-    { value: "daily", label: "Every day" },
-    { value: "weekly", label: "Certain weekdays" },
-];
-
 export function TaskForm({ branches, roles, users, userBranches, mode = "create", taskId, initialValues }: TaskFormProps) {
     const router = useRouter();
     const isEdit = mode === "edit";
@@ -74,11 +63,22 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     const [errors, setErrors] = useState<TaskFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
+
+    const assigneeKinds: { value: AssigneeKind; label: string }[] = [
+        { value: "person", label: t.tasks.personKind },
+        { value: "role", label: t.tasks.roleKind },
+    ];
+    const schedules: { value: Schedule; label: string }[] = [
+        { value: "one_off", label: t.tasks.once },
+        { value: "daily", label: t.tasks.everyDay },
+        { value: "weekly", label: t.tasks.certainWeekdays },
+    ];
 
     const people = assigneeOptionsForBranch(branchId, users, userBranches);
     // A task's kind is fixed once created: a one-off can't start repeating, nor a recurring one stop.
     const wasOneOff = isEdit && initialValues?.schedule === "one_off";
-    const scheduleOptions = isEdit ? SCHEDULES.filter((option) => option.value !== "one_off") : SCHEDULES;
+    const scheduleOptions = isEdit ? schedules.filter((option) => option.value !== "one_off") : schedules;
 
     /**
      * Re-checks every field against the freshest values and replaces `errors` wholesale. Only
@@ -95,7 +95,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
         if (Object.keys(errors).length === 0) return;
 
         const input = { title, description, branchId, assigneeKind, assignedTo, roleId, schedule, dueDate, weekdays, ...next };
-        setErrors(isEdit ? validateTaskUpdate(initialValues!, { ...input, active }) : validateTaskForm(input));
+        setErrors(isEdit ? validateTaskUpdate(initialValues!, { ...input, active }, t.tasks.errors) : validateTaskForm(input, t.tasks.errors));
     }
 
     function handleBranchChange(value: string | null) {
@@ -119,8 +119,8 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
 
         const input = { title, description, branchId, assigneeKind, assignedTo, roleId, schedule, dueDate, weekdays };
         const validationErrors = isEdit
-            ? validateTaskUpdate(initialValues!, { ...input, active })
-            : validateTaskForm(input);
+            ? validateTaskUpdate(initialValues!, { ...input, active }, t.tasks.errors)
+            : validateTaskForm(input, t.tasks.errors);
         setErrors(validationErrors);
         if (!isTaskFormValid(validationErrors)) return;
 
@@ -142,7 +142,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                 router.push("/tasks");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -159,9 +159,9 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                 </FormAlerts>
             ) : null}
 
-            <FormSection legend="Details" className="lg:grid-cols-2">
+            <FormSection legend={t.tasks.details} className="lg:grid-cols-2">
                 <Field data-invalid={!!errors.title || undefined}>
-                    <FieldLabel htmlFor="title">Title</FieldLabel>
+                    <FieldLabel htmlFor="title">{t.tasks.titleLabel}</FieldLabel>
                     <Input
                         id="title"
                         value={title}
@@ -172,19 +172,19 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
+                    <FieldLabel htmlFor="description">{t.tasks.descriptionOptional}</FieldLabel>
                     <Input id="description" value={description} disabled={pending} onChange={(e) => setDescription(e.target.value)} />
                 </Field>
             </FormSection>
 
             {/* one row, read left to right in the order it's filled in: the branch decides who can be picked */}
-            <FormSection legend="Assignment" className="lg:grid-cols-3">
+            <FormSection legend={t.tasks.assignment} className="lg:grid-cols-3">
                 <Field data-invalid={!!errors.branchId || undefined}>
-                    <FieldLabel htmlFor="branch">Branch</FieldLabel>
+                    <FieldLabel htmlFor="branch">{t.tasks.branch}</FieldLabel>
                     <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending || isEdit}>
                         <SelectTrigger id="branch" className="w-full">
-                            <SelectValue placeholder="Select a branch">
-                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? "Select a branch"}
+                            <SelectValue placeholder={t.tasks.selectBranch}>
+                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? t.tasks.selectBranch}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -199,7 +199,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="assignee-kind">Assign to</FieldLabel>
+                    <FieldLabel htmlFor="assignee-kind">{t.tasks.assignTo}</FieldLabel>
                     <Select
                         value={assigneeKind}
                         onValueChange={(value) => { const next = value as AssigneeKind; setAssigneeKind(next); revalidate({ assigneeKind: next }); }}
@@ -207,11 +207,11 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                     >
                         <SelectTrigger id="assignee-kind" className="w-full">
                             <SelectValue>
-                                {(value: string) => ASSIGNEE_KINDS.find((kind) => kind.value === value)?.label}
+                                {(value: string) => assigneeKinds.find((kind) => kind.value === value)?.label}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            {ASSIGNEE_KINDS.map((kind) => (
+                            {assigneeKinds.map((kind) => (
                                 <SelectItem key={kind.value} value={kind.value}>
                                     {kind.label}
                                 </SelectItem>
@@ -223,20 +223,20 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                 <Field data-invalid={!!errors.assignee || undefined}>
                     {assigneeKind === "person" ? (
                         <>
-                            <FieldLabel htmlFor="assigned-to">Person</FieldLabel>
+                            <FieldLabel htmlFor="assigned-to">{t.tasks.person}</FieldLabel>
                             <Select
                                 value={assignedTo !== null ? String(assignedTo) : ""}
                                 onValueChange={(value) => { const next = Number(value); setAssignedTo(next); revalidate({ assignedTo: next }); }}
                                 disabled={pending || branchId === null}
                             >
                                 <SelectTrigger id="assigned-to" className="w-full">
-                                    <SelectValue placeholder={branchId === null ? "Choose a branch first" : "Select a person"}>
-                                        {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? (branchId === null ? "Choose a branch first" : "Select a person")}
+                                    <SelectValue placeholder={branchId === null ? t.tasks.chooseBranchFirst : t.tasks.selectPerson}>
+                                        {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? (branchId === null ? t.tasks.chooseBranchFirst : t.tasks.selectPerson)}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {people.length === 0 && branchId !== null ? (
-                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No active staff at this branch</div>
+                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">{t.tasks.noActiveStaff}</div>
                                     ) : (
                                         people.map((person) => (
                                             <SelectItem key={person.userId} value={String(person.userId)}>
@@ -249,17 +249,17 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                         </>
                     ) : (
                         <>
-                            <FieldLabel htmlFor="role">Role</FieldLabel>
+                            <FieldLabel htmlFor="role">{t.tasks.role}</FieldLabel>
                             <Select
                                 value={roleId !== null ? String(roleId) : ""}
                                 onValueChange={(value) => { const next = Number(value); setRoleId(next); revalidate({ roleId: next }); }}
                                 disabled={pending}
                             >
                                 <SelectTrigger id="role" className="w-full">
-                                    <SelectValue placeholder="Select a role">
+                                    <SelectValue placeholder={t.tasks.selectRole}>
                                         {(value: string) => {
                                             const name = roles.find((role) => String(role.roleId) === value)?.name;
-                                            return name !== undefined ? <span className="capitalize">{name}</span> : "Select a role";
+                                            return name !== undefined ? <span className="capitalize">{name}</span> : t.tasks.selectRole;
                                         }}
                                     </SelectValue>
                                 </SelectTrigger>
@@ -278,20 +278,20 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
             </FormSection>
 
             {!isEdit ? (
-                <FormSection legend="Reference" className="lg:grid-cols-3">
+                <FormSection legend={t.tasks.reference} className="lg:grid-cols-3">
                     <TaskReferencePicker branchId={branchId} value={reference} onChange={setReference} disabled={pending} />
                 </FormSection>
             ) : null}
 
-            <FormSection legend="Schedule" className="sm:grid-cols-2 lg:grid-cols-3">
+            <FormSection legend={t.tasks.schedule} className="sm:grid-cols-2 lg:grid-cols-3">
                 {wasOneOff ? (
                     <Field>
-                        <FieldLabel>Repeats</FieldLabel>
-                        <p className="text-sm text-muted-foreground">Once. A one-off task&apos;s date can&apos;t be changed.</p>
+                        <FieldLabel>{t.tasks.repeats}</FieldLabel>
+                        <p className="text-sm text-muted-foreground">{t.tasks.oneOffFixed}</p>
                     </Field>
                 ) : (
                     <Field>
-                        <FieldLabel htmlFor="schedule">Repeats</FieldLabel>
+                        <FieldLabel htmlFor="schedule">{t.tasks.repeats}</FieldLabel>
                         <Select
                             value={schedule}
                             onValueChange={(value) => { const next = value as Schedule; setSchedule(next); revalidate({ schedule: next }); }}
@@ -299,7 +299,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                         >
                             <SelectTrigger id="schedule" className="w-full">
                                 <SelectValue>
-                                    {(value: string) => SCHEDULES.find((option) => option.value === value)?.label}
+                                    {(value: string) => schedules.find((option) => option.value === value)?.label}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -315,7 +315,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
 
                 {!isEdit && schedule === "one_off" ? (
                     <Field data-invalid={!!errors.dueDate || undefined}>
-                        <FieldLabel htmlFor="due-date">Due date</FieldLabel>
+                        <FieldLabel htmlFor="due-date">{t.tasks.dueDate}</FieldLabel>
                         <Input
                             id="due-date"
                             type="date"
@@ -329,7 +329,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
 
                 {schedule === "weekly" ? (
                     <FieldSet data-invalid={!!errors.weekdays || undefined} className="sm:col-span-full lg:col-span-2">
-                        <FieldLegend variant="label">Weekdays</FieldLegend>
+                        <FieldLegend variant="label">{t.tasks.weekdaysLabel}</FieldLegend>
                         <div className="flex flex-wrap gap-x-4 gap-y-2">
                             {WEEKDAYS.map((day) => (
                                 <Field key={day} orientation="horizontal" className="w-auto">
@@ -340,7 +340,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                                         onCheckedChange={(checked) => toggleWeekday(day, checked === true)}
                                     />
                                     <FieldLabel htmlFor={`weekday-${day}`} className="font-normal">
-                                        {WEEKDAY_LABELS[day]}
+                                        {t.tasks.recurrence.weekdays[day]}
                                     </FieldLabel>
                                 </Field>
                             ))}
@@ -357,7 +357,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                             disabled={pending}
                             onCheckedChange={(checked) => setActive(checked === true)}
                         />
-                        <FieldLabel htmlFor="active" className="font-normal">Active</FieldLabel>
+                        <FieldLabel htmlFor="active" className="font-normal">{t.tasks.active}</FieldLabel>
                     </Field>
                 ) : null}
             </FormSection>
@@ -365,7 +365,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
             <FormFooter>
                 <Button type="submit" disabled={pending}>
                     {pending ? <Spinner data-icon="inline-start" /> : null}
-                    {isEdit ? "Save changes" : "Create task"}
+                    {isEdit ? t.tasks.saveChanges : t.tasks.createTask}
                 </Button>
             </FormFooter>
         </FormCard>

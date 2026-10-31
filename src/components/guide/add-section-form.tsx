@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createSection } from "@/lib/api/shelf-guide";
 import { TOUCH_HEIGHT } from "@/lib/touch";
@@ -17,10 +18,11 @@ export function AddSectionForm({ branchId, types, primary }: { branchId: number;
     const [sectionTypeId, setSectionTypeId] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
     const id = `section-type-${branchId}`;
 
     function add() {
-        setError(sectionTypeId === "" ? "Choose a section." : null);
+        setError(sectionTypeId === "" ? t.guide.chooseSection : null);
         if (sectionTypeId === "") return;
 
         startTransition(async () => {
@@ -29,19 +31,19 @@ export function AddSectionForm({ branchId, types, primary }: { branchId: number;
                 setSectionTypeId("");
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             }
         });
     }
 
     return (
         <Field data-invalid={!!error || undefined} className="max-w-lg">
-            <FieldLabel htmlFor={id}>Add a section</FieldLabel>
+            <FieldLabel htmlFor={id}>{t.guide.addASection}</FieldLabel>
             <div className="flex gap-2">
                 <Select value={sectionTypeId} onValueChange={(value) => setSectionTypeId(String(value))} disabled={pending}>
                     <SelectTrigger id={id} className={`w-full ${TOUCH_HEIGHT}`} aria-invalid={!!error || undefined}>
-                        <SelectValue placeholder="Choose a section">
-                            {(value: string) => types.find((type) => String(type.sectionTypeId) === value)?.name ?? "Choose a section"}
+                        <SelectValue placeholder={t.guide.chooseSectionPlaceholder}>
+                            {(value: string) => types.find((type) => String(type.sectionTypeId) === value)?.name ?? t.guide.chooseSectionPlaceholder}
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -54,7 +56,7 @@ export function AddSectionForm({ branchId, types, primary }: { branchId: number;
                 </Select>
                 <Button variant={primary ? "default" : "outline"} disabled={pending} onClick={add} className={`shrink-0 ${TOUCH_HEIGHT}`}>
                     {pending ? <Spinner data-icon="inline-start" /> : null}
-                    Add section
+                    {t.guide.addSection}
                 </Button>
             </div>
             <FieldError>{error}</FieldError>

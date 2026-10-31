@@ -23,6 +23,8 @@ function user(overrides: Partial<SafeUser> & Pick<SafeUser, 'userId' | 'name' | 
     };
 }
 
+const chips = { allBranches: 'All branches', noBranch: 'Unassigned' };
+
 describe('buildUserRows', () => {
     it('resolves the role name from roleId', () => {
         const [row] = buildUserRows(
@@ -30,6 +32,7 @@ describe('buildUserRows', () => {
             roles,
             branches,
             [],
+            chips,
         );
 
         expect(row.roleName).toBe('manager');
@@ -41,9 +44,10 @@ describe('buildUserRows', () => {
             roles,
             branches,
             [],
+            chips,
         );
 
-        expect(row.roleName).toBe('Unknown role');
+        expect(row.roleName).toBe('#999');
     });
 
     it('resolves branch chips from userBranches, including multiple branches', () => {
@@ -55,6 +59,7 @@ describe('buildUserRows', () => {
                 { userId: 1, branchId: 10 },
                 { userId: 1, branchId: 20 },
             ],
+            chips,
         );
 
         expect(row.branchChips).toEqual(['Main Branch', 'Downtown Branch']);
@@ -69,6 +74,7 @@ describe('buildUserRows', () => {
                 { userId: 1, branchId: 10 },
                 { userId: 2, branchId: 20 },
             ],
+            chips,
         );
 
         expect(row.branchChips).toEqual(['Main Branch']);
@@ -80,6 +86,7 @@ describe('buildUserRows', () => {
             roles,
             branches,
             [],
+            chips,
         );
 
         expect(row.branchChips).toEqual(['All branches']);
@@ -91,6 +98,7 @@ describe('buildUserRows', () => {
             roles,
             branches,
             [],
+            chips,
         );
 
         expect(row.branchChips).toEqual(['Unassigned']);
@@ -102,6 +110,7 @@ describe('buildUserRows', () => {
             roles,
             branches,
             [],
+            chips,
         );
 
         expect(row.isActive).toBe(false);
@@ -117,6 +126,7 @@ describe('buildUserRows', () => {
             roles,
             branches,
             [],
+            chips,
         );
 
         expect(rows.map((row) => row.name)).toEqual(['Alice', 'Mike', 'Zoe']);

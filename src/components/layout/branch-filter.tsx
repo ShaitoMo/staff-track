@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { getDictionary } from "@/i18n/server";
 import { CHOSEN } from "@/lib/selection";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
@@ -14,7 +15,7 @@ function hrefFor(basePath: string, extraQuery: Record<string, string>, branchId?
     return query === "" ? basePath : `${basePath}?${query}`;
 }
 
-export function BranchFilter({
+export async function BranchFilter({
     basePath,
     branches,
     activeBranchId,
@@ -28,6 +29,8 @@ export function BranchFilter({
     /** Hide the "All branches" link for screens that only make sense for one branch at a time. */
     showAll?: boolean;
 }) {
+    const t = await getDictionary();
+
     return (
         <div className="flex flex-wrap gap-2">
             {showAll ? (
@@ -36,7 +39,7 @@ export function BranchFilter({
                     aria-current={activeBranchId === undefined ? "true" : undefined}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), activeBranchId === undefined && CHOSEN)}
                 >
-                    All branches
+                    {t.common.allBranches}
                 </Link>
             ) : null}
             {branches.map((branch) => (

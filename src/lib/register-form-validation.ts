@@ -1,3 +1,4 @@
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
 import { CreateRegisterSchema } from "@/types/register";
 
 export interface RegisterFormInput {
@@ -10,13 +11,11 @@ export interface RegisterFormErrors {
     name?: string;
 }
 
-const FIELD_MESSAGES = {
-    branchId: "Branch is required.",
-    name: "Name is required and can be at most 50 characters.",
-} as const;
-
 /** Validates against CreateRegisterSchema (src/types/register.ts) so the limits live in one place. */
-export function validateRegisterForm(input: RegisterFormInput): RegisterFormErrors {
+export function validateRegisterForm(
+    input: RegisterFormInput,
+    messages: Dictionary["registers"]["errors"] = en.registers.errors,
+): RegisterFormErrors {
     const errors: RegisterFormErrors = {};
 
     const result = CreateRegisterSchema.safeParse({
@@ -28,7 +27,7 @@ export function validateRegisterForm(input: RegisterFormInput): RegisterFormErro
         for (const issue of result.error.issues) {
             const field = issue.path[0];
             if (field === "branchId" || field === "name") {
-                errors[field] = FIELD_MESSAGES[field];
+                errors[field] = messages[field];
             }
         }
     }

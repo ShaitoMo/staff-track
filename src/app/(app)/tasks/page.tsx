@@ -7,6 +7,7 @@ import { TaskDefinitions } from "@/components/tasks/task-definitions";
 import { TaskInstances } from "@/components/tasks/task-instances";
 import { buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { parseDateParam } from "@/lib/instance-rows";
 import { MANAGER_ROLE, OWNER_ROLE } from "@/lib/rbac";
@@ -15,18 +16,20 @@ import { getSelectedBranchId, getSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 
-export const metadata: Metadata = { title: "Tasks" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).tasks.title };
+}
 
 export default async function TasksPage({
     searchParams,
 }: {
     searchParams: Promise<{ view?: string; branch?: string; date?: string }>;
 }) {
-    const [{ view, branch, date: dateParam }, session] = await Promise.all([searchParams, getSession()]);
+    const [{ view, branch, date: dateParam }, session, t] = await Promise.all([searchParams, getSession(), getDictionary()]);
 
     // staff would otherwise see the management chrome (Add task, view tabs) above the inner 403
     if (session?.role !== OWNER_ROLE && session?.role !== MANAGER_ROLE) {
-        return <AccessMessage title="Tasks" message="You don't have access to view tasks." />;
+        return <AccessMessage title={t.tasks.title} message={t.tasks.noAccess} />;
     }
 
     // a failed read leaves every branch selected; the views below then show their own access message
@@ -38,9 +41,9 @@ export default async function TasksPage({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Tasks</h1>
+                <h1 className="text-xl font-semibold">{t.tasks.title}</h1>
                 <Link href="/tasks/new" className={buttonVariants({ size: "sm" })}>
-                    Add task
+                    {t.tasks.addTask}
                 </Link>
             </div>
             <nav className="flex gap-2">
@@ -49,14 +52,14 @@ export default async function TasksPage({
                     aria-current={showInstances ? undefined : "page"}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), !showInstances && CHOSEN)}
                 >
-                    Tasks
+                    {t.tasks.tabTasks}
                 </Link>
                 <Link
                     href="/tasks?view=instances"
                     aria-current={showInstances ? "page" : undefined}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), showInstances && CHOSEN)}
                 >
-                    Instances
+                    {t.tasks.tabInstances}
                 </Link>
             </nav>
             {showInstances ? <InstanceFilters date={date} branchId={branchId} /> : null}
@@ -65,7 +68,7 @@ export default async function TasksPage({
                 key={`${showInstances}-${date}-${branchId}`}
                 fallback={
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Spinner /> Loading…
+                        <Spinner /> {t.tasks.loading}
                     </div>
                 }
             >

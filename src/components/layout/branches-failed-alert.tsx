@@ -1,20 +1,19 @@
 import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getDictionary } from "@/i18n/server";
 
 /**
  * Some branches' reads failed but others loaded: say so above what did load, instead of letting
  * one branch blank the page. Renders nothing when `failed` is 0.
  */
-export function BranchesFailedAlert({ failed, consequence }: { failed: number; consequence: string }) {
+export async function BranchesFailedAlert({ failed, consequence }: { failed: number; consequence: string }) {
     if (failed === 0) return null;
+    const t = await getDictionary();
 
     return (
         <Alert>
             <AlertCircleIcon />
-            <AlertDescription>
-                {failed === 1 ? "One of your branches" : `${failed} of your branches`} couldn&apos;t be loaded, so {consequence}.
-                Reload the page to try again.
-            </AlertDescription>
+            <AlertDescription>{t.layout.branchesFailed(failed, consequence)}</AlertDescription>
         </Alert>
     );
 }

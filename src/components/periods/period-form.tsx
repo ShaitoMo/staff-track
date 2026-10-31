@@ -10,6 +10,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createPeriod, updatePeriod } from "@/lib/api/periods";
 import {
@@ -66,12 +67,13 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
     const [errors, setErrors] = useState<PeriodFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
 
-        const validationErrors = validatePeriodForm({ branch, name, defaultStart, defaultEnd, sortOrder });
+        const validationErrors = validatePeriodForm({ branch, name, defaultStart, defaultEnd, sortOrder }, t.periods.errors);
         setErrors(validationErrors);
         if (!isPeriodFormValid(validationErrors)) {
             const first = (Object.keys(FIELD_IDS) as (keyof PeriodFormErrors)[]).find((field) => validationErrors[field]);
@@ -92,15 +94,15 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 router.push("/periods");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
             }
         });
     }
 
     const branchLabel = (value: string) =>
         value === CHAIN_WIDE
-            ? "All branches"
-            : branches.find((option) => String(option.branchId) === value)?.name ?? "Select a branch";
+            ? t.periods.allBranches
+            : branches.find((option) => String(option.branchId) === value)?.name ?? t.setup.selectBranch;
 
     return (
         <FormCard onSubmit={handleSubmit} className="max-w-3xl">
@@ -113,20 +115,20 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 </FormAlerts>
             )}
 
-            <FormSection legend="Details" className="sm:grid-cols-2">
+            <FormSection legend={t.setup.details} className="sm:grid-cols-2">
                 <Field data-invalid={!!errors.branch || undefined}>
-                    <FieldLabel htmlFor="branch">Branch</FieldLabel>
+                    <FieldLabel htmlFor="branch">{t.setup.branch}</FieldLabel>
                     <Select
                         value={branch === null ? "" : String(branch)}
                         onValueChange={(value) => setBranch(value === CHAIN_WIDE ? CHAIN_WIDE : Number(value))}
                         disabled={pending || mode === "edit"}
                     >
                         <SelectTrigger id="branch" className="w-full" {...invalidProps(errors, "branch")}>
-                            <SelectValue placeholder="Select a branch">{branchLabel}</SelectValue>
+                            <SelectValue placeholder={t.setup.selectBranch}>{branchLabel}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {canPickChainWide || branch === CHAIN_WIDE ? (
-                                <SelectItem value={CHAIN_WIDE}>All branches</SelectItem>
+                                <SelectItem value={CHAIN_WIDE}>{t.periods.allBranches}</SelectItem>
                             ) : null}
                             {branches.map((option) => (
                                 <SelectItem key={option.branchId} value={String(option.branchId)}>
@@ -139,7 +141,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 </Field>
 
                 <Field data-invalid={!!errors.name || undefined}>
-                    <FieldLabel htmlFor="name">Name</FieldLabel>
+                    <FieldLabel htmlFor="name">{t.setup.name}</FieldLabel>
                     <Input
                         id="name"
                         value={name}
@@ -152,9 +154,9 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 </Field>
             </FormSection>
 
-            <FormSection legend="Hours" className="sm:grid-cols-3">
+            <FormSection legend={t.periods.hours} className="sm:grid-cols-3">
                 <Field data-invalid={!!errors.defaultStart || undefined}>
-                    <FieldLabel htmlFor="default-start">Starts</FieldLabel>
+                    <FieldLabel htmlFor="default-start">{t.periods.starts}</FieldLabel>
                     <Input
                         id="default-start"
                         type="time"
@@ -167,7 +169,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 </Field>
 
                 <Field data-invalid={!!errors.defaultEnd || undefined}>
-                    <FieldLabel htmlFor="default-end">Ends</FieldLabel>
+                    <FieldLabel htmlFor="default-end">{t.periods.ends}</FieldLabel>
                     <Input
                         id="default-end"
                         type="time"
@@ -180,7 +182,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 </Field>
 
                 <Field data-invalid={!!errors.sortOrder || undefined}>
-                    <FieldLabel htmlFor="sort-order">Order</FieldLabel>
+                    <FieldLabel htmlFor="sort-order">{t.periods.order}</FieldLabel>
                     <Input
                         id="sort-order"
                         inputMode="numeric"
@@ -190,7 +192,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                         onChange={(e) => setSortOrder(e.target.value)}
                         {...invalidProps(errors, "sortOrder", "sort-order-description")}
                     />
-                    <FieldDescription id="sort-order-description">Lower comes first on the schedule.</FieldDescription>
+                    <FieldDescription id="sort-order-description">{t.periods.orderHint}</FieldDescription>
                     <FieldError id="sort-order-error">{errors.sortOrder}</FieldError>
                 </Field>
             </FormSection>
@@ -198,7 +200,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
             <FormFooter>
                 <Button type="submit" disabled={pending}>
                     {pending && <Spinner data-icon="inline-start" />}
-                    {mode === "create" ? "Create period" : "Save changes"}
+                    {mode === "create" ? t.periods.createPeriod : t.setup.saveChanges}
                 </Button>
             </FormFooter>
         </FormCard>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createRequirement, updateRequirement } from "@/lib/api/coverage-requirements";
 import { GridCell, GridRow, MAX_REQUIRED_COUNT, parseRequiredCount } from "@/lib/coverage-rows";
@@ -35,6 +36,7 @@ function RequirementCell({
     const [value, setValue] = useState(saved);
     const [error, setError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function save() {
         if (value.trim() === saved) return;
@@ -48,7 +50,7 @@ function RequirementCell({
 
         const count = parseRequiredCount(value);
         if (count === null) {
-            setError(`Enter a whole number from 0 to ${MAX_REQUIRED_COUNT}.`);
+            setError(t.coverage.wholeNumber(MAX_REQUIRED_COUNT));
             return;
         }
 
@@ -63,7 +65,7 @@ function RequirementCell({
                 router.refresh();
             } catch (caught) {
                 setValue(saved);
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -107,19 +109,21 @@ export function RequirementsGrid({
     periods: GridPeriod[];
     rows: GridRow[];
 }) {
+    const t = useT();
+
     return (
         // As wide as its few short columns, not the page: each input stays next to its role name.
         <div className="w-fit max-w-full overflow-x-auto rounded-lg border border-border bg-card">
             <Table className="w-auto">
-                <TableCaption className="sr-only">People required for each role in each shift period</TableCaption>
+                <TableCaption className="sr-only">{t.coverage.gridCaption}</TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead scope="col">Role</TableHead>
+                        <TableHead scope="col">{t.coverage.role}</TableHead>
                         {periods.map((period) => (
-                            <TableHead key={period.periodId} scope="col" className="pr-8">
+                            <TableHead key={period.periodId} scope="col" className="pe-8">
                                 <div>{period.name}</div>
                                 <div className="font-mono font-normal text-muted-foreground">
-                                    {period.defaultStart}–{period.defaultEnd}
+                                    <bdi dir="ltr">{period.defaultStart}–{period.defaultEnd}</bdi>
                                 </div>
                             </TableHead>
                         ))}
@@ -135,7 +139,7 @@ export function RequirementsGrid({
                                         key={`${cell.requirementId}-${cell.requiredCount}`}
                                         branchId={branchId}
                                         roleId={row.roleId}
-                                        label={`${row.roleName}, ${periods[index].name}: people required`}
+                                        label={t.coverage.cellLabel(row.roleName, periods[index].name)}
                                         cell={cell}
                                     />
                                 </TableCell>

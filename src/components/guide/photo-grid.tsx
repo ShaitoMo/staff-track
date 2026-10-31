@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { ApiError } from "@/lib/api-client";
+import { useT } from "@/i18n/client";
+import { ApiError, PhotoUploadError } from "@/lib/api-client";
 import { deleteGuidePhoto, reorderGuidePhotos, replaceGuidePhoto, updateGuidePhotoTitle } from "@/lib/api/shelf-guide";
 import { UnreadablePhotoError } from "@/lib/compress-photo";
 import type { GuideImageView } from "@/types/shelf-guide";
@@ -23,6 +24,7 @@ export function PhotoGrid({ images, canEdit }: { images: GuideImageView[]; canEd
     const [openId, setOpenId] = useState<number | null>(null);
     const index = images.findIndex((image) => image.imageId === openId);
     const open = index === -1 ? null : images[index];
+    const t = useT();
 
     return (
         <>
@@ -32,8 +34,8 @@ export function PhotoGrid({ images, canEdit }: { images: GuideImageView[]; canEd
                         <button
                             type="button"
                             onClick={() => setOpenId(image.imageId)}
-                            className="group flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-left"
-                            aria-label={`Open photo${image.title ? `: ${image.title}` : ""}`}
+                            className="group flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-start"
+                            aria-label={t.guide.openPhoto(image.title)}
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element -- see the component comment */}
                             <img
@@ -42,7 +44,7 @@ export function PhotoGrid({ images, canEdit }: { images: GuideImageView[]; canEd
                                 loading="lazy"
                                 className="aspect-[4/3] w-full bg-muted object-cover group-hover:opacity-90"
                             />
-                            {image.title ? <span className="truncate px-2 py-1.5 text-xs">{image.title}</span> : null}
+                            {image.title ? <span className="truncate px-2 py-1.5 text-xs"><bdi>{image.title}</bdi></span> : null}
                         </button>
                     </li>
                 ))}
@@ -85,6 +87,7 @@ function PhotoDetail({
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function run(action: () => Promise<void>, close = false) {
         setError(null);
@@ -95,7 +98,13 @@ function PhotoDetail({
                 router.refresh();
             } catch (caught) {
                 setError(
-                    caught instanceof ApiError || caught instanceof UnreadablePhotoError ? caught.message : "Something went wrong.",
+                    caught instanceof PhotoUploadError
+                    ? t.common.photoUploadFailed
+                    : caught instanceof UnreadablePhotoError
+                      ? t.tasks.unreadablePhoto
+                      : caught instanceof ApiError
+                        ? caught.message
+                        : t.common.somethingWentWrong,
                 );
             }
         });
@@ -116,14 +125,12 @@ function PhotoDetail({
     return (
         <div className="flex flex-col gap-4">
             <DialogHeader>
-                <DialogTitle>{image.title ?? "Reference photo"}</DialogTitle>
-                <DialogDescription>
-                    Photo {position + 1} of {images.length}
-                </DialogDescription>
+                <DialogTitle><bdi>{image.title ?? t.guide.referencePhoto}</bdi></DialogTitle>
+                <DialogDescription>{t.guide.photoOf(position + 1, images.length)}</DialogDescription>
             </DialogHeader>
 
             {/* eslint-disable-next-line @next/next/no-img-element -- signed-URL redirect behind the session; see PhotoGrid */}
-            <img src={image.fileUrl} alt={image.title ?? "Reference photo"} className="max-h-[60vh] min-h-48 w-full rounded-lg bg-muted object-contain" />
+            <img src={image.fileUrl} alt={image.title ?? t.guide.referencePhoto} className="max-h-[60vh] min-h-48 w-full rounded-lg bg-muted object-contain" />
 
             {error !== null ? (
                 <Alert variant="destructive">
@@ -142,18 +149,18 @@ function PhotoDetail({
                         }}
                     >
                         <Field className="flex-1">
-                            <FieldLabel htmlFor={`title-${image.imageId}`}>Title</FieldLabel>
+                            <FieldLabel htmlFor={`title-${image.imageId}`}>{t.guide.photoTitle}</FieldLabel>
                             <Input
                                 id={`title-${image.imageId}`}
                                 value={title}
                                 maxLength={200}
                                 disabled={pending}
-                                placeholder="e.g. Top shelf, front"
+                                placeholder={t.guide.titlePlaceholder}
                                 onChange={(event) => setTitle(event.target.value)}
                             />
                         </Field>
                         <Button type="submit" variant="outline" disabled={pending || title === (image.title ?? "")}>
-                            Save title
+                            {t.guide.saveTitle}
                         </Button>
                     </form>
 
@@ -161,20 +168,20 @@ function PhotoDetail({
                     <div className="flex flex-wrap items-center gap-2">
                         <Button variant="outline" size="sm" disabled={pending} onClick={() => fileRef.current?.click()}>
                             {pending ? <Spinner data-icon="inline-start" /> : null}
-                            Replace photo
+                            {t.guide.replacePhoto}
                         </Button>
                         <Button variant="ghost" size="sm" disabled={pending || position === 0} onClick={() => move(-1)}>
-                            <ArrowLeftIcon data-icon="inline-start" /> Move earlier
+                            <ArrowLeftIcon data-icon="inline-start" className="rtl:rotate-180" /> {t.guide.moveEarlier}
                         </Button>
                         <Button variant="ghost" size="sm" disabled={pending || position === images.length - 1} onClick={() => move(1)}>
-                            Move later <ArrowRightIcon data-icon="inline-end" />
+                            {t.guide.moveLater} <ArrowRightIcon data-icon="inline-end" className="rtl:rotate-180" />
                         </Button>
                         <span className="flex-1" />
                         {confirmDelete ? (
                             <>
-                                <span className="text-xs text-muted-foreground">Delete for good? This can&apos;t be undone.</span>
+                                <span className="text-xs text-muted-foreground">{t.guide.deleteForGood}</span>
                                 <Button variant="ghost" size="sm" disabled={pending} onClick={() => setConfirmDelete(false)}>
-                                    Keep
+                                    {t.guide.keep}
                                 </Button>
                                 <Button
                                     variant="destructive"
@@ -182,12 +189,12 @@ function PhotoDetail({
                                     disabled={pending}
                                     onClick={() => run(() => deleteGuidePhoto(image.imageId), true)}
                                 >
-                                    Delete
+                                    {t.common.delete}
                                 </Button>
                             </>
                         ) : (
                             <Button variant="ghost" size="sm" disabled={pending} onClick={() => setConfirmDelete(true)}>
-                                Delete
+                                {t.common.delete}
                             </Button>
                         )}
                     </div>

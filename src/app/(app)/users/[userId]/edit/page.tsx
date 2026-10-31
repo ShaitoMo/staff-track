@@ -4,6 +4,7 @@ import { AccessMessage } from "@/components/layout/access-message";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserForm } from "@/components/users/user-form";
 import { ApiError } from "@/lib/api-client";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { getSession } from "@/lib/session";
@@ -12,7 +13,9 @@ import { Role } from "@/types/role";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
 
-export const metadata: Metadata = { title: "Edit user" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).users.editTitle };
+}
 
 export default async function EditUserPage({
     params,
@@ -21,10 +24,10 @@ export default async function EditUserPage({
     params: Promise<{ userId: string }>;
     searchParams: Promise<{ branch_warning?: string }>;
 }) {
-    const [{ userId: userIdParam }, { branch_warning }] = await Promise.all([params, searchParams]);
+    const [{ userId: userIdParam }, { branch_warning }, t] = await Promise.all([params, searchParams, getDictionary()]);
 
     if (!/^\d+$/.test(userIdParam)) {
-        return <AccessMessage title="Edit user" message="Invalid user." />;
+        return <AccessMessage title={t.users.editTitle} message={t.users.invalid} />;
     }
     const userId = Number(userIdParam);
 
@@ -44,10 +47,10 @@ export default async function EditUserPage({
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage title="Edit user" message="You don't have access to edit this user." />;
+            return <AccessMessage title={t.users.editTitle} message={t.users.noEditAccess} />;
         }
         if (error instanceof ApiError && error.status === 404) {
-            return <AccessMessage title="Edit user" message="User not found." />;
+            return <AccessMessage title={t.users.editTitle} message={t.users.notFound} />;
         }
         throw error;
     }
@@ -64,17 +67,11 @@ export default async function EditUserPage({
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-semibold">Edit {targetUser.name}</h1>
+            <h1 className="text-xl font-semibold">{t.setup.editName(targetUser.name)}</h1>
             {branch_warning && (
                 <Alert variant="destructive" className="max-w-5xl">
                     <AlertCircleIcon />
-                    <AlertDescription>
-                        The user was created, but{" "}
-                        {failedBranchNames.length > 0
-                            ? `these branches couldn't be linked: ${failedBranchNames.join(", ")}`
-                            : "some branches couldn't be linked"}
-                        . Check the branches below and save again.
-                    </AlertDescription>
+                    <AlertDescription>{t.users.createdButLinks(failedBranchNames)}</AlertDescription>
                 </Alert>
             )}
             <UserForm

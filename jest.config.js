@@ -11,13 +11,15 @@ export default {
         '^@/(.*)$': '<rootDir>/src/$1',
     },
     transform: {
-        '^.+\\.ts$': [
+        // .tsx too: the i18n dictionaries hold a few messages with an embedded link
+        '^.+\\.tsx?$': [
             'ts-jest',
             {
                 tsconfig: {
                     module: 'CommonJS',
                     moduleResolution: 'node',
                     target: 'ES2023',
+                    jsx: 'react-jsx',
                     esModuleInterop: true,
                     isolatedModules: false,
                     verbatimModuleSyntax: false,

@@ -1,3 +1,5 @@
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
+
 export interface UserFormInput {
     name: string;
     phone: string;
@@ -17,25 +19,29 @@ export interface UserFormErrors {
  * than the backend actually enforces. Notably: phone has no format constraint beyond non-empty,
  * and there is no "at least one branch" rule (the owner role legitimately has zero).
  */
-export function validateUserForm(input: UserFormInput, options: { requirePassword: boolean }): UserFormErrors {
+export function validateUserForm(
+    input: UserFormInput,
+    options: { requirePassword: boolean },
+    messages: Dictionary["users"]["errors"] = en.users.errors,
+): UserFormErrors {
     const errors: UserFormErrors = {};
 
     if (input.name.length < 3 || input.name.length > 50) {
-        errors.name = "Name must be between 3 and 50 characters.";
+        errors.name = messages.name;
     }
 
     if (input.phone.length < 1) {
-        errors.phone = "Phone is required.";
+        errors.phone = messages.phone;
     }
 
     if (options.requirePassword) {
         if (!input.password || input.password.length < 8 || input.password.length > 100) {
-            errors.password = "Password must be between 8 and 100 characters.";
+            errors.password = messages.password;
         }
     }
 
     if (input.roleId === null) {
-        errors.roleId = "Role is required.";
+        errors.roleId = messages.roleId;
     }
 
     return errors;

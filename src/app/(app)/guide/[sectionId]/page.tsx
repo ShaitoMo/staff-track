@@ -10,13 +10,16 @@ import { PhotoGrid } from "@/components/guide/photo-grid";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ApiError } from "@/lib/api-client";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { canEditGuide } from "@/lib/rbac";
 import { parseNumericId } from "@/lib/route-utils";
 import { getSession } from "@/lib/session";
 import { BranchSectionView, GuideFolderView, GuideImageView } from "@/types/shelf-guide";
 
-export const metadata: Metadata = { title: "Shelf guide" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).guide.title };
+}
 
 /** A deeper chain than this is a loop in bad data, not a real folder tree. */
 const MAX_DEPTH = 50;
@@ -53,7 +56,12 @@ export default async function GuideSectionPage({
     params: Promise<{ sectionId: string }>;
     searchParams: Promise<{ folder?: string }>;
 }) {
-    const [{ sectionId: sectionParam }, { folder: folderParam }, session] = await Promise.all([params, searchParams, getSession()]);
+    const [{ sectionId: sectionParam }, { folder: folderParam }, session, t] = await Promise.all([
+        params,
+        searchParams,
+        getSession(),
+        getDictionary(),
+    ]);
     const sectionId = parseNumericId(sectionParam);
     const folderId = folderParam === undefined ? undefined : parseNumericId(folderParam);
     if (sectionId === null || folderId === null) notFound();
@@ -77,9 +85,9 @@ export default async function GuideSectionPage({
 
     return (
         <div className="flex flex-col gap-6">
-            <nav aria-label="Where you are" className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-                <Link href={`/guide?branch=${section.branchId}`} className="hover:text-foreground hover:underline">Shelf guide</Link>
-                <ChevronRightIcon aria-hidden className="size-3.5" />
+            <nav aria-label={t.guide.whereYouAre} className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+                <Link href={`/guide?branch=${section.branchId}`} className="hover:text-foreground hover:underline">{t.guide.title}</Link>
+                <ChevronRightIcon aria-hidden className="size-3.5 rtl:rotate-180" />
                 {path.length === 0 ? (
                     <span aria-current="page" className="text-foreground">{section.name}</span>
                 ) : (
@@ -87,7 +95,7 @@ export default async function GuideSectionPage({
                 )}
                 {path.map((folder, index) => (
                     <span key={folder.folderId} className="flex items-center gap-1">
-                        <ChevronRightIcon aria-hidden className="size-3.5" />
+                        <ChevronRightIcon aria-hidden className="size-3.5 rtl:rotate-180" />
                         {index === path.length - 1 ? (
                             <span aria-current="page" className="text-foreground">{folder.name}</span>
                         ) : (
@@ -101,7 +109,7 @@ export default async function GuideSectionPage({
                 <div className="flex min-w-0 flex-col gap-1">
                     <div className="flex items-center gap-2">
                         <h1 className="truncate text-xl font-semibold">{name}</h1>
-                        {active ? null : <Badge variant="outline" className="border-dashed text-muted-foreground">Inactive</Badge>}
+                        {active ? null : <Badge variant="outline" className="border-dashed text-muted-foreground">{t.guide.inactive}</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground">{section.branchName}</p>
                 </div>
@@ -125,17 +133,17 @@ export default async function GuideSectionPage({
                     <InfoIcon />
                     <AlertDescription>
                         {!section.isActive
-                            ? "This section is inactive: staff can't see it or its photos. Reactivate the section to show them again."
+                            ? t.guide.sectionInactive
                             : parentActive
-                              ? "This folder is inactive: staff can't see it or its photos. Reactivate it to show them again."
-                              : "This folder is inactive because a folder above it is. Reactivate that folder first; this one comes back with it."}
+                              ? t.guide.folderInactive
+                              : t.guide.parentInactive}
                     </AlertDescription>
                 </Alert>
             ) : null}
 
             {folders.length > 0 || (canEdit && active) ? (
                 <section aria-labelledby="folders-heading" className="flex flex-col gap-3">
-                    <h2 id="folders-heading" className="text-base font-semibold">Folders</h2>
+                    <h2 id="folders-heading" className="text-base font-semibold">{t.guide.folders}</h2>
                     {folders.length > 0 ? (
                         <GuideLinkList
                             kind="folder"
@@ -147,12 +155,12 @@ export default async function GuideSectionPage({
             ) : null}
 
             <section aria-labelledby="photos-heading" className="flex flex-col gap-3">
-                <h2 id="photos-heading" className="text-base font-semibold">Photos</h2>
+                <h2 id="photos-heading" className="text-base font-semibold">{t.guide.photos}</h2>
                 {images.length > 0 ? (
                     <PhotoGrid images={images} canEdit={canEdit} />
                 ) : (
                     <p className="text-sm text-muted-foreground">
-                        {canEdit && active ? "No photos here yet. Add photos of how this area should look." : "No photos here."}
+                        {canEdit && active ? t.guide.noPhotosEditable : t.guide.noPhotos}
                     </p>
                 )}
             </section>

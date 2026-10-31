@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { createRole } from "@/lib/api/roles";
 import { isRoleFormValid, RoleFormErrors, validateRoleForm } from "@/lib/role-form-validation";
@@ -18,12 +19,13 @@ export function RoleForm() {
     const [errors, setErrors] = useState<RoleFormErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubmitError(null);
 
-        const validationErrors = validateRoleForm({ name });
+        const validationErrors = validateRoleForm({ name }, t.roles.errors);
         setErrors(validationErrors);
         if (!isRoleFormValid(validationErrors)) return;
 
@@ -33,7 +35,7 @@ export function RoleForm() {
                 setName("");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : "Something went wrong.");
+                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -47,7 +49,7 @@ export function RoleForm() {
                 </Alert>
             ) : null}
             <Field data-invalid={!!errors.name || undefined}>
-                <FieldLabel htmlFor="role-name">New role</FieldLabel>
+                <FieldLabel htmlFor="role-name">{t.roles.newRole}</FieldLabel>
                 <div className="flex gap-2">
                     <Input
                         id="role-name"
@@ -58,7 +60,7 @@ export function RoleForm() {
                     />
                     <Button type="submit" disabled={pending} className="shrink-0">
                         {pending ? <Spinner data-icon="inline-start" /> : null}
-                        Add role
+                        {t.roles.addRole}
                     </Button>
                 </div>
                 <FieldError>{errors.name}</FieldError>

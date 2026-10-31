@@ -42,7 +42,7 @@ export function branchDay(schedule: BranchScheduleView, date: string, gaps: Cove
     const shortagesOf = (periodId: number | null): Shortage[] =>
         gaps
             .filter((gap) => gap.shiftDate === date && gap.periodId === periodId && gap.requiredCount > gap.scheduledCount)
-            .map((gap) => ({ roleName: roleNames.get(gap.roleId) ?? `Role ${gap.roleId}`, short: gap.requiredCount - gap.scheduledCount }));
+            .map((gap) => ({ roleName: roleNames.get(gap.roleId) ?? `#${gap.roleId}`, short: gap.requiredCount - gap.scheduledCount }));
 
     const groups = [
         ...schedule.periods.map((period) => ({

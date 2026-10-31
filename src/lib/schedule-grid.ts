@@ -76,7 +76,7 @@ export function slotKey(date: string, periodId: number): string {
 }
 
 function nameOf(names: Map<number, string>, userId: number): string {
-    return names.get(userId) ?? `User ${userId}`;
+    return names.get(userId) ?? `#${userId}`;
 }
 
 /** The week's lookups, built once in indexWeek and shared by every builder below. */

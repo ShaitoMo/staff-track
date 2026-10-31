@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isActive, STAFF_NAV } from "@/components/layout/nav-items";
+import { useT } from "@/i18n/client";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 
 /** Staff sections as top-bar links, from `md` up; a phone gets StaffTabBar instead. */
 export function StaffNav() {
     const pathname = usePathname();
+    const t = useT();
 
     return (
-        <nav aria-label="Sections" className="hidden items-center gap-1 md:flex">
+        <nav aria-label={t.layout.sections} className="hidden items-center gap-1 md:flex">
             {STAFF_NAV.map(({ href, label }) => {
                 const active = isActive(href, pathname);
                 return (
@@ -26,7 +28,7 @@ export function StaffNav() {
                             TOUCH_HEIGHT,
                         )}
                     >
-                        {label}
+                        {t.nav[label]}
                     </Link>
                 );
             })}
@@ -40,10 +42,11 @@ export function StaffNav() {
  */
 export function StaffTabBar() {
     const pathname = usePathname();
+    const t = useT();
 
     return (
         <nav
-            aria-label="Sections"
+            aria-label={t.layout.sections}
             className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
         >
             <ul className="grid grid-cols-5">
@@ -68,7 +71,7 @@ export function StaffTabBar() {
                                 >
                                     <Icon aria-hidden className="size-5" />
                                 </span>
-                                {label}
+                                {t.nav[label]}
                             </Link>
                         </li>
                     );

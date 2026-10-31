@@ -217,7 +217,7 @@ describe('groupByDay', () => {
 
 describe('formatLatestPunch', () => {
     it('names the day and time on the Beirut clock, across midnight UTC', () => {
-        expect(formatLatestPunch(new Date('2026-01-12T22:30:00.000Z'))).toBe('Tue 13 Jan, 00:30');
+        expect(formatLatestPunch(new Date('2026-01-12T22:30:00.000Z'), 'en')).toBe('Tue 13 Jan, 00:30');
     });
 });
 
@@ -272,9 +272,9 @@ describe('missedMinutes', () => {
 
 describe('formatMinutes', () => {
     it('shows hours once there is an hour or more', () => {
-        expect(formatMinutes(0)).toBe('0 min');
-        expect(formatMinutes(45)).toBe('45 min');
-        expect(formatMinutes(60)).toBe('1 h');
-        expect(formatMinutes(77)).toBe('1 h 17 min');
+        expect(formatMinutes(0, 'en')).toBe('0 min');
+        expect(formatMinutes(45, 'en')).toBe('45 min');
+        expect(formatMinutes(60, 'en')).toBe('1 h');
+        expect(formatMinutes(77, 'en')).toBe('1 h 17 min');
     });
 });

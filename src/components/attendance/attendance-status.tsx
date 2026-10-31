@@ -1,5 +1,8 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
-import { AttendanceStatus, STATUS_LABELS, STATUS_ORDER } from "@/lib/attendance-rows";
+import { useT } from "@/i18n/client";
+import { AttendanceRow, AttendanceStatus, STATUS_ORDER } from "@/lib/attendance-rows";
 import { cn } from "@/lib/utils";
 
 // Status is functional colour, never Market Blue (DESIGN.md). Loudness follows how much a status
@@ -24,13 +27,14 @@ const STATUS_STYLES: Record<AttendanceStatus, { variant: "outline" | "destructiv
  * beside it, since 'Missing clock-out' must not be hidden behind '12 min late'.
  */
 export function StatusBadge({ status, detail }: { status: AttendanceStatus; detail: string | null }) {
+    const t = useT();
     const { variant, className } = STATUS_STYLES[status];
     const isSlip = status === "late" || status === "left_early";
 
     return (
         <>
             <Badge variant={variant} className={cn("h-auto min-h-5 whitespace-normal", className)}>
-                {isSlip && detail !== null ? detail : STATUS_LABELS[status]}
+                {isSlip && detail !== null ? detail : t.attendance.status[status]}
             </Badge>
             {!isSlip && detail !== null ? <span className="text-xs text-muted-foreground">{detail}</span> : null}
         </>
@@ -42,11 +46,39 @@ export function StatusBadge({ status, detail }: { status: AttendanceStatus; deta
  * fix that changes the counts is announced.
  */
 export function StatusSummary({ counts }: { counts: Record<AttendanceStatus, number> }) {
-    const parts = STATUS_ORDER.filter((status) => counts[status] > 0).map((status) => `${counts[status]} ${STATUS_LABELS[status].toLowerCase()}`);
+    const t = useT();
+    const parts = STATUS_ORDER.filter((status) => counts[status] > 0).map((status) =>
+        t.attendance.statusCount(counts[status], t.attendance.status[status]),
+    );
 
     return (
         <p role="status" className="text-sm text-muted-foreground">
             {parts.join(" · ")}
+        </p>
+    );
+}
+
+/** 'In 08:45 · Out 16:00', or just the scheduled hours when nothing was clocked yet. */
+export function Times({ row }: { row: AttendanceRow }) {
+    const t = useT();
+
+    if (row.clockIn === null && row.clockOut === null) {
+        return (
+            <p className="text-sm text-muted-foreground">
+                {t.attendance.scheduled} <span className="font-mono tabular-nums"><bdi dir="ltr">{row.scheduled}</bdi></span>
+            </p>
+        );
+    }
+
+    return (
+        <p className="text-sm">
+            {t.attendance.in} <span className="font-mono tabular-nums">{row.clockIn ?? "—"}</span>
+            {" · "}
+            {t.attendance.out} <span className="font-mono tabular-nums">{row.clockOut ?? "—"}</span>
+            <span className="text-xs text-muted-foreground">
+                {" "}
+                · {t.attendance.scheduledLower} <span className="font-mono tabular-nums"><bdi dir="ltr">{row.scheduled}</bdi></span>
+            </span>
         </p>
     );
 }

@@ -1,3 +1,4 @@
+import { en, type Dictionary } from "@/i18n/dictionaries/en";
 import { CreatePeriodSchema } from "@/types/shift-period";
 
 /** The branch picker's value: a branch, every branch (chain-wide), or nothing picked yet. */
@@ -20,15 +21,6 @@ export interface PeriodFormErrors {
     sortOrder?: string;
 }
 
-const NAME_TOO_LONG = "Name can be at most 50 characters.";
-
-const FIELD_MESSAGES = {
-    name: "Enter a name.",
-    defaultStart: "Pick a start time.",
-    defaultEnd: "Pick an end time after the start.",
-    sortOrder: "Order must be a whole number from 0 to 999.",
-} as const;
-
 /** "" is 0; anything else must be a whole number. */
 export function parseSortOrder(value: string): number | null {
     const trimmed = value.trim();
@@ -41,11 +33,14 @@ export function parseSortOrder(value: string): number | null {
  * The branch is checked here: the schema reads a missing branch as chain-wide, but the form makes
  * that an explicit choice.
  */
-export function validatePeriodForm(input: PeriodFormInput): PeriodFormErrors {
+export function validatePeriodForm(
+    input: PeriodFormInput,
+    messages: Dictionary["periods"]["errors"] = en.periods.errors,
+): PeriodFormErrors {
     const errors: PeriodFormErrors = {};
 
     if (input.branch === null) {
-        errors.branch = "Pick a branch, or all branches.";
+        errors.branch = messages.branch;
     }
 
     const sortOrder = parseSortOrder(input.sortOrder);
@@ -60,14 +55,14 @@ export function validatePeriodForm(input: PeriodFormInput): PeriodFormErrors {
         for (const issue of result.error.issues) {
             const field = issue.path[0];
             if (field === "name" || field === "defaultStart" || field === "defaultEnd" || field === "sortOrder") {
-                errors[field] = field === "name" && issue.code === "too_big" ? NAME_TOO_LONG : FIELD_MESSAGES[field];
+                errors[field] = field === "name" && issue.code === "too_big" ? messages.nameTooLong : messages[field];
             }
         }
     }
 
     // not a number at all never reaches the schema, so flag it here
     if (sortOrder === null) {
-        errors.sortOrder = FIELD_MESSAGES.sortOrder;
+        errors.sortOrder = messages.sortOrder;
     }
 
     return errors;

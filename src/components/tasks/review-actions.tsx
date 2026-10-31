@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { reviewInstance } from "@/lib/api/task-instances";
 
@@ -13,6 +14,7 @@ export function ReviewActions({ instanceId }: { instanceId: number }) {
     const [pending, startTransition] = useTransition();
     const [confirmingDecline, setConfirmingDecline] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const t = useT();
 
     function review(decision: "verified" | "rejected") {
         setError(null);
@@ -22,7 +24,7 @@ export function ReviewActions({ instanceId }: { instanceId: number }) {
                 router.refresh();
             } catch (caught) {
                 setConfirmingDecline(false);
-                setError(caught instanceof ApiError ? caught.message : "Something went wrong.");
+                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
             }
         });
     }
@@ -30,14 +32,14 @@ export function ReviewActions({ instanceId }: { instanceId: number }) {
     if (confirmingDecline) {
         return (
             <div className="flex flex-col items-end gap-2">
-                <span className="text-xs text-muted-foreground">A declined task can&apos;t be redone.</span>
+                <span className="text-xs text-muted-foreground">{t.tasks.declineFinal}</span>
                 <div className="flex gap-2">
                     <Button size="sm" variant="destructive" disabled={pending} onClick={() => review("rejected")}>
                         {pending ? <Spinner data-icon="inline-start" /> : null}
-                        Confirm decline
+                        {t.tasks.confirmDecline}
                     </Button>
                     <Button size="sm" variant="outline" disabled={pending} onClick={() => setConfirmingDecline(false)}>
-                        Cancel
+                        {t.common.cancel}
                     </Button>
                 </div>
             </div>
@@ -49,10 +51,10 @@ export function ReviewActions({ instanceId }: { instanceId: number }) {
             <div className="flex gap-2">
                 <Button size="sm" variant="secondary" disabled={pending} onClick={() => review("verified")}>
                     {pending ? <Spinner data-icon="inline-start" /> : null}
-                    Approve
+                    {t.tasks.approve}
                 </Button>
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => setConfirmingDecline(true)}>
-                    Decline
+                    {t.tasks.decline}
                 </Button>
             </div>
             {error !== null ? <span className="text-xs text-destructive">{error}</span> : null}

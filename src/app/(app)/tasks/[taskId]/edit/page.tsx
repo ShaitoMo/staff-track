@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AccessMessage } from "@/components/layout/access-message";
 import { TaskForm } from "@/components/tasks/task-form";
 import { ApiError } from "@/lib/api-client";
+import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { taskToEditableState } from "@/lib/task-form-validation";
@@ -11,13 +12,15 @@ import { TaskWire } from "@/types/task";
 import { SafeUser } from "@/types/user";
 import { UserBranch } from "@/types/user-branch";
 
-export const metadata: Metadata = { title: "Edit task" };
+export async function generateMetadata(): Promise<Metadata> {
+    return { title: (await getDictionary()).tasks.editTitle };
+}
 
 export default async function EditTaskPage({ params }: { params: Promise<{ taskId: string }> }) {
-    const { taskId } = await params;
+    const [{ taskId }, t] = await Promise.all([params, getDictionary()]);
 
     if (!/^\d+$/.test(taskId)) {
-        return <AccessMessage title="Edit task" message="Invalid task." />;
+        return <AccessMessage title={t.tasks.editTitle} message={t.tasks.invalidTask} />;
     }
 
     let task: TaskWire;
@@ -36,10 +39,10 @@ export default async function EditTaskPage({ params }: { params: Promise<{ taskI
         ]);
     } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
-            return <AccessMessage title="Edit task" message="You don't have access to edit this task." />;
+            return <AccessMessage title={t.tasks.editTitle} message={t.tasks.noEditAccess} />;
         }
         if (error instanceof ApiError && error.status === 404) {
-            return <AccessMessage title="Edit task" message="Task not found." />;
+            return <AccessMessage title={t.tasks.editTitle} message={t.tasks.notFound} />;
         }
         throw error;
     }
@@ -48,7 +51,7 @@ export default async function EditTaskPage({ params }: { params: Promise<{ taskI
 
     return (
         <div className="flex flex-col gap-4">
-            <h1 className="text-xl font-semibold">Edit task</h1>
+            <h1 className="text-xl font-semibold">{t.tasks.editTitle}</h1>
             <TaskForm
                 mode="edit"
                 taskId={task.task_id}

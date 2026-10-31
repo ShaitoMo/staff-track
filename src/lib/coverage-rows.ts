@@ -1,5 +1,6 @@
 import { CoverageGapRow } from "@/types/coverage-gap";
 import { CoverageRequirementView } from "@/types/coverage-requirement";
+import { intlLocale, type Locale } from "@/i18n/locales";
 import { toDateOnlyString } from "@/types/date-only";
 import { Role } from "@/types/role";
 import { ShiftPeriodView } from "@/types/shift-period";
@@ -22,9 +23,8 @@ export function mondayOf(dateString: string): string {
     return addDays(dateString, -((weekday + 6) % DAYS_IN_WEEK));
 }
 
-/** 'Mon 28 Sep', in UTC so a calendar day never slips with the viewer's time zone. */
-export function formatDay(dateString: string): string {
-    const parts = new Intl.DateTimeFormat("en-US", {
+function dayParts(dateString: string, locale: Locale): { weekday: string; day: string; month: string } {
+    const parts = new Intl.DateTimeFormat(intlLocale(locale), {
         weekday: "short",
         day: "numeric",
         month: "short",
@@ -32,14 +32,30 @@ export function formatDay(dateString: string): string {
     }).formatToParts(new Date(`${dateString}T00:00:00.000Z`));
     const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
 
-    return `${part("weekday")} ${part("day")} ${part("month")}`;
+    return { weekday: part("weekday"), day: part("day"), month: part("month") };
 }
 
-/** '28 Sep – 4 Oct': formatDay without the weekday, so both ends read 'Sep' like the rest of the app. */
-export function formatWeekRange(weekStart: string): string {
-    const day = (dateString: string) => formatDay(dateString).split(" ").slice(1).join(" ");
+/** 'Mon 28 Sep' ('الاثنين 28 أيلول'), in UTC so a calendar day never slips with the viewer's time zone. */
+export function formatDay(dateString: string, locale: Locale): string {
+    const { weekday, day, month } = dayParts(dateString, locale);
+    return `${weekday} ${day} ${month}`;
+}
 
-    return `${day(weekStart)} – ${day(addDays(weekStart, DAYS_IN_WEEK - 1))}`;
+/** The weekday and the day of the month apart, for a header that stacks them. */
+export function formatDayStacked(dateString: string, locale: Locale): { weekday: string; day: string } {
+    const { weekday, day } = dayParts(dateString, locale);
+    return { weekday, day };
+}
+
+/** '28 Sep' ('28 أيلول'): formatDay without the weekday. */
+export function formatDayMonth(dateString: string, locale: Locale): string {
+    const { day, month } = dayParts(dateString, locale);
+    return `${day} ${month}`;
+}
+
+/** '28 Sep – 4 Oct', so both ends read 'Sep' like the rest of the app. */
+export function formatWeekRange(weekStart: string, locale: Locale): string {
+    return `${formatDayMonth(weekStart, locale)} – ${formatDayMonth(addDays(weekStart, DAYS_IN_WEEK - 1), locale)}`;
 }
 
 /** The largest headcount the page accepts; far below the database's integer limit, well above any real shift. */

@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/i18n/client";
 import { ApiError, login } from "@/lib/api-client";
 import { LoginSchema, type LoginInput } from "@/types/auth";
 
@@ -22,6 +23,7 @@ export function LoginForm() {
     const [error, setError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [pending, startTransition] = useTransition();
+    const t = useT();
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -40,7 +42,8 @@ export function LoginForm() {
                 router.push("/");
                 router.refresh();
             } catch (error) {
-                setError(error instanceof ApiError && error.message ? error.message : "Invalid phone or password.");
+                // a wrong phone or password is the one server reply everyone sees, so it's worded here in both languages
+                setError(error instanceof ApiError && error.status !== 401 && error.message ? error.message : t.login.invalidCredentials);
             }
         });
     }
@@ -48,8 +51,8 @@ export function LoginForm() {
     return (
         <Card className="w-full max-w-sm">
             <CardHeader>
-                <CardTitle>StaffTrack</CardTitle>
-                <CardDescription>Sign in with your phone number and password.</CardDescription>
+                <CardTitle>{t.common.appName}</CardTitle>
+                <CardDescription>{t.login.description}</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} noValidate>
@@ -61,11 +64,12 @@ export function LoginForm() {
                             </Alert>
                         )}
                         <Field data-invalid={!!fieldErrors.phone}>
-                            <FieldLabel htmlFor="phone">Phone</FieldLabel>
+                            <FieldLabel htmlFor="phone">{t.login.phone}</FieldLabel>
                             <Input
                                 id="phone"
                                 name="phone"
                                 type="tel"
+                                dir="ltr"
                                 autoComplete="tel"
                                 required
                                 aria-invalid={!!fieldErrors.phone}
@@ -73,10 +77,10 @@ export function LoginForm() {
                                 value={phone}
                                 onChange={(event) => setPhone(event.target.value)}
                             />
-                            <FieldError>{fieldErrors.phone?.[0]}</FieldError>
+                            <FieldError>{fieldErrors.phone ? t.login.phoneRequired : null}</FieldError>
                         </Field>
                         <Field data-invalid={!!fieldErrors.password}>
-                            <FieldLabel htmlFor="password">Password</FieldLabel>
+                            <FieldLabel htmlFor="password">{t.login.password}</FieldLabel>
                             <Input
                                 id="password"
                                 name="password"
@@ -88,11 +92,11 @@ export function LoginForm() {
                                 value={password}
                                 onChange={(event) => setPassword(event.target.value)}
                             />
-                            <FieldError>{fieldErrors.password?.[0]}</FieldError>
+                            <FieldError>{fieldErrors.password ? t.login.passwordRequired : null}</FieldError>
                         </Field>
                         <Button type="submit" disabled={pending} className="w-full">
                             {pending && <Spinner data-icon="inline-start" />}
-                            Sign in
+                            {t.login.signIn}
                         </Button>
                     </FieldGroup>
                 </form>

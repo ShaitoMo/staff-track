@@ -1,14 +1,17 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getDictionary } from "@/i18n/server";
 import type { RoleWithMembers } from "@/lib/role-members";
 
-export function RoleList({ roles }: { roles: RoleWithMembers[] }) {
+export async function RoleList({ roles }: { roles: RoleWithMembers[] }) {
+    const t = await getDictionary();
+
     if (roles.length === 0) {
         return (
             <Empty>
                 <EmptyHeader>
-                    <EmptyTitle>No roles yet</EmptyTitle>
-                    <EmptyDescription>Roles you add will show up here with the people who hold them.</EmptyDescription>
+                    <EmptyTitle>{t.roles.noneYet}</EmptyTitle>
+                    <EmptyDescription>{t.roles.noneYetDescription}</EmptyDescription>
                 </EmptyHeader>
             </Empty>
         );
@@ -17,29 +20,29 @@ export function RoleList({ roles }: { roles: RoleWithMembers[] }) {
     return (
         <div className="rounded-lg border border-border bg-card">
             <Table>
-                <TableCaption className="sr-only">Roles and the people who hold them</TableCaption>
+                <TableCaption className="sr-only">{t.roles.caption}</TableCaption>
                 <TableHeader>
                     <TableRow>
                         {/* both shrink to their content so the count sits by its role and Who takes the rest */}
-                        <TableHead scope="col" className="w-px pr-8">Role</TableHead>
-                        <TableHead scope="col" className="w-px pr-8 text-right">People</TableHead>
-                        <TableHead scope="col">Who</TableHead>
+                        <TableHead scope="col" className="w-px pe-8">{t.roles.role}</TableHead>
+                        <TableHead scope="col" className="w-px pe-8 text-end">{t.roles.people}</TableHead>
+                        <TableHead scope="col">{t.roles.who}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {roles.map((role) => (
                         <TableRow key={role.roleId}>
-                            <TableHead scope="row" className="h-auto py-2 pr-8 align-top capitalize">{role.name}</TableHead>
-                            <TableCell className="pr-8 align-top text-right tabular-nums">{role.members.length}</TableCell>
+                            <TableHead scope="row" className="h-auto py-2 pe-8 align-top capitalize">{role.name}</TableHead>
+                            <TableCell className="pe-8 align-top text-end tabular-nums">{role.members.length}</TableCell>
                             <TableCell>
                                 {role.members.length === 0 ? (
-                                    <span className="text-muted-foreground">No one yet</span>
+                                    <span className="text-muted-foreground">{t.roles.noOneYet}</span>
                                 ) : (
                                     <ul className="flex flex-col gap-0.5">
                                         {role.members.map((member) => (
                                             <li key={member.userId}>
                                                 {member.name}{" "}
-                                                <span className="font-mono text-xs text-muted-foreground">{member.phone}</span>
+                                                <bdi dir="ltr" className="font-mono text-xs text-muted-foreground">{member.phone}</bdi>
                                             </li>
                                         ))}
                                     </ul>

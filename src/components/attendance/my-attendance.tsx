@@ -6,6 +6,9 @@ import { ShiftList } from "@/components/attendance/shift-list";
 import { TodayMark } from "@/components/layout/today-mark";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Dictionary } from "@/i18n/dictionaries";
+import type { Locale } from "@/i18n/locales";
+import { getI18n } from "@/i18n/server";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import {
@@ -22,37 +25,37 @@ import { AttendanceFreshnessView } from "@/types/attendance";
 import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 
 /** Tensed to the week: a past week had no shifts, a future one has none yet. */
-function emptyWeekMessage(weekStart: string, thisWeek: string, range: string): string {
-    if (weekStart === thisWeek) return "You have no shifts this week.";
-    return weekStart < thisWeek ? `You had no shifts ${range}.` : `You have no shifts ${range} yet.`;
+function emptyWeekMessage(weekStart: string, thisWeek: string, range: string, t: Dictionary): string {
+    if (weekStart === thisWeek) return t.attendance.noShiftsThisWeek;
+    return weekStart < thisWeek ? t.attendance.hadNoShifts(range) : t.attendance.noShiftsYet(range);
 }
 
 /** What a shift still needs from the branch manager, and what it means until then; null when nothing. */
-function RowNote({ row }: { row: AttendanceRow }) {
+function RowNote({ row, t }: { row: AttendanceRow; t: Dictionary }) {
     let note: string | null = null;
 
     if (row.fix !== null) {
-        note = `Ask your branch manager to add your ${row.fix.end === "clock_in" ? "clock-in" : "clock-out"}. Until then this shift isn't counted in your missed time.`;
+        note = row.fix.end === "clock_in" ? t.attendance.askForClockIn : t.attendance.askForClockOut;
     } else if (row.status === "no_show") {
-        note = "No punch was recorded. If you worked this shift, ask your branch manager to add your punch.";
+        note = t.attendance.noPunchRecorded;
     }
 
     return note === null ? null : <p className="text-xs text-muted-foreground">{note}</p>;
 }
 
 /** Wider screens: the same rows as a table, scheduled and clocked times side by side. */
-function ShiftTable({ rows, today, range }: { rows: AttendanceRow[]; today: string; range: string }) {
+function ShiftTable({ rows, today, range, t, locale }: { rows: AttendanceRow[]; today: string; range: string; t: Dictionary; locale: Locale }) {
     return (
         <div className="hidden overflow-x-auto rounded-lg border border-border bg-card md:block">
             <Table>
-                <TableCaption className="sr-only">Your shifts, {range}</TableCaption>
+                <TableCaption className="sr-only">{t.attendance.yourShiftsCaption(range)}</TableCaption>
                 <TableHeader>
                     <TableRow>
-                        <TableHead scope="col">Day</TableHead>
-                        <TableHead scope="col">Scheduled</TableHead>
-                        <TableHead scope="col">In</TableHead>
-                        <TableHead scope="col">Out</TableHead>
-                        <TableHead scope="col">Status</TableHead>
+                        <TableHead scope="col">{t.attendance.dayHeading}</TableHead>
+                        <TableHead scope="col">{t.attendance.scheduled}</TableHead>
+                        <TableHead scope="col">{t.attendance.in}</TableHead>
+                        <TableHead scope="col">{t.attendance.out}</TableHead>
+                        <TableHead scope="col">{t.attendance.statusHeading}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -60,11 +63,11 @@ function ShiftTable({ rows, today, range }: { rows: AttendanceRow[]; today: stri
                         <TableRow key={row.shiftId} className={cn(row.shiftDate === today && "bg-muted")}>
                             <TableCell>
                                 <span className="flex items-center gap-2">
-                                    {formatDay(row.shiftDate)}
+                                    {formatDay(row.shiftDate, locale)}
                                     {row.shiftDate === today ? <TodayMark /> : null}
                                 </span>
                             </TableCell>
-                            <TableCell className="font-mono tabular-nums">{row.scheduled}</TableCell>
+                            <TableCell className="font-mono tabular-nums"><bdi dir="ltr">{row.scheduled}</bdi></TableCell>
                             <TableCell className="font-mono tabular-nums">{row.clockIn ?? "—"}</TableCell>
                             <TableCell className="font-mono tabular-nums">{row.clockOut ?? "—"}</TableCell>
                             <TableCell className="whitespace-normal">
@@ -72,7 +75,7 @@ function ShiftTable({ rows, today, range }: { rows: AttendanceRow[]; today: stri
                                     <div className="flex flex-wrap items-center gap-2">
                                         <StatusBadge status={row.status} detail={row.detail} />
                                     </div>
-                                    <RowNote row={row} />
+                                    <RowNote row={row} t={t} />
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -90,6 +93,7 @@ function ShiftTable({ rows, today, range }: { rows: AttendanceRow[]; today: stri
  * reads as that, not as a no-show.
  */
 export async function MyAttendance({ userId, branchIds, weekStart }: { userId: number; branchIds: number[]; weekStart: string }) {
+    const { t, locale } = await getI18n();
     let report: ScheduleVsActualRow[];
     let freshness: (AttendanceFreshnessView | null)[];
 
@@ -107,7 +111,7 @@ export async function MyAttendance({ userId, branchIds, weekStart }: { userId: n
             return (
                 <Alert variant="destructive" className="max-w-3xl">
                     <AlertCircleIcon />
-                    <AlertDescription>Your attendance couldn&apos;t be loaded. Reload the page; if it keeps happening, sign out and back in.</AlertDescription>
+                    <AlertDescription>{t.attendance.myLoadFailed}</AlertDescription>
                 </Alert>
             );
         }
@@ -119,16 +123,16 @@ export async function MyAttendance({ userId, branchIds, weekStart }: { userId: n
             .map((branch) => [branch.branch_id, branch.latest_punch === null ? null : new Date(branch.latest_punch)]),
     );
     // every row is the viewer's own, so no names to join
-    const rows = buildAttendanceRows(report, [], { latestPunches });
+    const rows = buildAttendanceRows(report, [], { latestPunches, words: t.attendance.rows });
     const today = todayDateString();
-    const range = formatWeekRange(weekStart);
+    const range = formatWeekRange(weekStart, locale);
 
     if (rows.length === 0) {
         return (
             <p className="max-w-3xl rounded-lg border border-border bg-card px-4 py-6 text-sm text-muted-foreground">
-                {emptyWeekMessage(weekStart, mondayOf(today), range)}{" "}
+                {emptyWeekMessage(weekStart, mondayOf(today), range, t)}{" "}
                 <Link href={`/schedule?week=${weekStart}`} className="text-primary underline-offset-4 hover:underline">
-                    See the schedule
+                    {t.attendance.seeSchedule}
                 </Link>
             </p>
         );
@@ -144,7 +148,7 @@ export async function MyAttendance({ userId, branchIds, weekStart }: { userId: n
     return (
         <div className="flex max-w-3xl flex-col gap-6">
             <MissedTime
-                title="Missed time"
+                title={t.attendance.missedTime}
                 minutes={missedMinutes(report)}
                 pending={rows.filter((row) => row.fix !== null).length}
                 noShows={rows.filter((row) => row.status === "no_show").length}
@@ -152,28 +156,25 @@ export async function MyAttendance({ userId, branchIds, weekStart }: { userId: n
             <section aria-labelledby="my-shifts" className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <h2 id="my-shifts" className="text-base font-medium">
-                        Your shifts
+                        {t.attendance.yourShifts}
                     </h2>
                     <StatusSummary counts={summarizeStatuses(rows)} />
                 </div>
                 {oldest !== undefined ? (
-                    <p className="text-sm text-muted-foreground">
-                        Clock punches are in through {formatLatestPunch(oldest)}. Later shifts fill in once your branch imports
-                        them.
-                    </p>
+                    <p className="text-sm text-muted-foreground">{t.attendance.punchesInThrough(formatLatestPunch(oldest, locale))}</p>
                 ) : null}
                 <ShiftList
                     rows={rows}
                     today={today}
                     lead={(row) => (
                         <>
-                            {formatDay(row.shiftDate)}
+                            {formatDay(row.shiftDate, locale)}
                             {row.shiftDate === today ? <TodayMark /> : null}
                         </>
                     )}
-                    extra={(row) => <RowNote row={row} />}
+                    extra={(row) => <RowNote row={row} t={t} />}
                 />
-                <ShiftTable rows={rows} today={today} range={range} />
+                <ShiftTable rows={rows} today={today} range={range} t={t} locale={locale} />
             </section>
         </div>
     );
