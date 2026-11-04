@@ -60,3 +60,6 @@ next-env.d.ts
 
 # Git Bash crash dumps
 *.stackdump
+
+# graphify knowledge graph (local, regenerated)
+/graphify-out/

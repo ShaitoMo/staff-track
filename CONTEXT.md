@@ -50,6 +50,14 @@ _Avoid_: Time slot
 The target headcount for a given Branch, Role, and Shift Period — the basis for detecting a Coverage Gap.
 _Avoid_: Staffing target
 
+**Schedule Proposal**:
+The auto-scheduler's suggested Shifts for one Branch's week, filling open Coverage Requirements. Not stored — it lives in the manager's browser until they approve it, and approving creates ordinary Shifts. Discarding leaves nothing behind.
+_Avoid_: Draft schedule, Draft shift
+
+**Scheduling Rule**:
+A per-Branch limit that only the auto-scheduler follows: two Users it never puts on the same day and Shift Period ("keep apart"), or the only Shift Periods a User may be given there ("only these periods"). Strict — a rule leaves a slot short rather than bend. Shifts added by hand are not checked against it; an approved Schedule Proposal is, and a row that would break a rule is skipped.
+_Avoid_: Constraint, Preference, Availability
+
 **Coverage Gap**:
 A computed shortfall where actual scheduled/attended headcount falls below a Branch's Coverage Requirement for a period. Not a stored record — derived on read.
 _Avoid_: Understaffing

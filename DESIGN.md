@@ -92,7 +92,7 @@ Status color marks, it doesn't fill. In the schedule grid a slot still needing s
 
 **Links.** A link inside a sentence or standing alone as text is Market Blue (`text-primary`). A heading or section label that opens the page behind it (a dashboard branch name, "Attendance ›") stays in its text color with a chevron and turns blue on hover — the chevron is the affordance, so a card isn't covered in blue.
 
-**Chosen vs. current.** Market Blue marks only what you can act on: the page's one main action, links, focus. Where you are in the app is neutral — a lighter surface and a heavier weight in the nav (below). An option chosen *inside* a page — a day in the phone day strip, a branch button, the Tasks / Instances toggle — is solid Ledger Ink on an outline control (`CHOSEN`, `src/lib/selection.ts`), so a picker never puts a second blue fill beside the main action. Active/Inactive badges are one style everywhere: plain outline for active, dashed muted outline for inactive.
+**Chosen vs. current.** Market Blue marks only what you can act on: the page's one main action, links, focus. Where you are in the app is neutral — a lighter surface and a heavier weight in the nav (below). An option chosen *inside* a page — a day in the phone day strip, a branch button, the Tasks / Instances toggle — is solid Ledger Ink on an outline control (`CHOSEN`, `src/lib/selection.ts`), so a picker never puts a second blue fill beside the main action. Active/Inactive badges are one style everywhere: plain outline for active, dashed muted outline for inactive. A ticked checkbox follows the same rule: Ledger Ink fill, not blue; an unticked one has a Slate border (`border-muted-foreground/80`, about 3.9:1 on white), since the Hairline border measured 1.25:1, under WCAG 1.4.11's 3:1.
 
 ### Named Rules
 **The One Accent Rule.** Market Blue appears only on what can be acted on: the primary action per view, links, and focus rings — not on navigation state, selection, or status. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.
@@ -135,7 +135,7 @@ The staff Home (`src/components/dashboard/staff-today.tsx`) is the reference: To
 Flat by default. Structure comes from the Hairline border and background-color steps (Paper vs. Card), not shadows. Shadows are reserved for genuinely elevated, temporary surfaces — dropdown menus, dialogs, toasts — never for resting cards or table rows. (shadcn's `Card` primitive ships a `ring-1 ring-foreground/10` rather than a shadow, which fits this system's flat-by-default rule.)
 
 ### Named Rules
-**The Flat-By-Default Rule.** A card or table row sitting in its normal place never has a shadow. A shadow means "this is floating above the page right now" (a menu, a modal), not "this is a card."
+**The Flat-By-Default Rule.** A card or table row sitting in its normal place never has a shadow. A shadow means "this is floating above the page right now" (a menu, a modal), not "this is a card." A dialog's backdrop is a plain 10% black tint with no blur, so the page behind it stays readable; the Auto-fill review depends on it.
 
 ## Shapes
 

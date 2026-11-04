@@ -9,6 +9,8 @@ import { ShiftNotFoundError } from "@/exceptions/shift-not-found-error";
 export interface ShiftFilters {
     branchId?: number;
     userId?: number;
+    /** several people at once, at any branch unless `branchId` narrows it; takes precedence over `userId` */
+    userIds?: number[];
     registerId?: number;
     from?: Date;
     to?: Date;
@@ -44,12 +46,12 @@ export class ShiftRepository {
      * start of shift.
      */
     static async getShifts(filters: ShiftFilters = {}): Promise<ShiftView[]> {
-        const { branchId, userId, registerId, from, to } = filters;
+        const { branchId, userId, userIds, registerId, from, to } = filters;
 
         const shifts = await db.shift.findMany({
             where: {
                 branchId,
-                userId,
+                userId: userIds ? { in: userIds } : userId,
                 registerId,
                 shiftDate: { gte: from, lte: to },
             },
@@ -104,7 +106,8 @@ export class ShiftRepository {
      * what these people (at any branch) and these registers already hold in the window, lets
      * `plan` decide the rows that don't clash, and inserts them in one statement. A concurrent copy
      * waits on the lock, then sees the first one's rows as booked, so it inserts nothing. Returns
-     * how many rows went in.
+     * how many rows went in. Auto-fill's approve (ScheduleBuilderService.approve) writes through
+     * here too, under the same lock key, so it and copy-week can't interleave on one branch's week.
      */
     static async copyIntoWeek(
         window: { branchId: number; from: Date; to: Date; userIds: number[]; registerIds: number[] },

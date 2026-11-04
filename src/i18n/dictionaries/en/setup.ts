@@ -1,3 +1,4 @@
+import { isolate } from "@/i18n/locales";
 import { common } from "./common";
 import { words } from "./words";
 
@@ -160,4 +161,34 @@ export const roles = {
     who: "Who",
     noOneYet: "No one yet",
     errors: { name: "Name must be 3 to 50 characters." },
+};
+
+export const schedulingRules = {
+    title: "Scheduling rules",
+    intro: "Auto-fill follows these rules at this branch. Shifts you add or change by hand on the schedule don't have to.",
+    noAccess: "You don't have access to view scheduling rules.",
+    noBranches: words.noBranches,
+    noBranchesDescription: "Rules are set per branch, and there are no branches to show.",
+    pickBranch: "Pick a branch",
+    pickBranchDescription: "Rules are set per branch. Choose one in the top bar to see and change its rules.",
+    titleFor: (branch: string) => `Scheduling rules for ${isolate(branch)}`,
+    keepApart: "Keep apart",
+    keepApartHint: "Auto-fill never puts these two on the same day and period.",
+    noPairs: "No pairs yet.",
+    firstPerson: "First person",
+    secondPerson: "Second person",
+    choosePerson: "Choose someone",
+    addPair: "Add pair",
+    removePair: (a: string, b: string) => `Remove ${isolate(a)} and ${isolate(b)}`,
+    onlyPeriods: "Only these periods",
+    onlyPeriodsHint: "Tick the periods a person may get. Nothing ticked means any period.",
+    anyPeriod: "Any period",
+    only: (periods: string[]) => `Only ${periods.map(isolate).join(", ")}`,
+    canWork: "Can work",
+    periodFor: (period: string, person: string) => `${isolate(period)} for ${isolate(person)}`,
+    noPeople: "No one works at this branch yet.",
+    noPeriods: "This branch has no periods turned on.",
+    save: "Save rules",
+    saved: "Rules saved.",
+    unsaved: "Unsaved changes",
 };
