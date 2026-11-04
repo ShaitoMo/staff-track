@@ -22,11 +22,19 @@ Default vocabulary, unchanged: `needs-triage`, `needs-info`, `ready-for-agent`, 
 
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Code graph (graphify)
+
+`graphify-out/` holds a knowledge graph of the repo. For questions about how code connects (what
+calls X, where Y is used, how a flow crosses layers), check it before grepping: `graphify query
+"<question>"`, `graphify explain "<symbol>"`, `graphify path "<A>" "<B>"`; `graphify-out/GRAPH_REPORT.md`
+has the community map. It can lag the code, so confirm in the source before editing. After larger
+changes, refresh it with `/graphify . --update`.
+
 ## Commands
 
 ```bash
-# Local database (Postgres only — the app itself runs directly via npm, not in Docker)
-docker compose up -d
+# Local database + auto-scheduler (the app itself runs directly via npm, not in Docker)
+docker compose up -d        # Postgres, and the OR-Tools scheduler on :8000 (scheduler/)
 npx prisma migrate deploy
 npx prisma db seed          # wipes and reloads the demo chain (3 branches, dates relative to today);
                              # every seeded user logs in with password 123456 — accounts in
@@ -43,6 +51,10 @@ npx jest -t "some test name"           # by test name
 
 npx tsc --noEmit              # typecheck — see gotcha below
 npm run lint                  # ESLint (flat config)
+
+# Auto-scheduler (Python, scheduler/) — Jest never sees it
+cd scheduler && py -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
+.venv/Scripts/python -m pytest        # solver + HTTP tests
 
 npm run job:top-up            # src/jobs/top-up-instances.ts — recurring task-instance
                                # top-up/prune; idempotent, meant to be cron'd
@@ -62,6 +74,16 @@ the bucket needs a CORS rule allowing `PUT` (and `GET`) with header `Content-Typ
 (`http://localhost:3000`, production) — without it every upload fails with "The photo didn't upload".
 `media.file_path` holds the object key, not a URL; `GET /api/media/:id/file` checks access, then
 redirects to a short-lived signed URL.
+
+**Auto-scheduler:** "Auto-fill week" on the schedule asks a stateless Python service (`scheduler/`,
+FastAPI + OR-Tools CP-SAT) for a Schedule Proposal. Next.js works out what's still short and who is
+busy, sends ids, dates and counts to `POST /solve` (`src/lib/scheduler-client.ts`, header
+`X-Scheduler-Secret`), and never saves the answer — only `/api/schedule-builder/approve` writes, through
+copy-week's locked insert. Set `SCHEDULER_URL` and `SCHEDULER_SECRET` in `.env` (matching the compose
+service's secret); without them, or with the container down, Auto-fill answers 503. Scheduling rules
+(`/scheduling-rules`) travel as per-person `blockedSlotIds` and `keepApart` pairs; the solver refuses
+fields it doesn't know (422, so 503), so rebuild its container (`docker compose up -d --build scheduler`)
+whenever that contract changes.
 
 **Standalone scripts** (outside the Next.js request lifecycle, e.g. one-off scripts or `src/jobs/*`) must
 `import "dotenv/config"` before importing anything that touches `src/lib/db.ts`, or `DATABASE_URL` is
