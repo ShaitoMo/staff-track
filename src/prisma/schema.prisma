@@ -80,6 +80,9 @@ model User {
   taskInstancesReviewed  TaskInstance[] @relation("TaskReviewer")
   media                  Media[]
   guideImages            GuideImage[]
+  keepApartA             ScheduleKeepApart[]   @relation("KeepApartA")
+  keepApartB             ScheduleKeepApart[]   @relation("KeepApartB")
+  periodLimits           SchedulePeriodLimit[]
 
   @@map("users")
 }
@@ -97,6 +100,8 @@ model Branch {
   shiftPeriods ShiftPeriod[]
   coverageReqs CoverageRequirement[]
   sections     BranchSection[]
+  keepApart    ScheduleKeepApart[]
+  periodLimits SchedulePeriodLimit[]
 
   @@map("branches")
 }
@@ -185,8 +190,42 @@ model ShiftPeriod {
   branch       Branch?               @relation(fields: [branchId], references: [branchId])
   requirements CoverageRequirement[]
   shifts       Shift[]
+  periodLimits SchedulePeriodLimit[]
 
   @@map("shift_periods")
+}
+
+// Scheduling rules: per-branch limits that only Auto-fill reads (the solver and its swap picker).
+// Approve and hand-made shifts ignore them, like coverage requirements. Rows cascade away with the
+// branch, user or period, so a rule never blocks deleting any of them.
+
+// two people Auto-fill never puts on the same day and period at this branch, across roles. Stored
+// with user_a_id < user_b_id (a CHECK in the migration), so (X, Y) and (Y, X) are one rule.
+model ScheduleKeepApart {
+  branchId Int @map("branch_id")
+  userAId  Int @map("user_a_id")
+  userBId  Int @map("user_b_id")
+
+  branch Branch @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  userA  User   @relation("KeepApartA", fields: [userAId], references: [userId], onDelete: Cascade)
+  userB  User   @relation("KeepApartB", fields: [userBId], references: [userId], onDelete: Cascade)
+
+  @@id([branchId, userAId, userBId])
+  @@map("schedule_keep_apart")
+}
+
+// the only periods Auto-fill may give this person at this branch. No rows = any period.
+model SchedulePeriodLimit {
+  branchId Int @map("branch_id")
+  userId   Int @map("user_id")
+  periodId Int @map("period_id")
+
+  branch Branch      @relation(fields: [branchId], references: [branchId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  period ShiftPeriod @relation(fields: [periodId], references: [periodId], onDelete: Cascade)
+
+  @@id([branchId, userId, periodId])
+  @@map("schedule_period_limits")
 }
 
 // how many people of a role a branch needs in a period — the target the schedule is measured

@@ -17,5 +17,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # OR-Tools auto-scheduler (scheduler/). Stateless: Next.js sends it JSON, it never touches the DB.
+  scheduler:
+    build: ./scheduler
+    container_name: stafftrack-scheduler
+    restart: unless-stopped
+    environment:
+      # must match SCHEDULER_SECRET in .env; the fallback is only for local dev
+      SCHEDULER_SECRET: ${SCHEDULER_SECRET:-local-dev-scheduler-secret}
+    ports:
+      - "8000:8000"
+
 volumes:
   pgdata:

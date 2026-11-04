@@ -1,4 +1,4 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { common } from "./common";
 import { words } from "./words";
 
@@ -70,6 +70,43 @@ export const schedule = {
     copyDescription:
         "Everyone scheduled that week gets the same shift seven days later. Shifts already in this week stay as they are; anyone who would be double-booked, or has left the branch, is skipped.",
     copyShifts: "Copy shifts",
+    // auto-fill
+    autoFill: "Auto-fill week",
+    autoFillTitle: (week: string) => `Auto-fill the week of ${week}`,
+    autoFillDescription: "Suggests people for this week's open coverage. Nothing is saved until you approve.",
+    maxShiftsLabel: "Most shifts per person this week",
+    maxShiftsHint: "Counts shifts at every branch. Nobody gets more than one shift a day.",
+    maxShiftsInvalid: (max: number) => `Enter a whole number from 1 to ${max}.`,
+    suggest: "Suggest shifts",
+    autoFillNothingOpen: "Nothing to fill: every slot this week is covered.",
+    autoFillNobody: (short: number) =>
+        `No one could be placed, so ${plural("en", short, { one: "# person is", other: "# people are" })} still short. Each slot says why.`,
+    proposalSummary: (n: number, short: number) =>
+        `${plural("en", n, { one: "# shift", other: "# shifts" })} suggested${short > 0 ? `, ${plural("en", short, { one: "# person", other: "# people" })} still short` : ""}. Swap or remove any before approving.`,
+    stillShort: (role: string, n: number) => `Still short ${n} ${isolate(role)}`,
+    shortBecause: {
+        noRole: (role: string) => `no one here works as ${isolate(role)}`,
+        busy: (role: string) => `every ${isolate(role)} already works that day`,
+        cap: "everyone free that day is at the weekly limit",
+        rule: "scheduling rules keep everyone free that day out",
+        capOrRule: "everyone free that day is at the weekly limit or kept out by a rule",
+    },
+    tryLimit: (n: number) => `Try a limit of ${n}`,
+    reviewRules: "Review scheduling rules",
+    changeLimit: "Change limit",
+    discardChanges: (n: number) => `Discard ${plural("en", n, { one: "# change", other: "# changes" })} to this suggestion?`,
+    keepEditing: "Keep editing",
+    discard: "Discard",
+    overview: "Suggested and still short, by day",
+    overviewCell: (suggested: number, short: number) =>
+        [suggested > 0 ? `${suggested} suggested` : "", short > 0 ? `${short} still short` : ""].filter(Boolean).join(", "),
+    changePerson: (name: string, where: string) => `${name}; change person (${where})`,
+    approveShifts: (n: number) => `Approve ${plural("en", n, { one: "# shift", other: "# shifts" })}`,
+    autoFilled: (created: number, skipped: number) => {
+        const added = `Added ${plural("en", created, { one: "# shift", other: "# shifts" })}`;
+        return skipped > 0 ? `${added}; skipped ${skipped} already booked or no longer valid.` : `${added}.`;
+    },
+    autoFillFailed: "Couldn't auto-fill the week. Try again.",
     // staff view
     notOnSchedule: "You're not on the schedule this week.",
     customHours: words.customHours,

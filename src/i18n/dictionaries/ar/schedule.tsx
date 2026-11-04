@@ -3,6 +3,7 @@ import type { coverage as enCoverage, schedule as enSchedule } from "../en/sched
 import { common } from "./common";
 import { words } from "./words";
 
+const people = (n: number) => plural("ar", n, { one: "شخص واحد", two: "شخصان", few: "# أشخاص", other: "# شخصًا" });
 const shifts = (n: number) => plural("ar", n, { one: "مناوبة واحدة", two: "مناوبتين", few: "# مناوبات", other: "# مناوبة" });
 
 export const schedule: typeof enSchedule = {
@@ -66,6 +67,42 @@ export const schedule: typeof enSchedule = {
     copyDescription:
         "كل من كان مجدولًا في ذلك الأسبوع يحصل على المناوبة نفسها بعد سبعة أيام. تبقى المناوبات الموجودة في هذا الأسبوع كما هي، ويُتخطّى من قد يُحجز مرتين أو من غادر الفرع.",
     copyShifts: "نسخ المناوبات",
+    autoFill: "ملء الأسبوع تلقائيًا",
+    autoFillTitle: (week) => `ملء أسبوع ${week} تلقائيًا`,
+    autoFillDescription: "يقترح أشخاصًا للخانات الناقصة هذا الأسبوع. لا يُحفظ شيء حتى توافق.",
+    maxShiftsLabel: "أقصى عدد مناوبات للشخص هذا الأسبوع",
+    maxShiftsHint: "تُحسب المناوبات في كل الفروع. لا يحصل أحد على أكثر من مناوبة في اليوم.",
+    maxShiftsInvalid: (max) => `أدخل عددًا صحيحًا من 1 إلى ${max}.`,
+    suggest: "اقترح المناوبات",
+    autoFillNothingOpen: "لا شيء لملئه: كل الخانات هذا الأسبوع مغطّاة.",
+    autoFillNobody: (short) => `لم يُوضع أحد، فلا يزال ينقص ${people(short)}. كل خانة تذكر السبب.`,
+    proposalSummary: (n, short) =>
+        `اقتُرحت ${shifts(n)}${short > 0 ? `، ولا يزال ينقص ${people(short)}` : ""}. بدّل أو أزل ما تريد قبل الموافقة.`,
+    stillShort: (role, n) => `لا يزال ينقص: ${isolate(role)} (${n})`,
+    shortBecause: {
+        noRole: (role) => `لا أحد هنا يعمل ${isolate(role)}`,
+        busy: (role) => `كل ${isolate(role)} يعمل في ذلك اليوم`,
+        cap: "كل المتاحين في ذلك اليوم بلغوا الحد الأسبوعي",
+        rule: "قواعد الجدولة تستبعد كل المتاحين في ذلك اليوم",
+        capOrRule: "كل المتاحين في ذلك اليوم بلغوا الحد الأسبوعي أو تستبعدهم قاعدة",
+    },
+    tryLimit: (n) => `جرّب حدًّا من ${n}`,
+    reviewRules: "راجع قواعد الجدولة",
+    changeLimit: "تغيير الحد",
+    discardChanges: (n) =>
+        `تجاهل ${plural("ar", n, { one: "تغيير واحد", two: "تغييرين", few: "# تغييرات", other: "# تغييرًا" })} على هذا الاقتراح؟`,
+    keepEditing: "متابعة التعديل",
+    discard: "تجاهل",
+    overview: "المقترح والناقص، حسب اليوم",
+    overviewCell: (suggested, short) =>
+        [suggested > 0 ? `${suggested} مقترحة` : "", short > 0 ? `${short} ناقصة` : ""].filter(Boolean).join("، "),
+    changePerson: (name, where) => `${isolate(name)}؛ تغيير الشخص (${where})`,
+    approveShifts: (n) => `الموافقة على ${shifts(n)}`,
+    autoFilled: (created, skipped) => {
+        const added = `أُضيفت ${shifts(created)}`;
+        return skipped > 0 ? `${added}؛ وتُخطّيت ${skipped} محجوزة مسبقًا أو لم تعد صالحة.` : `${added}.`;
+    },
+    autoFillFailed: "تعذّر ملء الأسبوع تلقائيًا. حاول مجددًا.",
     notOnSchedule: "لست على الجدول هذا الأسبوع.",
     customHours: words.customHours,
     noOneScheduled: "لا أحد مجدول.",

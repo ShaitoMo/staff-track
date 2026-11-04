@@ -38,6 +38,7 @@ export const nav: typeof enNav = {
     registers: words.registers,
     periods: words.periods,
     roles: words.rolesAndCoverage,
+    schedulingRules: "قواعد الجدولة",
     sectionTypes: words.sectionTypes,
     home: "الرئيسية",
     myTasks: "مهامي",
