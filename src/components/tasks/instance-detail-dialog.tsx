@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ChevronRightIcon } from "lucide-react";
 import { StatusBadge } from "@/components/tasks/status-badge";
 import { TaskReferencePhotos } from "@/components/tasks/task-reference";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -23,7 +24,16 @@ function DetailField({ label, children }: { label: string; children: ReactNode }
  * details in a modal. Plain text styling, not a coloured link — Market Blue stays reserved for the
  * one primary action per view (DESIGN.md), and there is one of these per row.
  */
-export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow; titleClassName?: string }) {
+export function InstanceDetailDialog({
+    row,
+    titleClassName,
+    chevron = false,
+}: {
+    row: InstanceRow;
+    titleClassName?: string;
+    /** A trailing chevron, for a card on a touch screen where there's no hover underline to say the title opens something. */
+    chevron?: boolean;
+}) {
     const sideBySide = row.referenceName !== null && row.photoMediaId !== null;
     const t = useT();
     const locale = useLocale();
@@ -34,11 +44,12 @@ export function InstanceDetailDialog({ row, titleClassName }: { row: InstanceRow
                 render={
                     <button
                         type="button"
-                        className={`text-start font-medium underline-offset-2 hover:underline ${titleClassName ?? ""}`}
+                        className={cn("text-start font-medium underline-offset-2 hover:underline", chevron && "inline-flex items-start gap-1", titleClassName)}
                     />
                 }
             >
                 <bdi>{row.title}</bdi>
+                {chevron ? <ChevronRightIcon aria-hidden="true" className="mt-1 size-4 shrink-0 text-muted-foreground rtl:rotate-180" /> : null}
             </DialogTrigger>
             <DialogContent className={sideBySide ? "sm:max-w-2xl" : "sm:max-w-md"}>
                 <DialogHeader>

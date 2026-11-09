@@ -7,6 +7,8 @@ import type { TaskInstanceListView, TaskStatus } from "@/types/task-instance";
 
 export interface InstanceRow {
     instanceId: number;
+    /** The task this is one day's copy of; a recurring task has one copy per day. */
+    taskId: number;
     title: string;
     description: string | null;
     branchName: string;
@@ -62,6 +64,7 @@ export function buildInstanceRows(
 
         return {
             instanceId: instance.instance_id,
+            taskId: instance.task_id,
             title: instance.task.title,
             description: instance.task.description,
             branchName: instance.task.branch_name,

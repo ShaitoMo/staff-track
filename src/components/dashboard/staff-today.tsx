@@ -2,6 +2,7 @@ import { AlertCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { MissedTime, staffLinkClass } from "@/components/attendance/missed-time";
 import { BranchesFailedAlert, settledOrThrow } from "@/components/layout/branches-failed-alert";
+import { CompletionNoticeProvider } from "@/components/tasks/completion-notice";
 import { MyTaskList } from "@/components/tasks/my-task-list";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -12,9 +13,9 @@ import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { missedMinutes } from "@/lib/attendance-rows";
 import { addDays, formatDay, mondayOf } from "@/lib/coverage-rows";
-import { buildInstanceRows, InstanceRow, todayDateString } from "@/lib/instance-rows";
+import { buildInstanceRows, todayDateString } from "@/lib/instance-rows";
 import { MyShift, myShifts } from "@/lib/staff-schedule";
-import { monthStart, splitByDay } from "@/lib/staff-home";
+import { collapseOverdue, monthStart, splitByDay, type StaffTaskRow } from "@/lib/staff-home";
 import { Role } from "@/types/role";
 import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 import { BranchScheduleView } from "@/types/shift";
@@ -86,7 +87,7 @@ function DayBlock({
     label: string;
     date: string;
     shifts: MyShift[];
-    tasks: InstanceRow[];
+    tasks: StaffTaskRow[];
     showBranch: boolean;
     tasksLink?: React.ReactNode;
     t: Dictionary;
@@ -94,7 +95,7 @@ function DayBlock({
 }) {
     return (
         <section aria-labelledby={id} className="@container flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3 border-b border-border">
+            <div className="flex items-center justify-between gap-3 border-b border-border pb-1">
                 <h2 id={id} className="text-base font-semibold">
                     {label} <span className="font-normal text-muted-foreground">· {formatDay(date, locale)}</span>
                 </h2>
@@ -190,47 +191,46 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
         (shift) => shift.date,
         today,
     );
-    const tasks = splitByDay(
-        buildInstanceRows(pending, roles, userId, t.tasks).toSorted((a, b) => a.dueDate.localeCompare(b.dueDate)),
-        (row) => row.dueDate,
-        today,
-    );
+    // a missed daily task is one card under Today, not one per missed day
+    const tasks = splitByDay(collapseOverdue(buildInstanceRows(pending, roles, userId, t.tasks), today), (row) => row.dueDate, today);
     const showBranch = branchIds.length > 1;
 
     // a phone reads top to bottom; a wide screen keeps today as the main column and sets the rest beside it
     return (
-        <div className="grid max-w-2xl gap-10 lg:max-w-7xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
-            {failed > 0 ? (
-                <div className="lg:col-span-full">
-                    <BranchesFailedAlert failed={failed} consequence={t.dashboard.shiftsMissingConsequence} />
-                </div>
-            ) : null}
-            <DayBlock
-                id="today"
-                label={t.common.today}
-                t={t}
-                locale={locale}
-                date={today}
-                shifts={shifts.today}
-                tasks={tasks.today}
-                showBranch={showBranch}
-                // on the list it extends, which is where overdue tasks land too
-                tasksLink={
-                    <Link href="/my-tasks" className={staffLinkClass}>
-                        {t.dashboard.allMyTasks}
-                    </Link>
-                }
-            />
-            <div className="flex flex-col gap-10">
-                <DayBlock id="tomorrow" label={t.common.tomorrow} t={t} locale={locale} date={tomorrow} shifts={shifts.tomorrow} tasks={tasks.tomorrow} showBranch={showBranch} />
-                <MissedTime
-                    title={t.dashboard.missedThisMonth}
-                    minutes={missedMinutes(report)}
-                    pending={report.filter((row) => row.incomplete_attendance_id !== null).length}
-                    link={{ href: "/attendance", label: t.dashboard.attendance }}
-                    className="rounded-lg border border-border bg-card p-4"
+        <CompletionNoticeProvider>
+            <div className="grid max-w-2xl gap-10 lg:max-w-7xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
+                {failed > 0 ? (
+                    <div className="lg:col-span-full">
+                        <BranchesFailedAlert failed={failed} consequence={t.dashboard.shiftsMissingConsequence} />
+                    </div>
+                ) : null}
+                <DayBlock
+                    id="today"
+                    label={t.common.today}
+                    t={t}
+                    locale={locale}
+                    date={today}
+                    shifts={shifts.today}
+                    tasks={tasks.today}
+                    showBranch={showBranch}
+                    // on the list it extends, which is where overdue tasks land too
+                    tasksLink={
+                        <Link href="/my-tasks" className={staffLinkClass}>
+                            {t.dashboard.allMyTasks}
+                        </Link>
+                    }
                 />
+                <div className="flex flex-col gap-10">
+                    <DayBlock id="tomorrow" label={t.common.tomorrow} t={t} locale={locale} date={tomorrow} shifts={shifts.tomorrow} tasks={tasks.tomorrow} showBranch={showBranch} />
+                    <MissedTime
+                        title={t.dashboard.missedThisMonth}
+                        minutes={missedMinutes(report)}
+                        pending={report.filter((row) => row.incomplete_attendance_id !== null).length}
+                        link={{ href: "/attendance", label: t.dashboard.attendance }}
+                        className="rounded-lg border border-border bg-card p-4"
+                    />
+                </div>
             </div>
-        </div>
+        </CompletionNoticeProvider>
     );
 }

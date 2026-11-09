@@ -43,8 +43,10 @@ export async function MissedTime({
                     </Link>
                 ) : null}
             </div>
-            <p className="text-2xl font-semibold tabular-nums">{minutes === 0 ? t.attendance.noTimeMissed : formatMinutes(minutes, locale)}</p>
-            <p className="text-sm text-muted-foreground">{t.attendance.affectsPay(LATE_GRACE_MINUTES)}</p>
+            {/* a figure to check, not the page's headline: no bigger than a day heading */}
+            <p className="text-lg font-semibold tabular-nums">{minutes === 0 ? t.attendance.noTimeMissed : formatMinutes(minutes, locale)}</p>
+            {/* the pay rule only matters once there is time to explain */}
+            {minutes > 0 ? <p className="text-sm text-muted-foreground">{t.attendance.affectsPay(LATE_GRACE_MINUTES)}</p> : null}
             {pending > 0 ? (
                 <p className="text-sm text-muted-foreground">{t.attendance.pendingNote(pending)}</p>
             ) : null}

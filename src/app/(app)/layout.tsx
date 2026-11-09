@@ -98,8 +98,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         <SidebarNav />
                     </aside>
                 ) : null}
-                {/* staff pages leave room for the tab bar on a phone */}
-                <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6 print:p-0", !canManage && "pb-24 md:pb-6")}>{children}</main>
+                {/* staff pages leave room for the tab bar (64px plus the home indicator) on a phone */}
+                <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6 print:p-0", !canManage && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6")}>{children}</main>
             </div>
             {canManage ? null : <StaffTabBar />}
         </div>

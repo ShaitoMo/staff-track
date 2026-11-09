@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { getI18n } from "@/i18n/server";
 import { formatDay } from "@/lib/coverage-rows";
 import { type InstanceRow, todayDateString } from "@/lib/instance-rows";
+import type { StaffTaskRow } from "@/lib/staff-home";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,7 +15,7 @@ import { cn } from "@/lib/utils";
  * shows how it ended, so a declined task doesn't just vanish. The title opens the same full-detail
  * modal as the owner/manager Instances view. Only CompleteTaskForm, the reference and the dialog are client islands.
  */
-export async function MyTaskList({ rows, className }: { rows: InstanceRow[]; className?: string }) {
+export async function MyTaskList({ rows, className }: { rows: (InstanceRow & Partial<Pick<StaffTaskRow, "missedDays" | "oldestDueDate">>)[]; className?: string }) {
     const { t, locale } = await getI18n();
     const today = todayDateString();
 
@@ -25,21 +26,29 @@ export async function MyTaskList({ rows, className }: { rows: InstanceRow[]; cla
                 // a recurring task repeats its title daily, so an overdue copy must say so or it reads as a duplicate
                 const overdue = pending && row.dueDate < today;
                 const taskLabel = t.tasks.taskLabel(row.title, formatDay(row.dueDate, locale));
+                // an overdue run collapsed into this card (collapseOverdue) says how long it has gone undone
+                const missedDays = row.missedDays ?? 1;
 
                 return (
                     <li key={row.instanceId} className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4">
                         <div className="flex items-start justify-between gap-2">
                             {/* a 44px minimum on touch, not TOUCH_HEIGHT's fixed h-11, so a wrapped title isn't clipped */}
-                            <InstanceDetailDialog row={row} titleClassName="text-base [@media(pointer:coarse)]:min-h-11" />
+                            <InstanceDetailDialog row={row} chevron titleClassName="text-base [@media(pointer:coarse)]:min-h-11" />
                             {pending ? null : <StatusBadge status={row.status} />}
+                            {/* the badge is overdue's one red mark; the due line under it stays muted */}
                             {overdue ? <Badge variant="destructive">{t.tasks.overdue}</Badge> : null}
                         </div>
                         {row.description !== null ? (
-                            <span className="max-w-prose text-sm text-muted-foreground"><bdi>{row.description}</bdi></span>
+                            // the full text is one tap away in the details, so a long one can't push the photo buttons down
+                            <span className="line-clamp-2 max-w-prose text-sm text-muted-foreground"><bdi>{row.description}</bdi></span>
                         ) : null}
-                        <div className="mt-1 flex items-center justify-between text-sm text-muted-foreground">
+                        <div className="mt-1 flex items-center justify-between gap-3 text-sm text-muted-foreground">
                             <span>{row.branchName}</span>
-                            <span className={cn(overdue && "text-destructive")}>{t.tasks.dueOn(formatDay(row.dueDate, locale))}</span>
+                            <span className="text-end">
+                                {missedDays > 1
+                                    ? t.tasks.missedSince(missedDays, formatDay(row.oldestDueDate ?? row.dueDate, locale))
+                                    : t.tasks.dueOn(formatDay(row.dueDate, locale))}
+                            </span>
                         </div>
                         {pending && row.referenceName !== null ? (
                             <div className="mt-3">
