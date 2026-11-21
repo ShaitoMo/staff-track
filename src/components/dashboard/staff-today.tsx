@@ -1,8 +1,9 @@
-import { AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
-import { MissedTime, staffLinkClass } from "@/components/attendance/missed-time";
+import { staffLinkClass } from "@/components/attendance/missed-time";
 import { BranchesFailedAlert, settledOrThrow } from "@/components/layout/branches-failed-alert";
 import { CompletionNoticeProvider } from "@/components/tasks/completion-notice";
+import { MissedTaskList } from "@/components/tasks/missed-task-list";
 import { MyTaskList } from "@/components/tasks/my-task-list";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -11,123 +12,115 @@ import type { Locale } from "@/i18n/locales";
 import { getI18n } from "@/i18n/server";
 import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
-import { missedMinutes } from "@/lib/attendance-rows";
+import { formatMinutes, missedMinutes } from "@/lib/attendance-rows";
 import { addDays, formatDay, mondayOf } from "@/lib/coverage-rows";
-import { buildInstanceRows, todayDateString } from "@/lib/instance-rows";
+import { buildInstanceRows, type InstanceRow, todayDateString } from "@/lib/instance-rows";
+import { machineClockOf } from "@/lib/machine-time";
+import { branchFirst, monthStart, type ShiftNow, shiftNow, splitByDay, splitMissed } from "@/lib/staff-home";
 import { MyShift, myShifts } from "@/lib/staff-schedule";
-import { collapseOverdue, monthStart, splitByDay, type StaffTaskRow } from "@/lib/staff-home";
 import { Role } from "@/types/role";
 import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 import { BranchScheduleView } from "@/types/shift";
 import type { TaskInstanceListView } from "@/types/task-instance";
 
-function ShiftList({ shifts, showBranch, t }: { shifts: MyShift[]; showBranch: boolean; t: Dictionary }) {
-    return (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-            {shifts.map((shift) => {
-                const details = [shift.registerName, showBranch ? shift.branchName : null].filter((detail) => detail !== null);
-                return (
-                    <li key={shift.shiftId} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
-                        <div className="min-w-0">
-                            <p className="text-sm font-medium">{shift.periodName ?? t.dashboard.customHours}</p>
-                            {details.length > 0 ? <p className="truncate text-xs text-muted-foreground">{details.join(" · ")}</p> : null}
-                        </div>
-                        <span className="shrink-0 font-mono text-sm tabular-nums">
-                            <bdi dir="ltr">{shift.startTime.slice(0, 5)}–{shift.endTime.slice(0, 5)}</bdi>
-                        </span>
-                    </li>
-                );
-            })}
-        </ul>
-    );
+const hours = (shift: MyShift) => (
+    <bdi dir="ltr" className="font-mono tabular-nums">
+        {shift.startTime.slice(0, 5)}–{shift.endTime.slice(0, 5)}
+    </bdi>
+);
+
+const placeOf = (shift: MyShift, showBranch: boolean) =>
+    [shift.registerName, showBranch ? shift.branchName : null].filter((part) => part !== null).join(" · ");
+
+function nowStatus(now: Exclude<ShiftNow, { kind: "none" }>, t: Dictionary, locale: Locale): string {
+    if (now.kind === "on") return t.dashboard.onShift(formatMinutes(now.minutesLeft, locale));
+    if (now.kind === "later") return t.dashboard.startsAt(now.shift.startTime.slice(0, 5));
+    return t.dashboard.doneForToday;
 }
 
 /**
- * A label tied to the content right under it; a link, when there is one, shares the label's row.
- * With nothing to list, the empty note takes that row too instead of a line of its own.
+ * The first thing on a staff member's Home: where today's shift stands right now — on it and how long
+ * is left, when it starts, or done — then which shift it is and where. A second shift today follows on
+ * one line. Worked out when the page loads; reopening Home refreshes it.
  */
-function DayGroup({
-    title,
-    empty,
-    link,
-    children,
-}: {
-    title: string;
-    empty?: string;
-    link?: React.ReactNode;
-    children?: React.ReactNode;
-}) {
+function NowBlock({ now, today, showBranch, t, locale }: { now: ShiftNow; today: string; showBranch: boolean; t: Dictionary; locale: Locale }) {
     return (
-        <div className="flex flex-col gap-1.5">
+        <section aria-labelledby="now" className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
-                <div className="flex items-baseline gap-3">
-                    <h3 className="text-xs font-medium ltr:tracking-[0.02em] text-muted-foreground">{title}</h3>
-                    {empty ? <p className="text-sm text-muted-foreground">{empty}</p> : null}
-                </div>
-                {link}
-            </div>
-            {empty ? null : children}
-        </div>
-    );
-}
-
-/** One day's shifts, then that day's tasks — what a staff member checks before and on shift. */
-function DayBlock({
-    id,
-    label,
-    date,
-    shifts,
-    tasks,
-    showBranch,
-    tasksLink,
-    t,
-    locale,
-}: {
-    id: string;
-    label: string;
-    date: string;
-    shifts: MyShift[];
-    tasks: StaffTaskRow[];
-    showBranch: boolean;
-    tasksLink?: React.ReactNode;
-    t: Dictionary;
-    locale: Locale;
-}) {
-    return (
-        <section aria-labelledby={id} className="@container flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3 border-b border-border pb-1">
-                <h2 id={id} className="text-base font-semibold">
-                    {label} <span className="font-normal text-muted-foreground">· {formatDay(date, locale)}</span>
+                <h2 id="now" className="text-base font-semibold">
+                    {t.common.today} <span className="font-normal text-muted-foreground">· {formatDay(today, locale)}</span>
                 </h2>
-                <Link href={`/schedule?week=${mondayOf(date)}`} aria-label={t.dashboard.daySchedule(label)} className={staffLinkClass}>
+                <Link href={`/schedule?week=${mondayOf(today)}`} className={staffLinkClass}>
                     {t.dashboard.schedule}
                 </Link>
             </div>
-            {shifts.length === 0 && tasks.length === 0 ? (
-                // a free day says so once, rather than two labelled blanks
-                <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">{t.dashboard.freeDay}</p>
-                    {tasksLink}
-                </div>
+            {now.kind === "none" ? (
+                <p className="text-sm text-muted-foreground">{t.dashboard.noShiftToday}</p>
             ) : (
-                <>
-                    <DayGroup title={t.dashboard.shift} empty={shifts.length === 0 ? t.dashboard.noShift : undefined}>
-                        <ShiftList shifts={shifts} showBranch={showBranch} t={t} />
-                    </DayGroup>
-                    <DayGroup title={t.dashboard.tasksDue} empty={tasks.length === 0 ? t.dashboard.noTasksDue : undefined} link={tasksLink}>
-                        {/* two-up once the column is wide enough, so cards don't stretch across a desktop */}
-                        <MyTaskList rows={tasks} className="@3xl:grid @3xl:grid-cols-2" />
-                    </DayGroup>
-                </>
+                <div className="flex flex-col gap-1">
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                        {/* the one status mark: on shift right now */}
+                        {now.kind === "on" ? <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success" /> : null}
+                        <span className={now.kind === "done" ? "text-muted-foreground" : undefined}>{nowStatus(now, t, locale)}</span>
+                    </p>
+                    <div className="flex items-baseline justify-between gap-4">
+                        <p className="text-lg font-semibold">{now.shift.periodName ?? t.dashboard.customHours}</p>
+                        <span className="shrink-0 text-base">{hours(now.shift)}</span>
+                    </div>
+                    {placeOf(now.shift, showBranch) ? <p className="text-sm text-muted-foreground">{placeOf(now.shift, showBranch)}</p> : null}
+                    {now.kind !== "done" && now.next !== null ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t.dashboard.then} {hours(now.next)}
+                            {placeOf(now.next, showBranch) ? <> · {placeOf(now.next, showBranch)}</> : null}
+                        </p>
+                    ) : null}
+                </div>
             )}
         </section>
     );
 }
 
+/** Today's doable tasks, the branch being worked at first; with two branches, each under its own label. */
+function TodayTasks({ rows, focusBranch, showBranch, t }: { rows: InstanceRow[]; focusBranch: string | null; showBranch: boolean; t: Dictionary }) {
+    if (rows.length === 0) return <p className="text-sm text-muted-foreground">{t.dashboard.nothingDueToday}</p>;
+
+    const ordered = branchFirst(rows, focusBranch);
+    const branches = [...new Set(ordered.map((row) => row.branchName))];
+    if (!showBranch || branches.length === 1) return <MyTaskList rows={ordered} twoUp />;
+
+    return (
+        <div className="flex flex-col gap-5">
+            {branches.map((branch) => (
+                <div key={branch} className="flex flex-col gap-1.5">
+                    <h3 className="text-xs font-medium text-muted-foreground ltr:tracking-[0.02em]">{t.dashboard.atBranch(branch)}</h3>
+                    <MyTaskList rows={ordered.filter((row) => row.branchName === branch)} twoUp />
+                </div>
+            ))}
+        </div>
+    );
+}
+
+/** A quiet row that opens another page: a label, one line of what's there, and a chevron. */
+function QuietLink({ href, label, detail }: { href: string; label: string; detail: React.ReactNode }) {
+    return (
+        <li>
+            <Link href={href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50">
+                <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium">{label}</span>
+                    <span className="truncate text-sm text-muted-foreground">{detail}</span>
+                </span>
+                <ChevronRightIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground rtl:rotate-180" />
+            </Link>
+        </li>
+    );
+}
+
 /**
- * A staff member's home: today and tomorrow — their shifts and the tasks due — then the time missed
- * this month. Every read fires together. The schedule is read per branch and week (on a Sunday,
- * next week's too, for tomorrow) and settled, so one branch failing doesn't hide the rest.
+ * A staff member's Home is about right now: today's shift and the tasks due on it, the branch they're
+ * working at first. A recurring task's missed days sit under them as one quiet line each. Tomorrow and
+ * the month's missed time are single rows that open their own pages; My tasks has the full list.
+ * Every read fires together; the schedule is read per branch and week (on a Sunday, next week's too,
+ * for tomorrow) and settled, so one branch failing doesn't hide the rest.
  */
 export async function StaffToday({ userId, branchIds }: { userId: number; branchIds: number[] }) {
     const { t, locale } = await getI18n();
@@ -164,7 +157,7 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
                 ),
             ),
             Promise.all([
-                // overdue tasks are still due, so they come along and land under Today
+                // overdue tasks are still due: a one-off stays doable, a recurring task's become missed days
                 fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?status=pending&due_to=${tomorrow}`),
                 fetchApi<Role[]>("/api/roles"),
                 fetchApi<ScheduleVsActualRow[]>(`/api/users/${userId}/schedule-vs-actual?from=${monthStart(today)}&to=${today}`),
@@ -191,45 +184,57 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
         (shift) => shift.date,
         today,
     );
-    // a missed daily task is one card under Today, not one per missed day
-    const tasks = splitByDay(collapseOverdue(buildInstanceRows(pending, roles, userId, t.tasks), today), (row) => row.dueDate, today);
+    const now = shiftNow(shifts.today, machineClockOf(new Date()));
+    const { doable, missed } = splitMissed(buildInstanceRows(pending, roles, userId, t.tasks), today);
+    const tasks = splitByDay(doable, (row) => row.dueDate, today);
     const showBranch = branchIds.length > 1;
+    const minutesMissed = missedMinutes(report);
+    const tomorrowShift = shifts.tomorrow[0];
 
-    // a phone reads top to bottom; a wide screen keeps today as the main column and sets the rest beside it
+    // a phone reads top to bottom; a wide screen keeps today as the main column and sets the rows beside it
     return (
         <CompletionNoticeProvider>
-            <div className="grid max-w-2xl gap-10 lg:max-w-7xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="grid max-w-2xl gap-8 lg:max-w-7xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22rem]">
                 {failed > 0 ? (
                     <div className="lg:col-span-full">
                         <BranchesFailedAlert failed={failed} consequence={t.dashboard.shiftsMissingConsequence} />
                     </div>
                 ) : null}
-                <DayBlock
-                    id="today"
-                    label={t.common.today}
-                    t={t}
-                    locale={locale}
-                    date={today}
-                    shifts={shifts.today}
-                    tasks={tasks.today}
-                    showBranch={showBranch}
-                    // on the list it extends, which is where overdue tasks land too
-                    tasksLink={
-                        <Link href="/my-tasks" className={staffLinkClass}>
-                            {t.dashboard.allMyTasks}
-                        </Link>
-                    }
-                />
-                <div className="flex flex-col gap-10">
-                    <DayBlock id="tomorrow" label={t.common.tomorrow} t={t} locale={locale} date={tomorrow} shifts={shifts.tomorrow} tasks={tasks.tomorrow} showBranch={showBranch} />
-                    <MissedTime
-                        title={t.dashboard.missedThisMonth}
-                        minutes={missedMinutes(report)}
-                        pending={report.filter((row) => row.incomplete_attendance_id !== null).length}
-                        link={{ href: "/attendance", label: t.dashboard.attendance }}
-                        className="rounded-lg border border-border bg-card p-4"
-                    />
+                <div className="@container flex min-w-0 flex-col gap-8">
+                    <NowBlock now={now} today={today} showBranch={showBranch} t={t} locale={locale} />
+                    <section aria-labelledby="tasks-today" className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                            <h2 id="tasks-today" className="text-base font-semibold">{t.dashboard.tasksToday}</h2>
+                            <Link href="/my-tasks" className={staffLinkClass}>
+                                {t.dashboard.allMyTasks}
+                            </Link>
+                        </div>
+                        <TodayTasks rows={tasks.today} focusBranch={now.kind === "none" ? null : now.shift.branchName} showBranch={showBranch} t={t} />
+                    </section>
+                    {missed.length > 0 ? (
+                        <section aria-labelledby="missed" className="flex flex-col gap-1.5">
+                            <h2 id="missed" className="text-xs font-medium text-muted-foreground ltr:tracking-[0.02em]">{t.tasks.missed}</h2>
+                            <MissedTaskList runs={missed} showBranch={showBranch} />
+                        </section>
+                    ) : null}
                 </div>
+                <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+                    <QuietLink
+                        href={`/schedule?week=${mondayOf(tomorrow)}`}
+                        label={`${t.common.tomorrow} · ${formatDay(tomorrow, locale)}`}
+                        detail={
+                            <>
+                                {tomorrowShift ? <>{tomorrowShift.periodName ?? t.dashboard.customHours} {hours(tomorrowShift)}</> : t.dashboard.noShift}
+                                {tasks.tomorrow.length > 0 ? <> · {t.dashboard.tasksDueCount(tasks.tomorrow.length)}</> : null}
+                            </>
+                        }
+                    />
+                    <QuietLink
+                        href="/attendance"
+                        label={t.dashboard.attendance}
+                        detail={minutesMissed === 0 ? t.dashboard.noTimeMissedThisMonth : t.dashboard.missedThisMonth(formatMinutes(minutesMissed, locale))}
+                    />
+                </ul>
             </div>
         </CompletionNoticeProvider>
     );

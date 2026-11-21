@@ -51,6 +51,8 @@ export const tasks = {
     nothingDueOn: (date: string) => `Nothing is due on ${date}.`,
     viewPhoto: "View photo",
     overdue: "Overdue",
+    missed: "Missed",
+    missedNote: "Missed days of a repeating task can't be done now; your manager sees them.",
     missedSince: (days: number, day: string) => `Missed ${plural("en", days, { one: "# day", other: "# days" })}, since ${day}`,
     taskLabel: (title: string, day: string) => `${title}, due ${day}`,
     noTasksNow: "No tasks right now",

@@ -51,6 +51,8 @@ export const tasks: typeof en = {
     nothingDueOn: (date) => `لا شيء مستحق في ${date}.`,
     viewPhoto: "عرض الصورة",
     overdue: "متأخرة",
+    missed: "مهام فائتة",
+    missedNote: "لا يمكن إنجاز الأيام الفائتة من مهمة متكررة الآن؛ يراها مدير فرعك.",
     missedSince: (days, day) =>
         `لم تُنجز منذ ${day} (${plural("ar", days, { one: "يوم واحد", two: "يومان", few: "# أيام", other: "# يومًا" })})`,
     taskLabel: (title, day) => `${isolate(title)}، مستحقة ${day}`,
