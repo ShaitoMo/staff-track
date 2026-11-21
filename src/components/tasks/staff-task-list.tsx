@@ -5,8 +5,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { addDays } from "@/lib/coverage-rows";
-import { buildInstanceRows, daysAgoDateString, type InstanceRow, todayDateString } from "@/lib/instance-rows";
-import { splitMissed } from "@/lib/staff-home";
+import { buildInstanceRows, daysAgoDateString, todayDateString } from "@/lib/instance-rows";
+import { splitByDay, splitMissed } from "@/lib/staff-home";
 import { Role } from "@/types/role";
 import type { TaskInstanceListView } from "@/types/task-instance";
 
@@ -20,7 +20,6 @@ function TaskGroup({ title, children }: { title: string; children: React.ReactNo
         </section>
     );
 }
-
 
 /**
  * A staff member's full task list, where Home shows only right now: today's work (an overdue one-off
@@ -39,8 +38,7 @@ export async function StaffTaskList({ userId }: { userId: number }) {
     ]);
 
     const { doable, missed } = splitMissed(buildInstanceRows(pending, roles, userId, t.tasks), today);
-    const todays: InstanceRow[] = doable.filter((row) => row.dueDate <= today);
-    const tomorrows = doable.filter((row) => row.dueDate > today);
+    const { today: todays, tomorrow: tomorrows } = splitByDay(doable, (row) => row.dueDate, today);
     const showBranch = new Set(pending.map((instance) => instance.task.branch_id)).size > 1;
 
     // buildInstanceRows sorts by branch then title; re-sort to the newest-first order this list wants

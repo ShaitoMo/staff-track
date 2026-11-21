@@ -43,7 +43,7 @@ export async function MyTaskList({ rows, upcoming = false, twoUp = false }: { ro
                             <span className="line-clamp-2 max-w-prose text-sm text-muted-foreground"><bdi>{row.description}</bdi></span>
                         ) : null}
                         <div className="mt-1 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-                            <span>{row.branchName}</span>
+                            <span><bdi>{row.branchName}</bdi></span>
                             <span className="text-end">{t.tasks.dueOn(formatDay(row.dueDate, locale))}</span>
                         </div>
                         {pending && row.referenceName !== null ? (

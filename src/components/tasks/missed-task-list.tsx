@@ -17,7 +17,7 @@ export async function MissedTaskList({ runs, showBranch }: { runs: MissedRun[]; 
                         <span className="text-sm font-medium"><bdi>{run.title}</bdi></span>
                         <span className="text-sm text-muted-foreground">
                             {t.tasks.missedSince(run.days, formatDay(run.oldestDueDate, locale))}
-                            {showBranch ? <> · {run.branchName}</> : null}
+                            {showBranch ? <> · <bdi>{run.branchName}</bdi></> : null}
                         </span>
                     </li>
                 ))}

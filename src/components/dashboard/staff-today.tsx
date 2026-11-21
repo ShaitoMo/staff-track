@@ -1,6 +1,5 @@
 import { AlertCircleIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
-import { staffLinkClass } from "@/components/attendance/missed-time";
 import { BranchesFailedAlert, settledOrThrow } from "@/components/layout/branches-failed-alert";
 import { CompletionNoticeProvider } from "@/components/tasks/completion-notice";
 import { MissedTaskList } from "@/components/tasks/missed-task-list";
@@ -18,10 +17,15 @@ import { buildInstanceRows, type InstanceRow, todayDateString } from "@/lib/inst
 import { machineClockOf } from "@/lib/machine-time";
 import { branchFirst, monthStart, type ShiftNow, shiftNow, splitByDay, splitMissed } from "@/lib/staff-home";
 import { MyShift, myShifts } from "@/lib/staff-schedule";
+import { TOUCH_HEIGHT } from "@/lib/touch";
+import { cn } from "@/lib/utils";
 import { Role } from "@/types/role";
 import { ScheduleVsActualRow } from "@/types/schedule-vs-actual";
 import { BranchScheduleView } from "@/types/shift";
 import type { TaskInstanceListView } from "@/types/task-instance";
+
+/** A staff-facing text link, tall enough to tap on a phone (DESIGN.md: 44px on touch screens). */
+const staffLinkClass = cn("inline-flex items-center text-sm text-primary underline-offset-4 hover:underline", TOUCH_HEIGHT);
 
 const hours = (shift: MyShift) => (
     <bdi dir="ltr" className="font-mono tabular-nums">
@@ -29,8 +33,21 @@ const hours = (shift: MyShift) => (
     </bdi>
 );
 
-const placeOf = (shift: MyShift, showBranch: boolean) =>
-    [shift.registerName, showBranch ? shift.branchName : null].filter((part) => part !== null).join(" · ");
+/** Which register and (with two branches) where; each name isolated, since managers type them. */
+function placeOf(shift: MyShift, showBranch: boolean): React.ReactNode {
+    const parts = [shift.registerName, showBranch ? shift.branchName : null].filter((part) => part !== null);
+    if (parts.length === 0) return null;
+    return parts.map((part, index) => (
+        <span key={index}>
+            {index > 0 ? " · " : null}
+            <bdi>{part}</bdi>
+        </span>
+    ));
+}
+
+/** A period name is typed by a manager; shifts on custom hours have none. */
+const periodOf = (shift: MyShift, t: Dictionary) =>
+    shift.periodName === null ? t.dashboard.customHours : <bdi>{shift.periodName}</bdi>;
 
 function nowStatus(now: Exclude<ShiftNow, { kind: "none" }>, t: Dictionary, locale: Locale): string {
     if (now.kind === "on") return t.dashboard.onShift(formatMinutes(now.minutesLeft, locale));
@@ -64,14 +81,14 @@ function NowBlock({ now, today, showBranch, t, locale }: { now: ShiftNow; today:
                         <span className={now.kind === "done" ? "text-muted-foreground" : undefined}>{nowStatus(now, t, locale)}</span>
                     </p>
                     <div className="flex items-baseline justify-between gap-4">
-                        <p className="text-lg font-semibold">{now.shift.periodName ?? t.dashboard.customHours}</p>
+                        <p className="text-lg font-semibold">{periodOf(now.shift, t)}</p>
                         <span className="shrink-0 text-base">{hours(now.shift)}</span>
                     </div>
-                    {placeOf(now.shift, showBranch) ? <p className="text-sm text-muted-foreground">{placeOf(now.shift, showBranch)}</p> : null}
+                    {placeOf(now.shift, showBranch) !== null ? <p className="text-sm text-muted-foreground">{placeOf(now.shift, showBranch)}</p> : null}
                     {now.kind !== "done" && now.next !== null ? (
                         <p className="text-sm text-muted-foreground">
                             {t.dashboard.then} {hours(now.next)}
-                            {placeOf(now.next, showBranch) ? <> · {placeOf(now.next, showBranch)}</> : null}
+                            {placeOf(now.next, showBranch) !== null ? <> · {placeOf(now.next, showBranch)}</> : null}
                         </p>
                     ) : null}
                 </div>
@@ -224,7 +241,7 @@ export async function StaffToday({ userId, branchIds }: { userId: number; branch
                         label={`${t.common.tomorrow} · ${formatDay(tomorrow, locale)}`}
                         detail={
                             <>
-                                {tomorrowShift ? <>{tomorrowShift.periodName ?? t.dashboard.customHours} {hours(tomorrowShift)}</> : t.dashboard.noShift}
+                                {tomorrowShift ? <>{periodOf(tomorrowShift, t)} {hours(tomorrowShift)}</> : t.dashboard.noShift}
                                 {tasks.tomorrow.length > 0 ? <> · {t.dashboard.tasksDueCount(tasks.tomorrow.length)}</> : null}
                             </>
                         }
