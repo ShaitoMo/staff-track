@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-17T00:00:00.000Z",
+  "generatedAt": "2026-11-21T20:00:54.857Z",
   "title": "Design System: StaffTrack",
   "extensions": {
     "colorMeta": {
@@ -96,11 +96,49 @@
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Card/page titles, e.g. the login card's \"StaffTrack\" title." },
-      "body": { "displayName": "Body", "purpose": "Default UI text, form labels, descriptions, table cells." },
-      "label": { "displayName": "Label", "purpose": "Table headers, field labels, status chips." },
-      "mono": { "displayName": "Mono", "purpose": "IDs, phone numbers, timestamps, anything meant to align in a column." }
-    }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Card/page titles, e.g. the login card's \"StaffTrack\" title."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default UI text, form labels, descriptions, table cells."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Table headers, field labels, status chips."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "IDs, phone numbers, timestamps, anything meant to align in a column."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-lg",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Temporary floating surfaces only: the staff \"Sent for review\" notice, the slide-out sheet."
+      },
+      {
+        "name": "floating-md",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Dropdown menus and select popovers."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
   },
   "components": [
     {
@@ -142,6 +180,46 @@
       "description": "Form-level error banner, e.g. the login page's \"Invalid phone or password\".",
       "html": "<div class=\"ds-alert-destructive\" role=\"alert\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg><div class=\"ds-alert-description\">Invalid phone or password.</div></div>",
       "css": ".ds-alert-destructive { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.5rem; padding: 0.5rem 0.625rem; border: 1px solid color-mix(in oklch, var(--destructive, #dc4a3f) 30%, transparent); border-radius: var(--radius-md, 0.36rem); background: var(--card, #FFFFFF); color: var(--destructive, #dc4a3f); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-alert-destructive svg { margin-top: 0.125rem; } .ds-alert-description { font-size: 0.875rem; color: color-mix(in oklch, var(--destructive, #dc4a3f) 90%, transparent); }"
+    },
+    {
+      "name": "Staff Now Block",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "First thing on the staff Home: where today's shift stands, which shift, where. The green dot is its one status mark.",
+      "html": "<section class=\"ds-now\"><div class=\"ds-now-head\"><span class=\"ds-now-day\">Today <span class=\"ds-muted\">· Sat 21 Nov</span></span><a class=\"ds-now-link\" href=\"#\">Schedule</a></div><p class=\"ds-now-status\"><span class=\"ds-now-dot\"></span>On shift · 1 h 27 min left</p><div class=\"ds-now-shift\"><span class=\"ds-now-period\">Evening</span><span class=\"ds-now-hours\">15:00–23:00</span></div><p class=\"ds-muted ds-small\">Register 2 · Hamra</p></section>",
+      "css": ".ds-now { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; background: var(--card, #FFFFFF); border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-lg, 0.45rem); color: var(--foreground, #16191B); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-now-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; } .ds-now-day { font-size: 1rem; font-weight: 600; } .ds-muted { color: var(--muted-foreground, #5B6368); font-weight: 400; } .ds-small { margin: 0; font-size: 0.875rem; } .ds-now-link { font-size: 0.875rem; color: var(--primary, #0066CC); text-decoration: none; text-underline-offset: 4px; } .ds-now-link:hover { text-decoration: underline; } .ds-now-link:focus-visible { outline: 2px solid var(--ring, #0066CC); outline-offset: 2px; } .ds-now-status { display: flex; align-items: center; gap: 0.5rem; margin: 0; font-size: 0.875rem; font-weight: 500; } .ds-now-dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--success, #15803d); } .ds-now-shift { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; } .ds-now-period { font-size: 1.125rem; font-weight: 600; } .ds-now-hours { direction: ltr; font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Staff Quiet Link Row",
+      "kind": "nav",
+      "refersTo": "card",
+      "description": "Tomorrow and Attendance on the staff Home: a label, one line of what's there, a chevron that flips in RTL. Neutral, not blue: the chevron is the affordance.",
+      "html": "<ul class=\"ds-rows\"><li><a class=\"ds-row\" href=\"#\"><span class=\"ds-row-text\"><span class=\"ds-row-label\">Tomorrow · Sun 22 Nov</span><span class=\"ds-row-detail\">Morning 07:00–15:00 · 2 tasks due</span></span><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\"/></svg></a></li><li><a class=\"ds-row\" href=\"#\"><span class=\"ds-row-text\"><span class=\"ds-row-label\">Attendance</span><span class=\"ds-row-detail\">No time missed this month</span></span><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\"/></svg></a></li></ul>",
+      "css": ".ds-rows { list-style: none; margin: 0; padding: 0; background: var(--card, #FFFFFF); border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-lg, 0.45rem); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-rows li + li { border-top: 1px solid var(--border, #E2E5E4); } .ds-row { display: flex; min-height: 3.5rem; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; color: var(--foreground, #16191B); text-decoration: none; transition: background 0.15s ease; } .ds-row:hover { background: color-mix(in oklch, var(--muted, #F1F3F3) 50%, transparent); } .ds-row:focus-visible { outline: 2px solid var(--ring, #0066CC); outline-offset: -2px; } .ds-row svg { flex-shrink: 0; color: var(--muted-foreground, #5B6368); } [dir=rtl] .ds-row svg { transform: rotate(180deg); } .ds-row-text { display: flex; min-width: 0; flex-direction: column; } .ds-row-label { font-size: 0.875rem; font-weight: 500; } .ds-row-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; color: var(--muted-foreground, #5B6368); }"
+    },
+    {
+      "name": "Staff Missed Task Line",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "A recurring task's missed days as one quiet line per task: muted, not red, no photo buttons; the manager sees them.",
+      "html": "<div class=\"ds-missed\"><ul class=\"ds-missed-list\"><li><span class=\"ds-missed-title\">Count and hand over register floats</span><span class=\"ds-missed-meta\">Missed 21 days, since Mon 19 Oct · Achrafieh</span></li></ul><p class=\"ds-missed-note\">Missed days of a repeating task can't be done now; your manager sees them.</p></div>",
+      "css": ".ds-missed { display: flex; flex-direction: column; gap: 0.375rem; font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-missed-list { list-style: none; margin: 0; padding: 0; background: var(--card, #FFFFFF); border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-lg, 0.45rem); } .ds-missed-list li { display: flex; flex-direction: column; gap: 0.125rem; padding: 0.75rem 1rem; } .ds-missed-list li + li { border-top: 1px solid var(--border, #E2E5E4); } .ds-missed-title { font-size: 0.875rem; font-weight: 500; color: var(--foreground, #16191B); } .ds-missed-meta { font-size: 0.875rem; color: var(--muted-foreground, #5B6368); } .ds-missed-note { margin: 0; font-size: 0.75rem; color: var(--muted-foreground, #5B6368); }"
+    },
+    {
+      "name": "Staff Completion Notice",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "\"Sent for review\" after a task photo is submitted: floats above the phone tab bar for about 6s from an always-mounted live region. The one floating staff surface, so it carries a shadow.",
+      "html": "<div class=\"ds-notice\" role=\"status\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><span>Sent for review: Count and hand over register floats. Your manager will check the photo.</span></div>",
+      "css": ".ds-notice { display: flex; max-width: 28rem; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; background: var(--card, #FFFFFF); border: 1px solid var(--border, #E2E5E4); border-radius: var(--radius-lg, 0.45rem); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); color: var(--foreground, #16191B); font-size: 0.875rem; font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-notice svg { flex-shrink: 0; margin-top: 0.125rem; color: var(--success, #15803d); }"
+    },
+    {
+      "name": "Staff Tab Bar",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Phone navigation for staff: icon over label in 64px cells; where you are is a soft ink pill and a semibold label, never blue.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab ds-tab-active\" href=\"#\" aria-current=\"page\"><span class=\"ds-tab-pill\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z\"/></svg></span>Home</a><a class=\"ds-tab\" href=\"#\"><span class=\"ds-tab-pill\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><rect x=\"5\" y=\"3\" width=\"14\" height=\"18\" rx=\"2\"/><path d=\"M9 8h6M9 12h6M9 16h4\"/></svg></span>My tasks</a><a class=\"ds-tab\" href=\"#\"><span class=\"ds-tab-pill\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/></svg></span>Schedule</a></nav>",
+      "css": ".ds-tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card, #FFFFFF); border-top: 1px solid var(--border, #E2E5E4); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-tab { display: flex; height: 4rem; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 500; color: var(--muted-foreground, #5B6368); text-decoration: none; } .ds-tab:hover { color: var(--foreground, #16191B); } .ds-tab:focus-visible { outline: 2px solid var(--ring, #0066CC); outline-offset: -2px; } .ds-tab-pill { display: flex; height: 1.75rem; width: 3rem; align-items: center; justify-content: center; border-radius: 9999px; transition: background 0.15s ease; } .ds-tab-active { font-weight: 600; color: var(--foreground, #16191B); } .ds-tab-active .ds-tab-pill { background: color-mix(in oklch, var(--foreground, #16191B) 8%, transparent); }"
     }
   ],
   "narrative": {
@@ -154,9 +232,26 @@
       "A workhorse UI typeface, not a display face; nothing here performs personality through type"
     ],
     "rules": [
-      { "name": "The One Accent Rule", "body": "Market Blue appears only on the primary action per view and on interactive/focus state. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.", "section": "colors" },
-      { "name": "The No-Display-Face Rule", "body": "Nothing on an Operate screen is set in a font chosen for personality. If a heading wants more presence, that's a weight/size change, never a new typeface.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "A card or table row sitting in its normal place never has a shadow. A shadow means \"this is floating above the page right now\" (a menu, a modal), not \"this is a card.\"", "section": "elevation" }
+      {
+        "name": "The One Accent Rule",
+        "body": "Market Blue appears only on what can be acted on: the primary action per view, links, and focus rings — not on navigation state, selection, or status. Never as a background fill for large regions, never as a second competing accent elsewhere on the same screen, and never doing double duty as a status color.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Display-Face Rule",
+        "body": "Nothing on an Operate screen is set in a font chosen for personality. If a heading wants more presence, that's a weight/size change, never a new typeface.",
+        "section": "typography"
+      },
+      {
+        "name": "The Logical-Sides Rule",
+        "body": "The app runs right to left in Arabic (the default) and left to right in English, so spacing and position use logical classes — ms-/me-, ps-/pe-, start-/end-, text-start/text-end, border-s/border-e — never ml-/pr-/left-/text-right. An icon that points along the reading direction (chevrons, arrows) gets rtl:rotate-180. A phone number is <bdi dir=\"ltr\"> inside a block that keeps the page's alignment. Text people type (task titles, descriptions, photo titles) is wrapped in <bdi>, and a name interpolated into a sentence goes through isolate() (src/i18n/locales.ts), so an English name inside Arabic keeps its punctuation in place. No UI string is written inline: it lives in src/i18n/dictionaries/{en,ar}/*.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "A card or table row sitting in its normal place never has a shadow. A shadow means \"this is floating above the page right now\" (a menu, a modal), not \"this is a card.\"",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do spend Market Blue on exactly one primary action per view.",
