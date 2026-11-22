@@ -128,11 +128,13 @@ export class UserRepository {
         isActive: boolean
         roleName: string
         branchIds: number[]
+        passwordChangedAt: Date | null
     } | null> {
         const user = await db.user.findUnique({
             where: { userId },
             select: {
                 isActive: true,
+                passwordChangedAt: true,
                 role: { select: { name: true } },
                 branchLinks: { select: { branchId: true } },
             },
@@ -146,14 +148,22 @@ export class UserRepository {
             isActive: user.isActive,
             roleName: user.role.name,
             branchIds: user.branchLinks.map((link) => link.branchId),
+            passwordChangedAt: user.passwordChangedAt,
         }
     }
 
+    /** Password check only (Change password): the hash never leaves the service. */
+    static async getPasswordHash(userId: number): Promise<string | null> {
+        const user = await db.user.findUnique({ where: { userId }, select: { passwordHash: true } })
+        return user?.passwordHash ?? null
+    }
+
+    /** Stamps the change time too: refresh refuses tokens issued before it (ADR 0001). */
     static async updatePassword(userId: number, passwordHash: string): Promise<void> {
         try {
             await db.user.update({
                 where: { userId },
-                data: { passwordHash },
+                data: { passwordHash, passwordChangedAt: new Date() },
             })
         } catch (error: unknown) {
             if (

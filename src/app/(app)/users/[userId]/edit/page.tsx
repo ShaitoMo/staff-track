@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AlertCircleIcon } from "lucide-react";
 import { AccessMessage } from "@/components/layout/access-message";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ResetPasswordForm } from "@/components/users/reset-password-form";
 import { UserForm } from "@/components/users/user-form";
 import { ApiError } from "@/lib/api-client";
 import { getDictionary } from "@/i18n/server";
@@ -90,6 +91,8 @@ export default async function EditUserPage({
                         .map((link) => ({ branchId: link.branchId, machineEmployeeId: link.machineEmployeeId })),
                 }}
             />
+            {/* your own password is changed from the account menu, where the current one is asked for */}
+            {session?.userId !== userId ? <ResetPasswordForm userId={userId} name={targetUser.name} /> : null}
         </div>
     );
 }

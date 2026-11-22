@@ -47,6 +47,17 @@ export function validateUserForm(
     return errors;
 }
 
+/** A new password and its confirmation, for Change and Reset password; same 8–100 rule as UpdatePasswordSchema. */
+export function newPasswordErrors(
+    password: string,
+    confirm: string,
+    messages: Dictionary["password"]["errors"],
+): { password?: string; confirm?: string } {
+    if (password.length < 8 || password.length > 100) return { password: messages.length };
+    if (password !== confirm) return { confirm: messages.mismatch };
+    return {};
+}
+
 export function isUserFormValid(errors: UserFormErrors): boolean {
     return Object.keys(errors).length === 0;
 }

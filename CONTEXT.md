@@ -22,6 +22,14 @@ _Avoid_: Admin, Superuser
 The Role restricted to acting within their own linked Branch(es), via UserBranch.
 _Avoid_: Supervisor
 
+**Change password**:
+A User replacing their own password, proving it's them with the current one. Their other signed-in devices are signed out.
+_Avoid_: Update password, Set password
+
+**Reset password**:
+An owner or manager giving another User a new password, which they pass on in person. The User doesn't need to know the old one, and every device they were signed in on is signed out.
+_Avoid_: Forgot password (there is no self-service recovery), Change password (that is the User's own)
+
 ### Locations
 
 **Branch**:

@@ -10,6 +10,8 @@ export type LoginInput = z.infer<typeof LoginSchema>
 /** The refresh token carries identity only — nothing here goes stale. */
 export interface RefreshTokenPayload {
     userId: number
+    /** JWT `iat`, in seconds: compared against the User's last password change (ADR 0001). */
+    issuedAt: number
 }
 
 /** What routes check permissions against — goes stale on a role/branch/active change, bounded by the short TTL. */
