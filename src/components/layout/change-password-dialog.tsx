@@ -5,10 +5,10 @@ import { AlertCircleIcon, CircleCheckIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { PasswordField } from "@/components/users/password-field";
 import { useT } from "@/i18n/client";
+import { INCORRECT_PASSWORD_MESSAGE } from "@/exceptions/incorrect-password-error";
 import { ApiError } from "@/lib/api-client";
 import { changeOwnPassword } from "@/lib/api/users";
 import { newPasswordErrors } from "@/lib/user-form-validation";
@@ -62,9 +62,9 @@ export function ChangePasswordDialog({ userId, open, onOpenChange }: { userId: n
                 await changeOwnPassword(userId, current, password);
                 setDone(true);
             } catch (error) {
-                // 400 here is the one rejection that belongs to a field: the current password was wrong
-                if (error instanceof ApiError && error.status === 400) {
-                    setErrors({ current: error.message });
+                // only a wrong current password belongs to a field; any other rejection is form-level
+                if (error instanceof ApiError && error.status === 400 && error.message === INCORRECT_PASSWORD_MESSAGE) {
+                    setErrors({ current: t.password.errors.incorrect });
                 } else {
                     setSubmitError(error instanceof ApiError ? error.message : t.password.failed);
                 }
@@ -110,40 +110,5 @@ export function ChangePasswordDialog({ userId, open, onOpenChange }: { userId: n
                 )}
             </DialogContent>
         </Dialog>
-    );
-}
-
-/** One password input with its label and error; shared by Change and Reset password. */
-export function PasswordField({
-    id,
-    label,
-    autoComplete,
-    value,
-    onChange,
-    error,
-    disabled,
-}: {
-    id: string;
-    label: string;
-    autoComplete: "current-password" | "new-password";
-    value: string;
-    onChange: (value: string) => void;
-    error?: string;
-    disabled: boolean;
-}) {
-    return (
-        <Field data-invalid={!!error || undefined}>
-            <FieldLabel htmlFor={id}>{label}</FieldLabel>
-            <Input
-                id={id}
-                type="password"
-                autoComplete={autoComplete}
-                value={value}
-                disabled={disabled}
-                aria-invalid={!!error || undefined}
-                onChange={(event) => onChange(event.target.value)}
-            />
-            <FieldError>{error}</FieldError>
-        </Field>
     );
 }

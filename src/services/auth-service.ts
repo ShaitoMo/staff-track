@@ -36,12 +36,15 @@ export class AuthService {
         return { accessToken, refreshToken, userId: user.userId }
     }
 
-    /** Fresh tokens for a User already proven to be themselves, e.g. right after Change password signed out every other session. */
-    static async startSession(userId: number): Promise<{ accessToken: string; refreshToken: string }> {
+    /**
+     * Fresh tokens for a User already proven to be themselves, e.g. right after Change password signed
+     * out every other session. Null when the account is gone or deactivated: they can't sign in any more.
+     */
+    static async startSession(userId: number): Promise<{ accessToken: string; refreshToken: string } | null> {
         const context = await UserRepository.getAuthContext(userId)
 
         if (!context || !context.isActive) {
-            throw new InvalidRefreshTokenError()
+            return null
         }
 
         const [accessToken, refreshToken] = await Promise.all([

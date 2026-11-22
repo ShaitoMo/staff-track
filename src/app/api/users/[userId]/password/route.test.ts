@@ -101,6 +101,18 @@ describe('PUT /api/users/:userId/password: Change password (own)', () => {
     })
 })
 
+describe('PUT /api/users/:userId/password: Change password, account closed mid-change', () => {
+    it('answers 401, not 500, when the account can no longer sign in', async () => {
+        mockedGetCurrentUser.mockReturnValue(staff)
+        mockedStartSession.mockResolvedValue(null)
+
+        const res = await call(5, { currentPassword: 'old-secret', password: 'new-secret' })
+
+        expect(res.status).toBe(401)
+        expect(res.cookies.get('stafftrack_access')).toBeUndefined()
+    })
+})
+
 describe('PUT /api/users/:userId/password: Reset password (someone else)', () => {
     it("lets a manager reset a user at their branch without the old password, and leaves the manager's cookies alone", async () => {
         mockedGetCurrentUser.mockReturnValue(manager)

@@ -4,7 +4,7 @@ import { UserBranchService } from '@/services/user-branch-service'
 import { AuthService } from '@/services/auth-service'
 import { UpdatePasswordSchema } from '@/types/user'
 import { AccessTokenPayload } from '@/types/auth'
-import { MANAGER_ROLE, OWNER_ROLE, requireAnyBranchAccess, requireSelfOrRole } from '@/lib/rbac'
+import { MANAGER_ROLE, OWNER_ROLE, requireAnyBranchAccess, requireRole } from '@/lib/rbac'
 import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions, refreshCookieOptions } from '@/lib/auth'
 import { clearLoginAttempts, isLoginLocked, recordFailedLogin } from '@/lib/login-rate-limit'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
@@ -71,8 +71,9 @@ export async function PUT(
     }
 }
 
+/** Someone else's password: owner, or a manager sharing one of the target's branches (the owner has none, so stays out of reach). */
 async function requireCanReset(caller: AccessTokenPayload, targetUserId: number): Promise<void> {
-    requireSelfOrRole(caller, targetUserId, [OWNER_ROLE, MANAGER_ROLE])
+    requireRole(caller, [OWNER_ROLE, MANAGER_ROLE])
     const targetBranches = await UserBranchService.getBranchesByUser(targetUserId)
     requireAnyBranchAccess(caller, targetBranches.map((branch) => branch.branchId))
 }
@@ -104,9 +105,15 @@ async function changeOwnPassword(userId: number, currentPassword: string | undef
     }
 
     clearLoginAttempts(self.phone)
-    const { accessToken, refreshToken } = await AuthService.startSession(userId)
+    const session = await AuthService.startSession(userId)
+
+    // deactivated between the check and now: the password changed, but they can't sign in any more
+    if (session === null) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     const res = new NextResponse(null, { status: 204 })
-    res.cookies.set(ACCESS_COOKIE_NAME, accessToken, accessCookieOptions)
-    res.cookies.set(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions)
+    res.cookies.set(ACCESS_COOKIE_NAME, session.accessToken, accessCookieOptions)
+    res.cookies.set(REFRESH_COOKIE_NAME, session.refreshToken, refreshCookieOptions)
     return res
 }

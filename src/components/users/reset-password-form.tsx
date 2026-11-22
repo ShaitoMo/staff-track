@@ -3,11 +3,11 @@
 import { useState, useTransition, type SubmitEvent } from "react";
 import { AlertCircleIcon, CircleCheckIcon } from "lucide-react";
 import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
-import { PasswordField } from "@/components/layout/change-password-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FieldDescription } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
+import { PasswordField } from "@/components/users/password-field";
 import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
 import { resetPassword } from "@/lib/api/users";
