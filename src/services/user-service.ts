@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import { User, SafeUser, UpdateUserInput } from "@/types/user";
 import { UserRepository } from "@/repository/user-repository";
+import { IncorrectPasswordError } from "@/exceptions/incorrect-password-error";
+import { UserNotFoundError } from "@/exceptions/user-not-found-error";
 
 const SALT_ROUNDS = 10;
 
@@ -24,8 +26,20 @@ export class UserService {
     static async updateUser(userId: number, data: UpdateUserInput): Promise<SafeUser> {
         return UserRepository.updateUser(userId, data);
     }
-    static async updatePassword(userId: number, password: string): Promise<void> {
+    /** Reset password: an owner or manager sets it for someone else, no current password needed. */
+    static async resetPassword(userId: number, password: string): Promise<void> {
         const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
         await UserRepository.updatePassword(userId, passwordHash);
+    }
+    /** Change password: the User replaces their own, proving it's them with the current one. */
+    static async changeOwnPassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+        const currentHash = await UserRepository.getPasswordHash(userId);
+        if (currentHash === null) {
+            throw new UserNotFoundError();
+        }
+        if (!(await bcrypt.compare(currentPassword, currentHash))) {
+            throw new IncorrectPasswordError();
+        }
+        await UserService.resetPassword(userId, newPassword);
     }
 }

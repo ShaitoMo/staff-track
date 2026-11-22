@@ -1,8 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDownIcon, CircleUserIcon, LanguagesIcon, LogOutIcon } from "lucide-react";
+import { ChevronDownIcon, CircleUserIcon, KeyRoundIcon, LanguagesIcon, LogOutIcon } from "lucide-react";
+import { ChangePasswordDialog } from "@/components/layout/change-password-dialog";
 import { useSwitchLanguage } from "@/components/layout/language-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +21,10 @@ import { logout } from "@/lib/api-client";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
 
-/** Who is signed in, the language switch, and Log out. A phone shows just the icon; the name and role open with the menu. */
-export function AccountMenu({ name, role }: { name: string | null; role: string }) {
+/** Who is signed in, the language switch, Change password, and Log out. A phone shows just the icon; the name and role open with the menu. */
+export function AccountMenu({ userId, name, role }: { userId: number; name: string | null; role: string }) {
     const router = useRouter();
+    const [changingPassword, setChangingPassword] = useState(false);
     const [pending, startTransition] = useTransition();
     const t = useT();
     const language = useSwitchLanguage();
@@ -36,6 +38,7 @@ export function AccountMenu({ name, role }: { name: string | null; role: string 
     }
 
     return (
+        <>
         <DropdownMenu>
             <DropdownMenuTrigger
                 render={<Button variant="ghost" size="sm" aria-label={t.layout.account(name ?? role)} className={cn("max-w-56 gap-2 [@media(pointer:coarse)]:min-w-11", TOUCH_HEIGHT)} />}
@@ -59,11 +62,18 @@ export function AccountMenu({ name, role }: { name: string | null; role: string 
                     <LanguagesIcon aria-hidden />
                     {language.label}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChangingPassword(true)} className={TOUCH_HEIGHT}>
+                    <KeyRoundIcon aria-hidden />
+                    {t.password.change}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} disabled={pending} className={TOUCH_HEIGHT}>
                     <LogOutIcon aria-hidden />
                     {t.layout.logOut}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
+        {/* outside the menu: choosing the item closes the menu, which would unmount a dialog rendered inside it */}
+        <ChangePasswordDialog userId={userId} open={changingPassword} onOpenChange={setChangingPassword} />
+        </>
     );
 }

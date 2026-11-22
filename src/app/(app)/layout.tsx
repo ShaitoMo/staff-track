@@ -88,7 +88,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         <StaffNav />
                     )}
                     <div className="ms-auto shrink-0">
-                        <AccountMenu name={userResult?.name ?? null} role={session.role} />
+                        <AccountMenu userId={session.userId} name={userResult?.name ?? null} role={session.role} />
                     </div>
                 </div>
             </header>

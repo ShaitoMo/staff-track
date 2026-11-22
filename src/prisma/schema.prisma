@@ -65,6 +65,8 @@ model User {
   roleId       Int      @map("role_id")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  /// Refresh tokens issued before this are refused (ADR 0001); null until the first change or reset.
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz
 
   role Role @relation(fields: [roleId], references: [roleId])
 

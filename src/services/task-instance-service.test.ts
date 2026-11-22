@@ -219,6 +219,7 @@ function authContext(overrides: { isActive?: boolean; roleName?: string; branchI
         isActive: overrides.isActive ?? true,
         roleName: overrides.roleName ?? 'manager',
         branchIds: overrides.branchIds ?? [BRANCH],
+        passwordChangedAt: null,
     };
 }
 

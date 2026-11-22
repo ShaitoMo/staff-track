@@ -79,11 +79,11 @@ export async function verifyRefreshToken(token: string): Promise<RefreshTokenPay
     try {
         const { payload } = await jwtVerify(token, secret('JWT_REFRESH_SECRET'))
 
-        if (typeof payload.userId !== 'number') {
+        if (typeof payload.userId !== 'number' || typeof payload.iat !== 'number') {
             return null
         }
 
-        return { userId: payload.userId }
+        return { userId: payload.userId, issuedAt: payload.iat }
     } catch {
         return null
     }

@@ -24,8 +24,10 @@ export const UserUpdateSchema = z.object({
 
 export type UpdateUserInput = z.infer<typeof UserUpdateSchema>
 
+/** `currentPassword` is required for Change password (your own) and ignored for Reset password (someone else's). */
 export const UpdatePasswordSchema = z.object({
     password: z.string().min(8).max(100),
+    currentPassword: z.string().min(1).optional(),
 })
 
 export type UpdatePasswordInput = z.infer<typeof UpdatePasswordSchema>
