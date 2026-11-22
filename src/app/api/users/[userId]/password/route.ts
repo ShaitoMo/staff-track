@@ -57,6 +57,7 @@ export async function PUT(
 
         await requireCanReset(user, userId)
         await UserService.resetPassword(userId, password);
+        await liftLockout(userId)
         return new NextResponse(null, { status: 204 });
     } catch (error) {
         const forbidden = forbiddenResponse(error);
@@ -78,7 +79,19 @@ async function requireCanReset(caller: AccessTokenPayload, targetUserId: number)
     requireAnyBranchAccess(caller, targetBranches.map((branch) => branch.branchId))
 }
 
-/** Wrong guesses share the login lockout (keyed by phone), so a borrowed signed-in phone can't brute-force it here instead. */
+/** A reset is how a locked-out User gets back in, so it ends their lockout too; otherwise the new password is refused for 15 minutes. */
+async function liftLockout(userId: number): Promise<void> {
+    const target = await UserService.getUserById(userId)
+    if (target) {
+        clearLoginAttempts(target.phone)
+    }
+}
+
+/**
+ * Wrong guesses share the login lockout (keyed by phone), so a borrowed signed-in phone can't brute-force it here instead.
+ * The attempt is counted before the (slow) password check and cleared on success: counting only after a failure let
+ * requests sent all at once pass the lock check together.
+ */
 async function changeOwnPassword(userId: number, currentPassword: string | undefined, password: string): Promise<NextResponse> {
     if (currentPassword === undefined) {
         return NextResponse.json({ error: 'Current password is required' }, { status: 400 })
@@ -90,15 +103,22 @@ async function changeOwnPassword(userId: number, currentPassword: string | undef
         throw new UserNotFoundError()
     }
 
+    // deactivated, but the access token hasn't run out yet: refuse before anything changes
+    if (!self.isActive) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     if (isLoginLocked(self.phone)) {
         return NextResponse.json({ error: 'Too many failed attempts. Try again later.' }, { status: 429 })
     }
+
+    // check and count with no await between them, so parallel requests can't all slip past the check
+    recordFailedLogin(self.phone)
 
     try {
         await UserService.changeOwnPassword(userId, currentPassword, password)
     } catch (error) {
         if (error instanceof IncorrectPasswordError) {
-            recordFailedLogin(self.phone)
             return NextResponse.json({ error: error.message }, { status: 400 })
         }
         throw error

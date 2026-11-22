@@ -24,7 +24,8 @@ import { cn } from "@/lib/utils";
 /** Who is signed in, the language switch, Change password, and Log out. A phone shows just the icon; the name and role open with the menu. */
 export function AccountMenu({ userId, name, role }: { userId: number; name: string | null; role: string }) {
     const router = useRouter();
-    const [changingPassword, setChangingPassword] = useState(false);
+    // a new key per opening remounts the dialog empty: no leftover "Password changed." or half-typed password
+    const [passwordDialog, setPasswordDialog] = useState({ open: false, key: 0 });
     const [pending, startTransition] = useTransition();
     const t = useT();
     const language = useSwitchLanguage();
@@ -62,7 +63,7 @@ export function AccountMenu({ userId, name, role }: { userId: number; name: stri
                     <LanguagesIcon aria-hidden />
                     {language.label}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setChangingPassword(true)} className={TOUCH_HEIGHT}>
+                <DropdownMenuItem onClick={() => setPasswordDialog((current) => ({ open: true, key: current.key + 1 }))} className={TOUCH_HEIGHT}>
                     <KeyRoundIcon aria-hidden />
                     {t.password.change}
                 </DropdownMenuItem>
@@ -73,7 +74,12 @@ export function AccountMenu({ userId, name, role }: { userId: number; name: stri
             </DropdownMenuContent>
         </DropdownMenu>
         {/* outside the menu: choosing the item closes the menu, which would unmount a dialog rendered inside it */}
-        <ChangePasswordDialog userId={userId} open={changingPassword} onOpenChange={setChangingPassword} />
+        <ChangePasswordDialog
+            key={passwordDialog.key}
+            userId={userId}
+            open={passwordDialog.open}
+            onOpenChange={(open) => setPasswordDialog((current) => ({ ...current, open }))}
+        />
         </>
     );
 }

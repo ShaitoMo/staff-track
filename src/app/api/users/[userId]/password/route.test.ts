@@ -25,6 +25,7 @@ import { UserService } from '@/services/user-service'
 import { UserBranchService } from '@/services/user-branch-service'
 import { AuthService } from '@/services/auth-service'
 import { IncorrectPasswordError } from '@/exceptions/incorrect-password-error'
+import { isLoginLocked, recordFailedLogin } from '@/lib/login-rate-limit'
 import { PUT } from './route'
 
 const mockedGetCurrentUser = getCurrentUser as jest.Mock
@@ -52,7 +53,7 @@ beforeEach(() => {
     jest.resetAllMocks()
     // the login limiter is in-memory and keyed by phone, so each test gets its own phone
     phoneSeq += 1
-    mockedGetUser.mockResolvedValue({ userId: 5, phone: `7110${phoneSeq}` })
+    mockedGetUser.mockResolvedValue({ userId: 5, phone: `7110${phoneSeq}`, isActive: true })
     mockedStartSession.mockResolvedValue({ accessToken: 'new-access', refreshToken: 'new-refresh' })
 })
 
@@ -98,6 +99,42 @@ describe('PUT /api/users/:userId/password: Change password (own)', () => {
         expect(mockedChange).toHaveBeenCalledWith(5, 'old-secret', 'new-secret')
         expect(res.cookies.get('stafftrack_access')?.value).toBe('new-access')
         expect(res.cookies.get('stafftrack_refresh')?.value).toBe('new-refresh')
+    })
+})
+
+describe('PUT /api/users/:userId/password: lockout and closed accounts', () => {
+    it('lets no more than 5 guesses through when they arrive all at once', async () => {
+        mockedGetCurrentUser.mockReturnValue(staff)
+        mockedChange.mockRejectedValue(new IncorrectPasswordError())
+
+        const responses = await Promise.all(
+            Array.from({ length: 20 }, (_, i) => call(5, { currentPassword: `guess-${i}`, password: 'new-secret' })),
+        )
+
+        expect(mockedChange.mock.calls.length).toBeLessThanOrEqual(5)
+        expect(responses.filter((res) => res.status === 429).length).toBeGreaterThanOrEqual(15)
+    })
+
+    it('refuses a deactivated account before changing anything', async () => {
+        mockedGetCurrentUser.mockReturnValue(staff)
+        mockedGetUser.mockResolvedValue({ userId: 5, phone: `7110${phoneSeq}`, isActive: false })
+
+        const res = await call(5, { currentPassword: 'old-secret', password: 'new-secret' })
+
+        expect(res.status).toBe(401)
+        expect(mockedChange).not.toHaveBeenCalled()
+    })
+
+    it("lifts the user's login lockout when a manager resets their password", async () => {
+        const phone = `7110${phoneSeq}`
+        for (let attempt = 0; attempt < 5; attempt += 1) recordFailedLogin(phone)
+        mockedGetCurrentUser.mockReturnValue(manager)
+        mockedBranches.mockResolvedValue([{ branchId: 1 }])
+
+        const res = await call(5, { password: 'temp-pass' })
+
+        expect(res.status).toBe(204)
+        expect(isLoginLocked(phone)).toBe(false)
     })
 })
 

@@ -22,6 +22,7 @@ interface Errors {
 /**
  * Change password: the signed-in User replaces their own. A wrong current password comes back as a
  * 400 and lands under that field; the response re-issues this device's cookies, so nothing reloads.
+ * The opener gives it a new `key` each time it opens, so every opening starts from empty state.
  */
 export function ChangePasswordDialog({ userId, open, onOpenChange }: { userId: number; open: boolean; onOpenChange: (open: boolean) => void }) {
     const t = useT();
@@ -35,14 +36,6 @@ export function ChangePasswordDialog({ userId, open, onOpenChange }: { userId: n
 
     function handleOpenChange(next: boolean) {
         if (pending) return;
-        if (next) {
-            setCurrent("");
-            setPassword("");
-            setConfirm("");
-            setErrors({});
-            setSubmitError(null);
-            setDone(false);
-        }
         onOpenChange(next);
     }
 
