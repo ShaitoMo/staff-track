@@ -60,3 +60,9 @@ next-env.d.ts
 
 # Git Bash crash dumps
 *.stackdump
+
+# local tool output, not part of the codebase
+/graphify-out/
+/uploads/
+/skills-lock.json
+/.impeccable/critique/

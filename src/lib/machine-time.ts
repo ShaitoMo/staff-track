@@ -51,6 +51,14 @@ export function machineDayOf(instant: Date): Date {
     ));
 }
 
+/** The wall-clock time an instant shows in Beirut, as 'HH:MM' — the same clock shift times are written in. */
+export function machineClockOf(instant: Date): string {
+    const wallClock = new Date(instant.getTime() + offsetAt(instant.getTime()));
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    return `${pad(wallClock.getUTCHours())}:${pad(wallClock.getUTCMinutes())}`;
+}
+
 /**
  * A machine reading to the instant it happened. Beirut's offset is +02:00/+03:00 by season, so a
  * naive guess is corrected once against itself — enough to handle a reading inside a DST shift.

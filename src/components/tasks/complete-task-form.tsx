@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon, CameraIcon, ImageIcon } from "lucide-react";
+import { useAnnounceCompletion } from "@/components/tasks/completion-notice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -27,6 +28,7 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
     // which picker's photo is being compressed: its button shows the spinner, and both stay disabled
     const [compressing, setCompressing] = useState<"camera" | "library" | null>(null);
     const [pending, startTransition] = useTransition();
+    const announceCompletion = useAnnounceCompletion();
     const t = useT();
 
     // an object URL holds the photo in memory until it is revoked
@@ -90,6 +92,7 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
             try {
                 await completeInstance(instanceId, file);
                 router.refresh();
+                announceCompletion(taskLabel);
             } catch (caught) {
                 setError(
                     caught instanceof PhotoUploadError

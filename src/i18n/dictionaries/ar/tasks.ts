@@ -1,4 +1,4 @@
-import { isolate } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import type { tasks as en } from "../en/tasks";
 import { words } from "./words";
 
@@ -51,6 +51,10 @@ export const tasks: typeof en = {
     nothingDueOn: (date) => `لا شيء مستحق في ${date}.`,
     viewPhoto: "عرض الصورة",
     overdue: "متأخرة",
+    missed: "مهام فائتة",
+    missedNote: "لا يمكن إنجاز الأيام الفائتة من مهمة متكررة الآن؛ يراها مدير فرعك.",
+    missedSince: (days, day) =>
+        `لم تُنجز منذ ${day} (${plural("ar", days, { one: "يوم واحد", two: "يومان", few: "# أيام", other: "# يومًا" })})`,
     taskLabel: (title, day) => `${isolate(title)}، مستحقة ${day}`,
     noTasksNow: "لا مهام حاليًا",
     noTasksNowDescription: "ستظهر هنا المهام المسندة إليك.",
@@ -87,6 +91,7 @@ export const tasks: typeof en = {
     markDone: "تحديد كمنجزة",
     markDoneFor: (task) => `تحديد كمنجزة: ${isolate(task)}`,
     retake: "إعادة الالتقاط",
+    sentForReview: (task) => `أُرسلت للمراجعة: ${isolate(task)}. سيتحقق مدير فرعك من الصورة.`,
     retakeFor: (task) => `إعادة التقاط الصورة لـ ${isolate(task)}`,
     personKind: "شخص",
     roleKind: "دور",

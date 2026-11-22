@@ -1,3 +1,4 @@
+import { plural } from "@/i18n/locales";
 import { words } from "./words";
 
 export const tasks = {
@@ -50,6 +51,9 @@ export const tasks = {
     nothingDueOn: (date: string) => `Nothing is due on ${date}.`,
     viewPhoto: "View photo",
     overdue: "Overdue",
+    missed: "Missed",
+    missedNote: "Missed days of a repeating task can't be done now; your manager sees them.",
+    missedSince: (days: number, day: string) => `Missed ${plural("en", days, { one: "# day", other: "# days" })}, since ${day}`,
     taskLabel: (title: string, day: string) => `${title}, due ${day}`,
     noTasksNow: "No tasks right now",
     noTasksNowDescription: "Tasks assigned to you will show up here.",
@@ -89,6 +93,7 @@ export const tasks = {
     markDone: "Mark as done",
     markDoneFor: (task: string) => `Mark as done: ${task}`,
     retake: "Retake",
+    sentForReview: (task: string) => `Sent for review: ${task}. Your manager will check the photo.`,
     retakeFor: (task: string) => `Retake photo for ${task}`,
     // form
     personKind: "A person",

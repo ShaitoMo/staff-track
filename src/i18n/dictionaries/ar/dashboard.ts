@@ -1,4 +1,4 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import type { dashboard as en } from "../en/dashboard";
 import { words } from "./words";
 
@@ -40,16 +40,22 @@ export const dashboard: typeof en = {
     statMissingPunches: "البصمات الناقصة",
     statTasksPending: "المهام المعلّقة",
     customHours: words.customHours,
-    daySchedule: (day) => `جدول ${day}`,
     schedule: words.schedule,
-    freeDay: "لا مناوبة ولا مهام مستحقة.",
-    shift: "المناوبة",
-    noShift: "لا مناوبة.",
-    noTasksDue: "لا مهام مستحقة.",
+    onShift: (left) => `في المناوبة · بقي ${left}`,
+    startsAt: (time) => `تبدأ الساعة ${time}`,
+    doneForToday: "انتهت مناوبتك اليوم",
+    noShiftToday: "لا مناوبة اليوم",
+    then: "ثم",
+    tasksToday: "مهام اليوم",
+    nothingDueToday: "لا شيء مستحق اليوم.",
+    atBranch: (branch) => `في ${isolate(branch)}`,
+    noShift: "لا مناوبة",
+    tasksDueCount: (n) => plural("ar", n, { one: "مهمة واحدة مستحقة", two: "مهمتان مستحقتان", few: "# مهام مستحقة", other: "# مهمة مستحقة" }),
+    missedThisMonth: (time) => `${time} فائتة هذا الشهر`,
+    noTimeMissedThisMonth: "لا وقت فائت هذا الشهر",
     noBranchYet: words.noBranchYet,
     noBranchYetDescription: "ستظهر مناوباتك ومهامك عندما يضيفك مدير إلى فرع.",
     homeFailed: "تعذّر تحميل صفحتك الرئيسية. أعد تحميل الصفحة؛ وإذا تكرر ذلك، سجّل الخروج ثم ادخل مجددًا.",
     shiftsMissingConsequence: words.shiftsMissingConsequence,
     allMyTasks: "كل مهامي",
-    missedThisMonth: "الوقت الفائت هذا الشهر",
 };
