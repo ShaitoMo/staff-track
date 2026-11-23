@@ -59,17 +59,31 @@ export async function TaskInstances({ date, branchId }: { date: string; branchId
     );
 }
 
-/** An empty day means one of two things: the branch has no tasks at all, or none of its tasks fall on this date. */
+/**
+ * An empty day means one of two things: the branch has no active tasks (inactive ones are never due, so any
+ * other day would be empty too), or none of its active tasks fall on this date.
+ */
 async function NoInstances({ date, branchId }: { date: string; branchId?: number }) {
-    const [{ t, locale }, tasks] = await Promise.all([getI18n(), fetchApi<TaskWire[]>("/api/tasks")]);
-    const hasTasks = tasks.some((task) => branchId === undefined || task.branch_id === branchId);
+    const { t, locale } = await getI18n();
+    let tasks: TaskWire[];
 
-    if (!hasTasks) {
+    try {
+        tasks = await fetchApi<TaskWire[]>("/api/tasks");
+    } catch (error) {
+        if (error instanceof ApiError && error.status === 403) {
+            return <AccessMessage title={t.tasks.title} message={t.tasks.noInstanceAccess} />;
+        }
+        throw error;
+    }
+
+    const hasActiveTasks = tasks.some((task) => task.active && (branchId === undefined || task.branch_id === branchId));
+
+    if (!hasActiveTasks) {
         return (
             <Empty>
                 <EmptyHeader>
-                    <EmptyTitle>{t.tasks.noTasksFound}</EmptyTitle>
-                    <EmptyDescription>{branchId !== undefined ? t.tasks.branchHasNoTasks : t.tasks.noTasksYet}</EmptyDescription>
+                    <EmptyTitle>{t.tasks.noActiveTasks}</EmptyTitle>
+                    <EmptyDescription>{t.tasks.noActiveTasksDescription}</EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
                     {/* outline: the page header already carries the one blue Add task */}
@@ -95,7 +109,7 @@ async function NoInstances({ date, branchId }: { date: string; branchId?: number
             {date !== todayDateString() ? (
                 <EmptyContent>
                     <Link href={`/tasks?${todayQuery}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-                        {t.layout.backToToday}
+                        {t.tasks.goToToday}
                     </Link>
                 </EmptyContent>
             ) : null}
