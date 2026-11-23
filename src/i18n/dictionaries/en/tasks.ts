@@ -57,6 +57,7 @@ export const tasks = {
     taskLabel: (title: string, day: string) => `${title}, due ${day}`,
     noTasksNow: "No tasks right now",
     noTasksNowDescription: "Tasks assigned to you will show up here.",
+    myTasksFailed: "We couldn't load your tasks. Reload the page; if it keeps happening, sign out and back in.",
     recentlyDone: "Recently done",
     // detail dialog
     description: "Description",

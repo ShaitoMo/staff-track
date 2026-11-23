@@ -1,8 +1,11 @@
+import { AlertCircleIcon } from "lucide-react";
 import { CompletionNoticeProvider } from "@/components/tasks/completion-notice";
 import { MissedTaskList } from "@/components/tasks/missed-task-list";
 import { MyTaskList } from "@/components/tasks/my-task-list";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { getDictionary } from "@/i18n/server";
+import { ApiError } from "@/lib/api-client";
 import { fetchApi } from "@/lib/api-server";
 import { addDays } from "@/lib/coverage-rows";
 import { buildInstanceRows, daysAgoDateString, todayDateString } from "@/lib/instance-rows";
@@ -29,13 +32,30 @@ function TaskGroup({ title, children }: { title: string; children: React.ReactNo
 export async function StaffTaskList({ userId }: { userId: number }) {
     const today = todayDateString();
     const tomorrow = addDays(today, 1);
-    // "recently done" goes by when the work was finished, so a late task completed today still shows
-    const [pending, recent, roles, t] = await Promise.all([
-        fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?status=pending&due_to=${tomorrow}`),
-        fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?completed_from=${daysAgoDateString(RECENT_DAYS)}`),
-        fetchApi<Role[]>("/api/roles"),
-        getDictionary(),
-    ]);
+    const t = await getDictionary();
+
+    let pending: TaskInstanceListView[];
+    let recent: TaskInstanceListView[];
+    let roles: Role[];
+    try {
+        // "recently done" goes by when the work was finished, so a late task completed today still shows
+        [pending, recent, roles] = await Promise.all([
+            fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?status=pending&due_to=${tomorrow}`),
+            fetchApi<TaskInstanceListView[]>(`/api/users/${userId}/tasks?completed_from=${daysAgoDateString(RECENT_DAYS)}`),
+            fetchApi<Role[]>("/api/roles"),
+        ]);
+    } catch (error) {
+        // the session outlives an account removed or locked within the token's 10 minutes
+        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+            return (
+                <Alert variant="destructive" className="max-w-2xl">
+                    <AlertCircleIcon />
+                    <AlertDescription>{t.tasks.myTasksFailed}</AlertDescription>
+                </Alert>
+            );
+        }
+        throw error;
+    }
 
     const { doable, missed } = splitMissed(buildInstanceRows(pending, roles, userId, t.tasks), today);
     const { today: todays, tomorrow: tomorrows } = splitByDay(doable, (row) => row.dueDate, today);
