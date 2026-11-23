@@ -3,6 +3,7 @@
 import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon, PlusIcon } from "lucide-react";
+import { DiscardChangesDialog } from "@/components/layout/unsaved-changes";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -47,11 +48,22 @@ export function AddPunchDialog({
     const [clockOut, setClockOut] = useState("");
     const [errors, setErrors] = useState<PunchErrors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [confirmingClose, setConfirmingClose] = useState(false);
     const [pending, startTransition] = useTransition();
     const t = useT();
+    // measured against what the form opened on, so a preset row's own values don't count
+    const dirty =
+        userId !== (preset?.userId ?? null) ||
+        date !== (preset?.date ?? defaultDate) ||
+        clockIn !== (preset?.clockIn ?? "") ||
+        clockOut !== "";
 
     function handleOpenChange(next: boolean) {
         if (pending) return;
+        if (!next && dirty) {
+            setConfirmingClose(true);
+            return;
+        }
         if (next) {
             setUserId(preset?.userId ?? null);
             setDate(preset?.date ?? defaultDate);
@@ -167,6 +179,14 @@ export function AddPunchDialog({
                         </Button>
                     </DialogFooter>
                 </form>
+                <DiscardChangesDialog
+                    open={confirmingClose}
+                    onKeepEditing={() => setConfirmingClose(false)}
+                    onDiscard={() => {
+                        setConfirmingClose(false);
+                        setOpen(false);
+                    }}
+                />
             </DialogContent>
         </Dialog>
     );

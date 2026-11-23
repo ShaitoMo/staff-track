@@ -17,4 +17,10 @@ export const common: typeof en = {
     noBranch: "لا يوجد فرع",
     languageName: "العربية",
     listSeparator: "، ",
+    discardChanges: {
+        title: "تجاهل التغييرات؟",
+        description: "ما أدخلته هنا لم يُحفظ وسيضيع.",
+        keepEditing: "متابعة التعديل",
+        discard: "تجاهل",
+    },
 };
