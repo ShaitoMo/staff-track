@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarCogIcon, XIcon } from "lucide-react";
@@ -31,18 +31,40 @@ function parseMaxShifts(value: string): number | null {
 }
 
 /**
- * The last approval's result. Approving can unmount the button that did it (an empty week turns
- * into the grid), so the button the refreshed page mounts for the same branch and week picks the
- * message up, if it's fresh.
+ * The last approval's result. Approving can unmount the button that did it (filling every short
+ * slot hides the roster's button), so the message is shown by AutoFillNotice, which the schedule
+ * keeps mounted, not by the button.
  */
-let lastApproval: { key: string; text: string; at: number } | null = null;
-const APPROVAL_NOTICE_MS = 15_000;
+let lastApproval: { key: string; text: string } | null = null;
+const approvalListeners = new Set<() => void>();
 
-function takeApproval(key: string): string | null {
-    if (lastApproval === null || lastApproval.key !== key || Date.now() - lastApproval.at > APPROVAL_NOTICE_MS) return null;
-    const { text } = lastApproval;
-    lastApproval = null;
-    return text;
+function announceApproval(next: typeof lastApproval) {
+    lastApproval = next;
+    approvalListeners.forEach((listener) => listener());
+}
+
+function subscribeApproval(listener: () => void) {
+    approvalListeners.add(listener);
+    return () => approvalListeners.delete(listener);
+}
+
+const approvalKey = (branchId: number, weekStart: string) => `${branchId}:${weekStart}`;
+
+/** The last auto-fill approval's result for this branch and week, until the week changes. */
+export function AutoFillNotice({ branchId, weekStart }: { branchId: number; weekStart: string }) {
+    const key = approvalKey(branchId, weekStart);
+    const approval = useSyncExternalStore(subscribeApproval, () => lastApproval, () => null);
+
+    // leaving the week drops its message, so coming back doesn't show a stale one
+    useEffect(() => () => {
+        if (lastApproval?.key === key) announceApproval(null);
+    }, [key]);
+
+    return (
+        <p role="status" className="text-sm text-muted-foreground empty:hidden">
+            {approval?.key === key ? approval.text : null}
+        </p>
+    );
 }
 
 /** What a confirm in the footer would throw away the edited proposal for. */
@@ -68,14 +90,12 @@ export function AutoFillButton({
     const t = useT();
     const locale = useLocale();
     const router = useRouter();
-    const key = `${branchId}:${weekStart}`;
     const [open, setOpen] = useState(false);
     const [maxShifts, setMaxShifts] = useState(String(DEFAULT_MAX_SHIFTS_PER_WEEK));
     const [maxInvalid, setMaxInvalid] = useState(false);
     const [proposal, setProposal] = useState<ScheduleProposal | null>(null);
     const [rows, setRows] = useState<ProposalRow[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [message, setMessage] = useState<string | null>(() => takeApproval(key));
     const [leaving, setLeaving] = useState<Leaving | null>(null);
     const [pending, startTransition] = useTransition();
     const changes = proposal === null ? 0 : countChanges(proposal, rows);
@@ -155,20 +175,14 @@ export function AutoFillButton({
         run(async () => {
             const shifts = rows.map(({ userId, roleId, periodId, shiftDate }) => ({ userId, roleId, periodId, shiftDate }));
             const { created, skipped } = await approveSchedule(branchId, weekStart, maxShiftsPerWeek, shifts);
-            const text = t.schedule.autoFilled(created, skipped);
-            lastApproval = { key, text, at: Date.now() };
-            setMessage(text);
+            announceApproval({ key: approvalKey(branchId, weekStart), text: t.schedule.autoFilled(created, skipped) });
             close();
             router.refresh();
         });
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-3">
-            <p role="status" className="text-sm text-muted-foreground empty:hidden">
-                {message}
-            </p>
-            <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={proposal !== null}>
+        <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={proposal !== null}>
                 <DialogTrigger render={<Button variant="outline" size="sm" className={TOUCH_HEIGHT} />}>
                     <CalendarCogIcon data-icon="inline-start" />
                     {t.schedule.autoFill}
@@ -266,8 +280,7 @@ export function AutoFillButton({
                         )}
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
-        </div>
+        </Dialog>
     );
 }
 

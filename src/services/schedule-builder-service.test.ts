@@ -58,7 +58,13 @@ const shift = (user_id: number, shift_date: string, period_id: number | null = n
     ({ user_id, shift_date, branch_id: 9, period_id }) as ShiftView;
 const morning = { periodId: 1, defaultStart: '08:00', defaultEnd: '16:00' } as ShiftPeriodView;
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => {
+    jest.resetAllMocks();
+    // the week under test starts today, so no day of it is over
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-11-02T09:00:00.000Z'));
+});
+afterEach(() => jest.useRealTimers());
 
 describe('ScheduleBuilderService.propose', () => {
     const input = { branchId: 1, weekStart, maxShiftsPerWeek: 5 };
@@ -97,6 +103,18 @@ describe('ScheduleBuilderService.propose', () => {
             partnerShifts: [],
         }]);
         expect(copyIntoWeek).not.toHaveBeenCalled();
+    });
+
+    it('leaves out the days already over', async () => {
+        jest.setSystemTime(new Date('2026-11-04T09:00:00.000Z'));
+        getCoverageGaps.mockResolvedValue([gap('2026-11-03', 1, 0), gap('2026-11-04', 1, 0)]);
+        getAllUsers.mockResolvedValue([user(10)]);
+        getShifts.mockResolvedValue([]);
+        solve.mockResolvedValue({ assignments: [], unfilled: [] });
+
+        await ScheduleBuilderService.propose(input);
+
+        expect(solve.mock.calls[0][0].slots).toEqual([{ slotId: 0, date: '2026-11-04', periodId: 1, roleId: CASHIER, needed: 1 }]);
     });
 
     it("blocks the slots outside someone's periods", async () => {
@@ -190,7 +208,18 @@ describe('ScheduleBuilderService.approve', () => {
         return { inserted: () => rows };
     }
 
+    const DATES = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'];
+    /** Every slot of the week open, except the `needs` given as [date, needed]. */
+    const openWeek = (...needs: [string, number][]) =>
+        DATES.flatMap((date) => [1, 2].flatMap((periodId) => [CASHIER, STOCKER].map((roleId) => {
+            const need = needs.find(([d]) => d === date)?.[1];
+            return need === undefined || roleId !== CASHIER || periodId !== 1
+                ? gap(date, 9, 0, roleId, periodId)
+                : gap(date, 2, 2 - need, roleId, periodId);
+        })));
+
     beforeEach(() => {
+        getCoverageGaps.mockResolvedValue(openWeek());
         getAllUsers.mockResolvedValue([user(10), user(11), user(12, STOCKER), user(13, CASHIER, false)]);
         getPeriodsByBranch.mockResolvedValue([morning]);
         getRules.mockResolvedValue(NO_RULES);
@@ -301,6 +330,35 @@ describe('ScheduleBuilderService.approve', () => {
 
         expect(result).toEqual({ created: 2, skipped: 1 });
         expect(inserted().map((r) => [r.userId, r.shiftDate])).toEqual([[10, day('2026-11-02')], [11, day('2026-11-03')]]);
+    });
+
+    it('skips days already over', async () => {
+        jest.setSystemTime(new Date('2026-11-04T09:00:00.000Z'));
+        const { inserted } = insertAgainst([]);
+
+        const result = await ScheduleBuilderService.approve({
+            branchId: 1, weekStart, maxShiftsPerWeek: 6, createdBy: 2, shifts: [row(10, '2026-11-03'), row(10, '2026-11-04')],
+        });
+
+        expect(result).toEqual({ created: 1, skipped: 1 });
+        expect(inserted().map((r) => r.shiftDate)).toEqual([day('2026-11-04')]);
+    });
+
+    it('fills a slot only up to what it still needs, so a slot filled since the proposal is left alone', async () => {
+        // Monday morning cashiers: filled since the proposal; Tuesday: one still needed
+        getCoverageGaps.mockResolvedValue(openWeek(['2026-11-02', 0], ['2026-11-03', 1]));
+        const { inserted } = insertAgainst([]);
+
+        const result = await ScheduleBuilderService.approve({
+            branchId: 1,
+            weekStart,
+            maxShiftsPerWeek: 6,
+            createdBy: 2,
+            shifts: [row(10, '2026-11-02'), row(10, '2026-11-03'), row(11, '2026-11-03')],
+        });
+
+        expect(result).toEqual({ created: 1, skipped: 2 });
+        expect(inserted().map((r) => [r.userId, r.shiftDate])).toEqual([[10, day('2026-11-03')]]);
     });
 
     it('never opens the transaction when nothing is valid', async () => {

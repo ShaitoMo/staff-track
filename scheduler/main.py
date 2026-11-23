@@ -23,7 +23,8 @@ def health() -> dict[str, str]:
 # a plain def runs in FastAPI's threadpool, so a 10 s solve doesn't block the event loop
 @app.post("/solve", response_model=SolveResponse, response_model_by_alias=True)
 def solve_week(request: SolveRequest, x_scheduler_secret: str = Header(default="")) -> SolveResponse:
-    if not hmac.compare_digest(x_scheduler_secret, SECRET):
+    # bytes, not str: compare_digest raises on non-ASCII str, which would answer 500 instead of 401
+    if not hmac.compare_digest(x_scheduler_secret.encode(), SECRET.encode()):
         raise HTTPException(status_code=401, detail="Invalid scheduler secret")
 
     try:

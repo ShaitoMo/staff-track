@@ -98,12 +98,15 @@ export const schedule = {
     discard: "Discard",
     overview: "Suggested and still short, by day",
     overviewCell: (suggested: number, short: number) =>
-        [suggested > 0 ? `${suggested} suggested` : "", short > 0 ? `${short} still short` : ""].filter(Boolean).join(", "),
+        [
+            suggested > 0 ? `${plural("en", suggested, { one: "# shift", other: "# shifts" })} suggested` : "",
+            short > 0 ? `${plural("en", short, { one: "# person", other: "# people" })} still short` : "",
+        ].filter(Boolean).join(", "),
     changePerson: (name: string, where: string) => `${name}; change person (${where})`,
     approveShifts: (n: number) => `Approve ${plural("en", n, { one: "# shift", other: "# shifts" })}`,
     autoFilled: (created: number, skipped: number) => {
         const added = `Added ${plural("en", created, { one: "# shift", other: "# shifts" })}`;
-        return skipped > 0 ? `${added}; skipped ${skipped} already booked or no longer valid.` : `${added}.`;
+        return skipped > 0 ? `${added}; skipped ${plural("en", skipped, { one: "# shift", other: "# shifts" })} already booked, already filled or no longer valid.` : `${added}.`;
     },
     autoFillFailed: "Couldn't auto-fill the week. Try again.",
     // staff view

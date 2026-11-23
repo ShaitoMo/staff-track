@@ -94,12 +94,12 @@ export const schedule: typeof enSchedule = {
     discard: "تجاهل",
     overview: "المقترح والناقص، حسب اليوم",
     overviewCell: (suggested, short) =>
-        [suggested > 0 ? `${suggested} مقترحة` : "", short > 0 ? `${short} ناقصة` : ""].filter(Boolean).join("، "),
+        [suggested > 0 ? `المقترح: ${shifts(suggested)}` : "", short > 0 ? `الناقص: ${people(short)}` : ""].filter(Boolean).join("، "),
     changePerson: (name, where) => `${isolate(name)}؛ تغيير الشخص (${where})`,
     approveShifts: (n) => `الموافقة على ${shifts(n)}`,
     autoFilled: (created, skipped) => {
         const added = `أُضيفت ${shifts(created)}`;
-        return skipped > 0 ? `${added}؛ وتُخطّيت ${skipped} محجوزة مسبقًا أو لم تعد صالحة.` : `${added}.`;
+        return skipped > 0 ? `${added}؛ وتُخطّي ${shifts(skipped)} لأنها محجوزة أو مكتملة أو لم تعد صالحة.` : `${added}.`;
     },
     autoFillFailed: "تعذّر ملء الأسبوع تلقائيًا. حاول مجددًا.",
     notOnSchedule: "لست على الجدول هذا الأسبوع.",
