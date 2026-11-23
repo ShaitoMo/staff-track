@@ -58,6 +58,7 @@ export const tasks: typeof en = {
     taskLabel: (title, day) => `${isolate(title)}، مستحقة ${day}`,
     noTasksNow: "لا مهام حاليًا",
     noTasksNowDescription: "ستظهر هنا المهام المسندة إليك.",
+    myTasksFailed: "تعذّر تحميل مهامك. أعد تحميل الصفحة؛ وإذا تكرر ذلك، سجّل الخروج ثم ادخل مجددًا.",
     recentlyDone: "أُنجزت مؤخرًا",
     description: "الوصف",
     on: (day) => ` في ${day}`,
