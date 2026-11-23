@@ -1,3 +1,4 @@
+import { UnsavedChangesGuard } from "@/components/layout/unsaved-changes";
 import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 
@@ -5,14 +6,19 @@ import { cn } from "@/lib/utils";
  * A page form as one card: sections under rules, the submit button in a footer. The caller sets the
  * width (`max-w-3xl` for a couple of fields, `max-w-5xl` when short fields share rows). On a touch
  * screen the text fields and pickers grow to a 44px target; a mouse keeps the compact 32px.
+ * Pass `dirty` to ask before the page is left with unsaved changes (see `UnsavedChangesGuard`).
  */
-export function FormCard({ className, children, ...props }: React.ComponentProps<"form">) {
+export function FormCard({ className, children, dirty, ...props }: React.ComponentProps<"form"> & { dirty?: boolean }) {
     return (
-        <form noValidate className={cn("w-full", className)} {...props}>
-            <div className="rounded-xl bg-card ring-1 ring-foreground/10 [@media(pointer:coarse)]:**:data-[slot=input]:h-11! [@media(pointer:coarse)]:**:data-[slot=select-trigger]:h-11!">
-                {children}
-            </div>
-        </form>
+        <>
+            {/* outside the form, so clicks in its portaled dialog never bubble into it */}
+            {dirty !== undefined ? <UnsavedChangesGuard dirty={dirty} /> : null}
+            <form noValidate className={cn("w-full", className)} {...props}>
+                <div className="rounded-xl bg-card ring-1 ring-foreground/10 [@media(pointer:coarse)]:**:data-[slot=input]:h-11! [@media(pointer:coarse)]:**:data-[slot=select-trigger]:h-11!">
+                    {children}
+                </div>
+            </form>
+        </>
     );
 }
 

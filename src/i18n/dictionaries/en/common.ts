@@ -16,4 +16,11 @@ export const common = {
     languageName: "English",
     /** Between the items of a run-on list: "Morning, Evening". */
     listSeparator: ", ",
+    /** Asked before a form with unsaved changes is closed or left. */
+    discardChanges: {
+        title: "Discard your changes?",
+        description: "What you entered here hasn't been saved and will be lost.",
+        keepEditing: "Keep editing",
+        discard: "Discard",
+    },
 };

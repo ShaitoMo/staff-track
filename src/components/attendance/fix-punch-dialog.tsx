@@ -3,6 +3,7 @@
 import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
+import { DiscardChangesDialog } from "@/components/layout/unsaved-changes";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -36,15 +37,21 @@ export function FixPunchDialog({
     const [time, setTime] = useState("");
     const [timeError, setTimeError] = useState<string | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [confirmingClose, setConfirmingClose] = useState(false);
     const [pending, startTransition] = useTransition();
     const t = useT();
     const locale = useLocale();
     // each name isolated on its own, so an English name doesn't flip the Arabic date beside it
     const where = `${isolate(name)}${t.common.listSeparator}${formatDay(shiftDate, locale)}`;
     const inputId = `fix-${attendanceId}`;
+    const dirty = time !== "";
 
     function handleOpenChange(next: boolean) {
         if (pending) return;
+        if (!next && dirty) {
+            setConfirmingClose(true);
+            return;
+        }
         if (next) {
             setTime("");
             setTimeError(null);
@@ -120,6 +127,14 @@ export function FixPunchDialog({
                         </Button>
                     </DialogFooter>
                 </form>
+                <DiscardChangesDialog
+                    open={confirmingClose}
+                    onKeepEditing={() => setConfirmingClose(false)}
+                    onDiscard={() => {
+                        setConfirmingClose(false);
+                        setOpen(false);
+                    }}
+                />
             </DialogContent>
         </Dialog>
     );

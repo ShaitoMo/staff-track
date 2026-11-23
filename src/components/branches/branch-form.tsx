@@ -4,6 +4,7 @@ import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
+import { useIsDirty } from "@/components/layout/unsaved-changes";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -33,6 +34,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
     const [notice, setNotice] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
     const t = useT();
+    const dirty = useIsDirty({ name, location });
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -72,7 +74,7 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
     }
 
     return (
-        <FormCard onSubmit={handleSubmit} className="max-w-3xl">
+        <FormCard onSubmit={handleSubmit} dirty={dirty && !pending} className="max-w-3xl">
             {submitError || notice ? (
                 <FormAlerts>
                     {submitError && (

@@ -4,6 +4,7 @@ import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
+import { useIsDirty } from "@/components/layout/unsaved-changes";
 import { NO_REFERENCE, TaskReferenceChoice, TaskReferencePicker } from "@/components/tasks/task-reference-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,10 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [pending, startTransition] = useTransition();
     const t = useT();
+    const dirty = useIsDirty({
+        title, description, branchId, assigneeKind, assignedTo, roleId, schedule, dueDate,
+        weekdays: [...weekdays].sort(), active, reference,
+    });
 
     const assigneeKinds: { value: AssigneeKind; label: string }[] = [
         { value: "person", label: t.tasks.personKind },
@@ -149,7 +154,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
 
     // short pickers share rows, so the card can use the page's width without stretching a date to 500px
     return (
-        <FormCard onSubmit={handleSubmit} className="max-w-5xl">
+        <FormCard onSubmit={handleSubmit} dirty={dirty && !pending} className="max-w-5xl">
             {submitError ? (
                 <FormAlerts>
                     <Alert variant="destructive">

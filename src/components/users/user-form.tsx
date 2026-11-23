@@ -4,6 +4,7 @@ import { useState, useTransition, type SubmitEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircleIcon } from "lucide-react";
 import { FormAlerts, FormCard, FormFooter, FormSection } from "@/components/layout/form-card";
+import { useIsDirty } from "@/components/layout/unsaved-changes";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -60,6 +61,11 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
     const [branchWarnings, setBranchWarnings] = useState<string[]>([]);
     const [pending, startTransition] = useTransition();
     const t = useT();
+    // only ticked branches count, so ticking one and unticking it again leaves the form clean
+    const dirty = useIsDirty({
+        name, phone, password, roleId, isActive,
+        branches: Object.entries(branchSelections).filter(([, selection]) => selection.selected),
+    });
 
     function toggleBranch(branchId: number, selected: boolean) {
         setBranchSelections((prev) => ({
@@ -170,7 +176,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
     }
 
     return (
-        <FormCard onSubmit={handleSubmit} className="max-w-5xl">
+        <FormCard onSubmit={handleSubmit} dirty={dirty && !pending} className="max-w-5xl">
             {submitError || branchWarnings.length > 0 ? (
                 <FormAlerts>
                     {submitError && (
