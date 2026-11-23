@@ -11,7 +11,8 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError, login } from "@/lib/api-client";
+import { login } from "@/lib/api-client";
+import { loginErrorMessage } from "@/lib/login-error";
 import { LoginSchema, type LoginInput } from "@/types/auth";
 
 type FieldErrors = Partial<Record<keyof LoginInput, string[]>>;
@@ -42,8 +43,7 @@ export function LoginForm() {
                 router.push("/");
                 router.refresh();
             } catch (error) {
-                // a wrong phone or password is the one server reply everyone sees, so it's worded here in both languages
-                setError(error instanceof ApiError && error.status !== 401 && error.message ? error.message : t.login.invalidCredentials);
+                setError(loginErrorMessage(error, t.login));
             }
         });
     }
