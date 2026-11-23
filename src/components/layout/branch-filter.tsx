@@ -49,7 +49,7 @@ export async function BranchFilter({
                     aria-current={activeBranchId === branch.branchId ? "true" : undefined}
                     className={cn(buttonVariants({ variant: "outline", size: "sm" }), activeBranchId === branch.branchId && CHOSEN)}
                 >
-                    {branch.name}
+                    <bdi>{branch.name}</bdi>
                 </Link>
             ))}
         </div>

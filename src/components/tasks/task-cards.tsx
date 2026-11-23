@@ -20,10 +20,10 @@ export async function TaskCards({ rows }: { rows: TaskRow[] }) {
                                 {row.active ? t.tasks.active : t.tasks.inactive}
                             </Badge>
                         </div>
-                        <div className="text-sm text-muted-foreground">{row.branchName}</div>
+                        <div className="text-sm text-muted-foreground"><bdi>{row.branchName}</bdi></div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">{t.tasks.assignedToLead}</span>
-                            <span className="capitalize">{row.assignee}</span>
+                            <span className="capitalize"><bdi>{row.assignee}</bdi></span>
                         </div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">{t.tasks.repeatsLead}</span>

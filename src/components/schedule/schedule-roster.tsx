@@ -76,7 +76,7 @@ export async function ScheduleRoster({
                         <TableRow className="hover:bg-transparent">
                             <TableHead scope="colgroup" colSpan={dates.length + 1} className="h-10 pt-4 font-semibold text-foreground print:h-7 print:pt-2">
                                 <span className="sticky start-2 inline-flex items-baseline gap-2 print:static">
-                                    {period.name}
+                                    <bdi>{period.name}</bdi>
                                     <PeriodHours period={period} />
                                 </span>
                             </TableHead>
@@ -84,7 +84,7 @@ export async function ScheduleRoster({
                         {rows.map((row) => (
                             <TableRow key={row.roleId} className={cn("hover:bg-transparent", !hasPeople(row) && "print:hidden")}>
                                 <TableHead scope="row" className={cn(slotCell, "h-auto py-2 align-top font-medium whitespace-normal capitalize print:py-1")}>
-                                    {row.roleName}
+                                    <bdi>{row.roleName}</bdi>
                                 </TableHead>
                                 {row.cells.map((cell) => (
                                     <TableCell key={cell.date} className={dayCell(cell.date)}>
@@ -127,9 +127,9 @@ function RoleCellList({ cell, t }: { cell: RoleCell; t: Dictionary }) {
         <ul className="flex flex-col gap-1.5 print:gap-0.5">
             {cell.people.map((person) => (
                 <li key={person.shiftId} className="leading-snug">
-                    <span className="block">{person.name}</span>
+                    <span className="block"><bdi>{person.name}</bdi></span>
                     {person.registerName !== null ? (
-                        <span className="block text-xs text-muted-foreground">{person.registerName}</span>
+                        <span className="block text-xs text-muted-foreground"><bdi>{person.registerName}</bdi></span>
                     ) : null}
                 </li>
             ))}

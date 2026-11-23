@@ -1,3 +1,4 @@
+import { isolate } from "@/i18n/locales";
 import type { GuideFolderView } from "@/types/shelf-guide";
 
 /**
@@ -13,7 +14,8 @@ export function folderPathOptions(folders: GuideFolderView[]): { folderId: numbe
     const options: { folderId: number; label: string }[] = [];
     const visit = (parentId: number | null, prefix: string) => {
         for (const folder of children.get(parentId) ?? []) {
-            const label = prefix === "" ? folder.name : `${prefix} › ${folder.name}`;
+            // each name isolated on its own, so an English folder in an Arabic path doesn't flip the arrows
+            const label = prefix === "" ? isolate(folder.name) : `${prefix} › ${isolate(folder.name)}`;
             options.push({ folderId: folder.folderId, label });
             visit(folder.folderId, label);
         }

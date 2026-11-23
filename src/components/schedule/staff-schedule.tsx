@@ -38,7 +38,7 @@ function MyShiftList({ shifts, today, showBranch, t, locale }: { shifts: MyShift
                             {shift.date === today && firstOfDay ? <TodayMark /> : null}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{shift.periodName ?? t.schedule.customHours}</p>
+                            <p className="text-sm font-medium">{shift.periodName === null ? t.schedule.customHours : <bdi>{shift.periodName}</bdi>}</p>
                             {details.length > 0 ? <p className="truncate text-xs text-muted-foreground">{details.join(" · ")}</p> : null}
                         </div>
                         <span className="shrink-0 font-mono text-sm tabular-nums">
@@ -66,7 +66,7 @@ function Roster({ days, today, userId, t, locale }: { days: RosterDay[]; today: 
                         <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-2 text-sm">
                             {day.groups.map((group) => (
                                 <div key={group.periodId ?? "custom"} className="col-span-2 grid grid-cols-subgrid">
-                                    <dt className="pt-px text-xs font-medium text-muted-foreground">{group.name ?? t.schedule.otherHours}</dt>
+                                    <dt className="pt-px text-xs font-medium text-muted-foreground">{group.name === null ? t.schedule.otherHours : <bdi>{group.name}</bdi>}</dt>
                                     <dd>
                                         <ul className="flex flex-col gap-1">
                                             {group.people.map((person) => {

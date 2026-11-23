@@ -31,8 +31,8 @@ export async function InstanceTable({ rows }: { rows: InstanceRow[] }) {
                             <TableCell className="font-medium">
                                 <InstanceDetailDialog row={row} />
                             </TableCell>
-                            <TableCell className="text-muted-foreground">{row.branchName}</TableCell>
-                            <TableCell className="capitalize">{row.assignee}</TableCell>
+                            <TableCell className="text-muted-foreground"><bdi>{row.branchName}</bdi></TableCell>
+                            <TableCell className="capitalize"><bdi>{row.assignee}</bdi></TableCell>
                             <TableCell className="font-mono">{row.dueDate}</TableCell>
                             <TableCell>
                                 <StatusBadge status={row.status} />
@@ -40,7 +40,7 @@ export async function InstanceTable({ rows }: { rows: InstanceRow[] }) {
                             <TableCell>
                                 {row.completedByName !== null ? (
                                     <div className="flex flex-col">
-                                        <span>{row.completedByName}</span>
+                                        <span><bdi>{row.completedByName}</bdi></span>
                                         {row.photoMediaId !== null ? <PhotoLink mediaId={row.photoMediaId} /> : null}
                                     </div>
                                 ) : (

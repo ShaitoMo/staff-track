@@ -46,7 +46,7 @@ export function AccountMenu({ userId, name, role }: { userId: number; name: stri
             >
                 {pending || language.pending ? <Spinner data-icon="inline-start" /> : <CircleUserIcon aria-hidden className="text-muted-foreground" />}
                 <span className="hidden min-w-0 items-baseline gap-1.5 sm:flex">
-                    {name !== null ? <span className="truncate font-medium">{name}</span> : null}
+                    {name !== null ? <span className="truncate font-medium"><bdi>{name}</bdi></span> : null}
                     <span className="shrink-0 font-normal text-muted-foreground capitalize">{role}</span>
                 </span>
                 <ChevronDownIcon aria-hidden className="hidden text-muted-foreground sm:block" />
@@ -54,7 +54,7 @@ export function AccountMenu({ userId, name, role }: { userId: number; name: stri
             <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuGroup>
                     <DropdownMenuLabel className="flex flex-col gap-0.5 text-sm">
-                        {name !== null ? <span className="truncate font-medium text-foreground">{name}</span> : null}
+                        {name !== null ? <span className="truncate font-medium text-foreground"><bdi>{name}</bdi></span> : null}
                         <span className="text-xs font-normal capitalize">{role}</span>
                     </DropdownMenuLabel>
                 </DropdownMenuGroup>

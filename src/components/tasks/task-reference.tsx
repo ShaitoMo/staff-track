@@ -77,7 +77,7 @@ export function TaskReferenceButton({ instanceId, name, taskLabel }: { instanceI
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{t.tasks.howItShouldLook}</DialogTitle>
-                    <DialogDescription>{name}</DialogDescription>
+                    <DialogDescription><bdi>{name}</bdi></DialogDescription>
                 </DialogHeader>
                 <TaskReferencePhotos instanceId={instanceId} />
             </DialogContent>

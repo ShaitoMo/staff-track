@@ -25,9 +25,9 @@ export async function PeriodTable({ rows }: { rows: PeriodRow[] }) {
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={row.periodId}>
-                            <TableCell className="font-medium">{row.name}</TableCell>
+                            <TableCell className="font-medium"><bdi>{row.name}</bdi></TableCell>
                             <TableCell className="font-mono tabular-nums"><bdi dir="ltr">{row.hours}</bdi></TableCell>
-                            <TableCell className="text-muted-foreground">{row.branchName}</TableCell>
+                            <TableCell className="text-muted-foreground"><bdi>{row.branchName}</bdi></TableCell>
                             <TableCell>
                                 <Badge variant="outline" className={cn(!row.active && "border-dashed text-muted-foreground")}>
                                     {row.active ? t.setup.active : t.setup.inactive}

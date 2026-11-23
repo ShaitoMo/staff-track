@@ -236,14 +236,14 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                             <SelectValue placeholder={t.users.selectRole}>
                                 {(value: string) => {
                                     const name = roles.find((role) => String(role.roleId) === value)?.name;
-                                    return name !== undefined ? <span className="capitalize">{name}</span> : t.users.selectRole;
+                                    return name !== undefined ? <bdi className="capitalize">{name}</bdi> : t.users.selectRole;
                                 }}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {roles.map((role) => (
                                 <SelectItem key={role.roleId} value={String(role.roleId)} className="capitalize">
-                                    {role.name}
+                                    <bdi>{role.name}</bdi>
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -278,7 +278,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                                     onCheckedChange={(checked) => toggleBranch(branch.branchId, checked === true)}
                                 />
                                 <FieldLabel htmlFor={`branch-${branch.branchId}`} className="font-normal">
-                                    {branch.name}
+                                    <bdi>{branch.name}</bdi>
                                 </FieldLabel>
                             </Field>
                             {selection?.selected && (

@@ -61,8 +61,8 @@ export function InstanceDetailDialog({
                 <div className="flex flex-col gap-3">
                     {row.description !== null ? <DetailField label={t.tasks.description}><bdi>{row.description}</bdi></DetailField> : null}
                     <div className="grid grid-cols-2 gap-3">
-                        <DetailField label={t.tasks.branch}>{row.branchName}</DetailField>
-                        <DetailField label={t.tasks.assignedTo}><span className="capitalize">{row.assignee}</span></DetailField>
+                        <DetailField label={t.tasks.branch}><bdi>{row.branchName}</bdi></DetailField>
+                        <DetailField label={t.tasks.assignedTo}><span className="capitalize"><bdi>{row.assignee}</bdi></span></DetailField>
                         <DetailField label={t.tasks.schedule}>{row.schedule}</DetailField>
                         <DetailField label={t.tasks.due}>
                             {formatDay(row.dueDate, locale)}
@@ -70,7 +70,7 @@ export function InstanceDetailDialog({
                     </div>
                     {row.completedByName !== null ? (
                         <DetailField label={t.tasks.completedBy}>
-                            <span>{row.completedByName}</span>
+                            <span><bdi>{row.completedByName}</bdi></span>
                             {row.completedDate !== null ? (
                                 <span className="text-muted-foreground">{t.tasks.on(formatDay(row.completedDate, locale))}</span>
                             ) : null}
@@ -81,7 +81,7 @@ export function InstanceDetailDialog({
                         <div className={cn("grid gap-3", sideBySide && "sm:grid-cols-2")}>
                             {row.referenceName !== null ? (
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-xs text-muted-foreground">{t.tasks.howItShouldLook} · {row.referenceName}</span>
+                                    <span className="text-xs text-muted-foreground">{t.tasks.howItShouldLook} · <bdi>{row.referenceName}</bdi></span>
                                     <TaskReferencePhotos instanceId={row.instanceId} className={sideBySide ? "sm:grid-cols-2" : undefined} />
                                 </div>
                             ) : null}
@@ -102,7 +102,7 @@ export function InstanceDetailDialog({
                     ) : null}
                     {row.reviewedByName !== null ? (
                         <DetailField label={row.status === "rejected" ? t.tasks.declinedBy : t.tasks.approvedBy}>
-                            <span>{row.reviewedByName}</span>
+                            <span><bdi>{row.reviewedByName}</bdi></span>
                             {row.reviewedDate !== null ? (
                                 <span className="text-muted-foreground">{t.tasks.on(formatDay(row.reviewedDate, locale))}</span>
                             ) : null}

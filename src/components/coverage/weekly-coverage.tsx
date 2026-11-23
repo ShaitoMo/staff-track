@@ -39,8 +39,8 @@ export async function WeeklyCoverage({ rows, dates }: { rows: WeeklyCoverageRow[
                     {rows.map((row) => (
                         <TableRow key={`${row.roleName}-${row.periodName}`}>
                             <TableHead scope="row" className="sticky start-0 z-10 h-auto bg-card py-2 capitalize">
-                                {row.roleName}
-                                <span className="block text-xs font-normal text-muted-foreground">{row.periodName}</span>
+                                <bdi>{row.roleName}</bdi>
+                                <span className="block text-xs font-normal text-muted-foreground"><bdi>{row.periodName}</bdi></span>
                             </TableHead>
                             {row.days.map((day) => (
                                 <TableCell

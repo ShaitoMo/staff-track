@@ -43,13 +43,16 @@ export function AddSectionForm({ branchId, types, primary }: { branchId: number;
                 <Select value={sectionTypeId} onValueChange={(value) => setSectionTypeId(String(value))} disabled={pending}>
                     <SelectTrigger id={id} className={`w-full ${TOUCH_HEIGHT}`} aria-invalid={!!error || undefined}>
                         <SelectValue placeholder={t.guide.chooseSectionPlaceholder}>
-                            {(value: string) => types.find((type) => String(type.sectionTypeId) === value)?.name ?? t.guide.chooseSectionPlaceholder}
+                            {(value: string) => {
+                                const name = types.find((type) => String(type.sectionTypeId) === value)?.name;
+                                return name !== undefined ? <bdi>{name}</bdi> : t.guide.chooseSectionPlaceholder;
+                            }}
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         {types.map((type) => (
                             <SelectItem key={type.sectionTypeId} value={String(type.sectionTypeId)}>
-                                {type.name}
+                                <bdi>{type.name}</bdi>
                             </SelectItem>
                         ))}
                     </SelectContent>

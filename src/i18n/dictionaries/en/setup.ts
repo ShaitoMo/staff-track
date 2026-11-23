@@ -1,3 +1,4 @@
+import { isolate } from "@/i18n/locales";
 import { common } from "./common";
 import { words } from "./words";
 
@@ -12,7 +13,7 @@ export const setup = {
     details: "Details",
     selectBranch: words.selectBranch,
     saveChanges: words.saveChanges,
-    editName: (name: string) => `Edit ${name}`,
+    editName: (name: string) => `Edit ${isolate(name)}`,
 };
 
 export const users = {
@@ -33,9 +34,9 @@ export const users = {
     /** The chip for someone on no branch (an owner's reads "All branches"). */
     noBranch: "Unassigned",
     createdButLinks: (branches: string[]) =>
-        `The user was created, but ${branches.length > 0 ? `these branches couldn't be linked: ${branches.join(", ")}` : "some branches couldn't be linked"}. Check the branches below and save again.`,
-    couldNotRemove: (branch: string) => `Could not remove ${branch}.`,
-    couldNotLink: (branch: string, reason: string | null) => `Could not link ${branch}${reason === null ? "." : `: ${reason}`}`,
+        `The user was created, but ${branches.length > 0 ? `these branches couldn't be linked: ${branches.map(isolate).join(", ")}` : "some branches couldn't be linked"}. Check the branches below and save again.`,
+    couldNotRemove: (branch: string) => `Could not remove ${isolate(branch)}.`,
+    couldNotLink: (branch: string, reason: string | null) => `Could not link ${isolate(branch)}${reason === null ? "." : `: ${reason}`}`,
     fallbackBranch: (id: number) => `branch ${id}`,
     savedButBranches: "The user was saved, but some branch changes didn't go through:",
     person: words.person,
@@ -43,7 +44,7 @@ export const users = {
     password: words.password,
     access: "Access",
     selectRole: words.selectRole,
-    machineIdAt: (branch: string) => `Machine employee ID at ${branch} (optional)`,
+    machineIdAt: (branch: string) => `Machine employee ID at ${isolate(branch)} (optional)`,
     machineIdPlaceholder: "Machine employee ID (optional)",
     createUser: "Create user",
     errors: {
@@ -127,9 +128,9 @@ export const periods = {
     delete: common.delete,
     deleteTitle: "Delete this period?",
     deactivateTitle: "Deactivate this period?",
-    deleteDescription: (name: string) => `“${name}” will be removed. This only works if no shift or coverage rule uses it.`,
+    deleteDescription: (name: string) => `“${isolate(name)}” will be removed. This only works if no shift or coverage rule uses it.`,
     deactivateDescription: (name: string) =>
-        `“${name}” will stop showing on the schedule and coverage, and can't be picked for new shifts. Shifts already on it keep their times. You can activate it again at any time.`,
+        `“${isolate(name)}” will stop showing on the schedule and coverage, and can't be picked for new shifts. Shifts already on it keep their times. You can activate it again at any time.`,
     errors: {
         branch: "Pick a branch, or all branches.",
         name: "Enter a name.",
@@ -146,7 +147,7 @@ export const roles = {
     roles: words.roles,
     onlyYourBranches: "Showing only the people in your branches.",
     coverage: "Coverage",
-    coverageFor: (branch: string) => `Coverage for ${branch}`,
+    coverageFor: (branch: string) => `Coverage for ${isolate(branch)}`,
     noBranches: words.noBranches,
     noBranchesDescription: "Coverage is set per branch, and there are no branches to show.",
     loading: words.loading,

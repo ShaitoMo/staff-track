@@ -1,3 +1,4 @@
+import { isolate } from "@/i18n/locales";
 import { words } from "./words";
 
 /** Change password (your own, from the account menu) and Reset password (someone else's, on Edit user). */
@@ -11,9 +12,9 @@ export const password = {
     done: "Done",
     resetLegend: words.password,
     resetDescription: (name: string) =>
-        `Set a new password for ${name} and give it to them in person. They'll be signed out on every device.`,
+        `Set a new password for ${isolate(name)} and give it to them in person. They'll be signed out on every device.`,
     reset: "Reset password",
-    resetDone: (name: string) => `Password reset. Give ${name} their new password.`,
+    resetDone: (name: string) => `Password reset. Give ${isolate(name)} their new password.`,
     failed: "The password couldn't be changed. Try again.",
     errors: {
         currentRequired: "Enter your current password.",

@@ -89,17 +89,17 @@ export default async function GuideSectionPage({
                 <Link href={`/guide?branch=${section.branchId}`} className="hover:text-foreground hover:underline">{t.guide.title}</Link>
                 <ChevronRightIcon aria-hidden className="size-3.5 rtl:rotate-180" />
                 {path.length === 0 ? (
-                    <span aria-current="page" className="text-foreground">{section.name}</span>
+                    <span aria-current="page" className="text-foreground"><bdi>{section.name}</bdi></span>
                 ) : (
-                    <Link href={hrefFor()} className="hover:text-foreground hover:underline">{section.name}</Link>
+                    <Link href={hrefFor()} className="hover:text-foreground hover:underline"><bdi>{section.name}</bdi></Link>
                 )}
                 {path.map((folder, index) => (
                     <span key={folder.folderId} className="flex items-center gap-1">
                         <ChevronRightIcon aria-hidden className="size-3.5 rtl:rotate-180" />
                         {index === path.length - 1 ? (
-                            <span aria-current="page" className="text-foreground">{folder.name}</span>
+                            <span aria-current="page" className="text-foreground"><bdi>{folder.name}</bdi></span>
                         ) : (
-                            <Link href={hrefFor(folder.folderId)} className="hover:text-foreground hover:underline">{folder.name}</Link>
+                            <Link href={hrefFor(folder.folderId)} className="hover:text-foreground hover:underline"><bdi>{folder.name}</bdi></Link>
                         )}
                     </span>
                 ))}
@@ -108,10 +108,10 @@ export default async function GuideSectionPage({
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1">
                     <div className="flex items-center gap-2">
-                        <h1 className="truncate text-xl font-semibold">{name}</h1>
+                        <h1 className="truncate text-xl font-semibold"><bdi>{name}</bdi></h1>
                         {active ? null : <Badge variant="outline" className="border-dashed text-muted-foreground">{t.guide.inactive}</Badge>}
                     </div>
-                    <p className="text-sm text-muted-foreground">{section.branchName}</p>
+                    <p className="text-sm text-muted-foreground"><bdi>{section.branchName}</bdi></p>
                 </div>
                 {canEdit && active ? <AddPhotosButton branchSectionId={sectionId} folderId={current?.folderId ?? null} /> : null}
             </div>

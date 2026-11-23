@@ -41,7 +41,7 @@ export async function BranchStack({
                                 aria-hidden
                                 className="size-4 shrink-0 text-muted-foreground transition-transform group-not-open:-rotate-90 print:hidden"
                             />
-                            <Heading className="truncate text-base font-semibold">{branch.name}</Heading>
+                            <Heading className="truncate text-base font-semibold"><bdi>{branch.name}</bdi></Heading>
                         </span>
                         <Link
                             href={`${basePath}?${new URLSearchParams({ ...query, branch: String(branch.branchId) })}`}

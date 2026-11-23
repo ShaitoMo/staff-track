@@ -32,7 +32,7 @@ export async function RoleList({ roles }: { roles: RoleWithMembers[] }) {
                 <TableBody>
                     {roles.map((role) => (
                         <TableRow key={role.roleId}>
-                            <TableHead scope="row" className="h-auto py-2 pe-8 align-top capitalize">{role.name}</TableHead>
+                            <TableHead scope="row" className="h-auto py-2 pe-8 align-top capitalize"><bdi>{role.name}</bdi></TableHead>
                             <TableCell className="pe-8 align-top text-end tabular-nums">{role.members.length}</TableCell>
                             <TableCell>
                                 {role.members.length === 0 ? (
@@ -41,7 +41,7 @@ export async function RoleList({ roles }: { roles: RoleWithMembers[] }) {
                                     <ul className="flex flex-col gap-0.5">
                                         {role.members.map((member) => (
                                             <li key={member.userId}>
-                                                {member.name}{" "}
+                                                <bdi>{member.name}</bdi>{" "}
                                                 <bdi dir="ltr" className="font-mono text-xs text-muted-foreground">{member.phone}</bdi>
                                             </li>
                                         ))}

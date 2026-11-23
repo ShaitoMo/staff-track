@@ -126,15 +126,16 @@ export function AddPunchDialog({
                             >
                                 <SelectTrigger id="punch-person" className="w-full">
                                     <SelectValue placeholder={t.attendance.selectPerson}>
-                                        {(value: string) =>
-                                            staff.find((person) => String(person.userId) === value)?.name ?? t.attendance.selectPerson
-                                        }
+                                        {(value: string) => {
+                                            const name = staff.find((person) => String(person.userId) === value)?.name;
+                                            return name !== undefined ? <bdi>{name}</bdi> : t.attendance.selectPerson;
+                                        }}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {staff.map((person) => (
                                         <SelectItem key={person.userId} value={String(person.userId)}>
-                                            {person.name}
+                                            <bdi>{person.name}</bdi>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

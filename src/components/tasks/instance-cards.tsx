@@ -20,18 +20,18 @@ export async function InstanceCards({ rows }: { rows: InstanceRow[] }) {
                             <StatusBadge status={row.status} />
                         </div>
                         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-                            <span>{row.branchName}</span>
+                            <span><bdi>{row.branchName}</bdi></span>
                             <span className="font-mono">{t.tasks.dueOn(row.dueDate)}</span>
                         </div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">{t.tasks.assignedToLead}</span>
-                            <span className="capitalize">{row.assignee}</span>
+                            <span className="capitalize"><bdi>{row.assignee}</bdi></span>
                         </div>
                         {row.completedByName !== null ? (
                             <div className="flex items-center justify-between gap-2 text-sm">
                                 <span>
                                     <span className="text-muted-foreground">{t.tasks.doneBy}</span>
-                                    {row.completedByName}
+                                    <bdi>{row.completedByName}</bdi>
                                 </span>
                                 {row.photoMediaId !== null ? <PhotoLink mediaId={row.photoMediaId} /> : null}
                             </div>

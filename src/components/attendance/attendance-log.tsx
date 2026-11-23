@@ -152,7 +152,7 @@ export function AttendanceLog({
                             ) : null}
                             {day.rows.map((row) => (
                                 <TableRow key={row.shiftId}>
-                                    <TableCell>{row.name}</TableCell>
+                                    <TableCell><bdi>{row.name}</bdi></TableCell>
                                     <TableCell className="font-mono tabular-nums"><bdi dir="ltr">{row.scheduled}</bdi></TableCell>
                                     <TableCell className="font-mono tabular-nums">{row.clockIn ?? "—"}</TableCell>
                                     <TableCell className="font-mono tabular-nums">{row.clockOut ?? "—"}</TableCell>

@@ -27,10 +27,10 @@ export async function UserTable({ rows }: { rows: UserRow[] }) {
                     {rows.map((row) => (
                         <TableRow key={row.userId}>
                             <TableCell>
-                                <div className="font-medium">{row.name}</div>
+                                <div className="font-medium"><bdi>{row.name}</bdi></div>
                                 <div className="font-mono text-xs text-muted-foreground"><bdi dir="ltr">{row.phone}</bdi></div>
                             </TableCell>
-                            <TableCell className="capitalize">{row.roleName}</TableCell>
+                            <TableCell className="capitalize"><bdi>{row.roleName}</bdi></TableCell>
                             <TableCell>
                                 <Badge variant="outline" className={cn(!row.isActive && "border-dashed text-muted-foreground")}>
                                     {row.isActive ? t.setup.active : t.setup.inactive}

@@ -38,7 +38,7 @@ export default async function SectionTypesPage() {
                 <ul className="max-w-3xl divide-y divide-border rounded-lg border border-border bg-card">
                     {types.map((type) => (
                         <li key={type.sectionTypeId} className="flex min-h-11 flex-wrap items-center gap-3 px-3 py-2 text-sm">
-                            <span className="min-w-0 flex-1 truncate font-medium">{type.name}</span>
+                            <span className="min-w-0 flex-1 truncate font-medium"><bdi>{type.name}</bdi></span>
                             <Badge variant="outline" className={cn(!type.isActive && "border-dashed text-muted-foreground")}>
                                 {type.isActive ? t.guide.active : t.guide.inactive}
                             </Badge>
