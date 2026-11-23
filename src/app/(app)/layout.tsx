@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { BranchSwitcher } from "@/components/layout/branch-switcher";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { OfflineBanner } from "@/components/layout/offline-banner";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { StaffNav, StaffTabBar } from "@/components/layout/staff-nav";
 import { getDictionary } from "@/i18n/server";
@@ -99,7 +100,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     </aside>
                 ) : null}
                 {/* staff pages leave room for the tab bar (64px plus the home indicator) on a phone */}
-                <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6 print:p-0", !canManage && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6")}>{children}</main>
+                <div className="flex min-w-0 flex-1 flex-col">
+                    {/* in the page column, so it sticks under the top bar without covering the left bar */}
+                    <OfflineBanner />
+                    <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6 print:p-0", !canManage && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6")}>{children}</main>
+                </div>
             </div>
             {canManage ? null : <StaffTabBar />}
         </div>
