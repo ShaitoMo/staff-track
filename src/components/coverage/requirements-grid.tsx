@@ -121,7 +121,7 @@ export function RequirementsGrid({
                         <TableHead scope="col">{t.coverage.role}</TableHead>
                         {periods.map((period) => (
                             <TableHead key={period.periodId} scope="col" className="pe-8">
-                                <div>{period.name}</div>
+                                <div><bdi>{period.name}</bdi></div>
                                 <div className="font-mono font-normal text-muted-foreground">
                                     <bdi dir="ltr">{period.defaultStart}–{period.defaultEnd}</bdi>
                                 </div>
@@ -132,7 +132,7 @@ export function RequirementsGrid({
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={row.roleId}>
-                            <TableHead scope="row" className="capitalize">{row.roleName}</TableHead>
+                            <TableHead scope="row" className="capitalize"><bdi>{row.roleName}</bdi></TableHead>
                             {row.cells.map((cell, index) => (
                                 <TableCell key={cell.periodId}>
                                     <RequirementCell

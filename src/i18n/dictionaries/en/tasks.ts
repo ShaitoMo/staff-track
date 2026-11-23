@@ -1,4 +1,4 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { words } from "./words";
 
 export const tasks = {
@@ -57,7 +57,7 @@ export const tasks = {
     missed: "Missed",
     missedNote: "Missed days of a repeating task can't be done now; your manager sees them.",
     missedSince: (days: number, day: string) => `Missed ${plural("en", days, { one: "# day", other: "# days" })}, since ${day}`,
-    taskLabel: (title: string, day: string) => `${title}, due ${day}`,
+    taskLabel: (title: string, day: string) => `${isolate(title)}, due ${day}`,
     noTasksNow: "No tasks right now",
     noTasksNowDescription: "Tasks assigned to you will show up here.",
     myTasksFailed: "We couldn't load your tasks. Reload the page; if it keeps happening, sign out and back in.",
@@ -66,15 +66,15 @@ export const tasks = {
     description: "Description",
     on: (day: string) => ` on ${day}`,
     howItShouldLook: "How it should look",
-    howItShouldLookName: (name: string) => `How it should look: ${name}`,
-    howItShouldLookFor: (task: string) => `How it should look for ${task}`,
+    howItShouldLookName: (name: string) => `How it should look: ${isolate(name)}`,
+    howItShouldLookFor: (task: string) => `How it should look for ${isolate(task)}`,
     theirPhoto: "Their photo",
     openTheirPhoto: "Open their photo",
     declinedBy: "Declined by",
     approvedBy: "Approved by",
     referencePhotosFailed: "Couldn't load the photos.",
     noReferencePhotos: "No reference photos here yet.",
-    openReferencePhoto: (title: string | null) => `Open reference photo${title ? `: ${title}` : ""}`,
+    openReferencePhoto: (title: string | null) => `Open reference photo${title ? `: ${isolate(title)}` : ""}`,
     // review and row actions
     declineFinal: "A declined task can't be redone.",
     confirmDecline: "Confirm decline",
@@ -84,21 +84,21 @@ export const tasks = {
     activate: words.activate,
     deactivateTitle: "Deactivate this task?",
     deactivateDescription: (title: string) =>
-        `“${title}” will stop showing up for staff and no new instances will be created. Work already done, with its photos, is kept. You can activate it again at any time.`,
+        `“${isolate(title)}” will stop showing up for staff and no new instances will be created. Work already done, with its photos, is kept. You can activate it again at any time.`,
     // completing
     notAPhoto: "That file isn't a photo.",
     unreadablePhoto: "Couldn't read that photo. Try taking it again with the camera.",
     photoTooBig: (mb: number) => `That photo is over ${mb} MB even after shrinking it. Try another one.`,
     yourPhoto: "Your photo",
     takePhoto: "Take photo",
-    takePhotoFor: (task: string) => `Take photo for ${task}`,
+    takePhotoFor: (task: string) => `Take photo for ${isolate(task)}`,
     choosePhoto: "Choose photo",
-    choosePhotoFor: (task: string) => `Choose photo for ${task}`,
+    choosePhotoFor: (task: string) => `Choose photo for ${isolate(task)}`,
     markDone: "Mark as done",
-    markDoneFor: (task: string) => `Mark as done: ${task}`,
+    markDoneFor: (task: string) => `Mark as done: ${isolate(task)}`,
     retake: "Retake",
-    sentForReview: (task: string) => `Sent for review: ${task}. Your manager will check the photo.`,
-    retakeFor: (task: string) => `Retake photo for ${task}`,
+    sentForReview: (task: string) => `Sent for review: ${isolate(task)}. Your manager will check the photo.`,
+    retakeFor: (task: string) => `Retake photo for ${isolate(task)}`,
     // form
     personKind: "A person",
     roleKind: "A role",

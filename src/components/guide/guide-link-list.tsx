@@ -23,7 +23,7 @@ export async function GuideLinkList({ items, kind }: { items: GuideLink[]; kind:
                         className="flex min-h-11 items-center gap-3 px-3 py-2 text-sm hover:bg-muted/60"
                     >
                         <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium"><bdi>{item.name}</bdi></span>
                         {item.active ? null : (
                             <Badge variant="outline" className="border-dashed text-muted-foreground">{t.guide.inactive}</Badge>
                         )}

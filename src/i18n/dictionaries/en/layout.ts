@@ -1,4 +1,4 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { common } from "./common";
 import { words } from "./words";
 
@@ -7,10 +7,10 @@ export const layout = {
     sections: "Sections",
     openMenu: "Open menu",
     closeMenu: "Close menu",
-    account: (who: string) => `Account: ${who}`,
+    account: (who: string) => `Account: ${isolate(who)}`,
     logOut: "Log out",
     branch: words.branch,
-    branchTrigger: (name: string) => `Branch: ${name}. Change branch`,
+    branchTrigger: (name: string) => `Branch: ${isolate(name)}. Change branch`,
     onlyThisBranch: "Only this branch",
     previousDay: "Previous day",
     nextDay: "Next day",

@@ -25,7 +25,7 @@ export async function BranchTable({ branches, canEdit }: { branches: Branch[]; c
                 <TableBody>
                     {branches.map((branch) => (
                         <TableRow key={branch.branchId}>
-                            <TableCell className="font-medium">{branch.name}</TableCell>
+                            <TableCell className="font-medium"><bdi>{branch.name}</bdi></TableCell>
                             <TableCell className="text-muted-foreground">{branch.location ?? "—"}</TableCell>
                             {canEdit && (
                                 <TableCell className="text-end">

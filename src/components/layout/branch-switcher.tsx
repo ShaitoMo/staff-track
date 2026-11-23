@@ -102,7 +102,7 @@ export function BranchSwitcher({ branches, preference }: { branches: { branchId:
                         <DropdownMenuSeparator />
                         {branches.map((branch) => (
                             <DropdownMenuRadioItem key={branch.branchId} value={String(branch.branchId)} closeOnClick className={TOUCH_HEIGHT}>
-                                <span className="truncate">{branch.name}</span>
+                                <span className="truncate"><bdi>{branch.name}</bdi></span>
                             </DropdownMenuRadioItem>
                         ))}
                     </DropdownMenuRadioGroup>

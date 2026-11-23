@@ -1,10 +1,10 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { common } from "./common";
 import { words } from "./words";
 
 export const schedule = {
     title: words.schedule,
-    titleFor: (branch: string) => `Schedule for ${branch}`,
+    titleFor: (branch: string) => `Schedule for ${isolate(branch)}`,
     loading: words.loading,
     noAccess: "You don't have access to the schedule.",
     noBranches: words.noBranches,
@@ -46,15 +46,15 @@ export const schedule = {
     needs: (n: number) => `Needs ${n}`,
     needsMoreOf: (required: number) => ` more of ${required}`,
     noRegister: "No register",
-    changeRegister: (name: string, register: string, where: string) => `${name} is on ${register}; change register (${where})`,
-    putOnRegister: (name: string, where: string) => `Put ${name} on a register (${where})`,
+    changeRegister: (name: string, register: string, where: string) => `${isolate(name)} is on ${isolate(register)}; change register (${where})`,
+    putOnRegister: (name: string, where: string) => `Put ${isolate(name)} on a register (${where})`,
     registerTag: "register",
     register: words.register,
-    removeFrom: (name: string, where: string) => `Remove ${name} from ${where}`,
+    removeFrom: (name: string, where: string) => `Remove ${isolate(name)} from ${where}`,
     add: "Add",
     addTo: (where: string) => `Add a person to ${where}`,
-    onRegister: (name: string) => `On ${name}`,
-    noneFree: (role: string) => `No ${role} free`,
+    onRegister: (name: string) => `On ${isolate(name)}`,
+    noneFree: (role: string) => `No ${isolate(role)} free`,
     dayGroup: words.day,
     dayButton: (day: string, isToday: boolean, needs: boolean) => `${day}${isToday ? ", today" : ""}${needs ? ", needs people" : ""}`,
     // copy week
@@ -80,7 +80,7 @@ export const schedule = {
     noBranchYetDescription: "You'll see the schedule once a manager adds you to a branch.",
     shiftsMissingConsequence: words.shiftsMissingConsequence,
     yourShifts: words.yourShifts,
-    whosWorking: (branch: string) => `Who's working at ${branch}`,
+    whosWorking: (branch: string) => `Who's working at ${isolate(branch)}`,
 };
 
 export const coverage = {
@@ -96,7 +96,7 @@ export const coverage = {
     wholeNumber: (max: number) => `Enter a whole number from 0 to ${max}.`,
     gridCaption: "People required for each role in each shift period",
     role: words.role,
-    cellLabel: (role: string, period: string) => `${role}, ${period}: people required`,
+    cellLabel: (role: string, period: string) => `${isolate(role)}, ${isolate(period)}: people required`,
     noRequirements: "No requirements set",
     noRequirementsDescription: "Set how many people each role needs above to see coverage here.",
     weeklyCaption: "People scheduled compared with people required, per role, shift period and day",

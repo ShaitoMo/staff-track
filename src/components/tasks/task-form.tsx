@@ -184,13 +184,16 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                     <Select value={branchId !== null ? String(branchId) : ""} onValueChange={handleBranchChange} disabled={pending || isEdit}>
                         <SelectTrigger id="branch" className="w-full">
                             <SelectValue placeholder={t.tasks.selectBranch}>
-                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? t.tasks.selectBranch}
+                                {(value: string) => {
+                                    const name = branches.find((branch) => String(branch.branchId) === value)?.name;
+                                    return name !== undefined ? <bdi>{name}</bdi> : t.tasks.selectBranch;
+                                }}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {branches.map((branch) => (
                                 <SelectItem key={branch.branchId} value={String(branch.branchId)}>
-                                    {branch.name}
+                                    <bdi>{branch.name}</bdi>
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -231,7 +234,11 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                             >
                                 <SelectTrigger id="assigned-to" className="w-full">
                                     <SelectValue placeholder={branchId === null ? t.tasks.chooseBranchFirst : t.tasks.selectPerson}>
-                                        {(value: string) => people.find((person) => String(person.userId) === value)?.name ?? (branchId === null ? t.tasks.chooseBranchFirst : t.tasks.selectPerson)}
+                                        {(value: string) => {
+                                            const name = people.find((person) => String(person.userId) === value)?.name;
+                                            if (name !== undefined) return <bdi>{name}</bdi>;
+                                            return branchId === null ? t.tasks.chooseBranchFirst : t.tasks.selectPerson;
+                                        }}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -240,7 +247,7 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                                     ) : (
                                         people.map((person) => (
                                             <SelectItem key={person.userId} value={String(person.userId)}>
-                                                {person.name}
+                                                <bdi>{person.name}</bdi>
                                             </SelectItem>
                                         ))
                                     )}
@@ -259,14 +266,14 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                                     <SelectValue placeholder={t.tasks.selectRole}>
                                         {(value: string) => {
                                             const name = roles.find((role) => String(role.roleId) === value)?.name;
-                                            return name !== undefined ? <span className="capitalize">{name}</span> : t.tasks.selectRole;
+                                            return name !== undefined ? <bdi className="capitalize">{name}</bdi> : t.tasks.selectRole;
                                         }}
                                     </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {roles.map((role) => (
                                         <SelectItem key={role.roleId} value={String(role.roleId)} className="capitalize">
-                                            {role.name}
+                                            <bdi>{role.name}</bdi>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

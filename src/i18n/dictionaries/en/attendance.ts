@@ -1,9 +1,9 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { words } from "./words";
 
 export const attendance = {
     title: words.attendance,
-    titleFor: (branch: string) => `Attendance for ${branch}`,
+    titleFor: (branch: string) => `Attendance for ${isolate(branch)}`,
     myTitle: "My attendance",
     loading: words.loading,
     noAccess: "You don't have access to attendance.",
@@ -39,7 +39,7 @@ export const attendance = {
     noShifts: (during: string) => `No shifts ${during}`,
     noShiftsDescription: (during: string) => `Attendance is compared against the schedule, and nobody is scheduled at this branch ${during}.`,
     // log
-    addPunchFor: (who: string) => `Add a punch for ${who}`,
+    addPunchFor: (who: string) => `Add a punch for ${isolate(who)}`,
     show: words.show,
     needsAction: (n: number) => `Needs action · ${n}`,
     allShifts: (n: number) => `All shifts · ${n}`,
@@ -96,11 +96,11 @@ export const attendance = {
     endLabels: { clock_in: "Clock-in time", clock_out: "Clock-out time" },
     enterTime: "Enter a time.",
     saveFailed: "Couldn't save the punch. Try again.",
-    fixLabel: (end: "clock_in" | "clock_out", who: string) => `Fix ${end === "clock_in" ? "clock-in" : "clock-out"} for ${who}`,
+    fixLabel: (end: "clock_in" | "clock_out", who: string) => `Fix ${end === "clock_in" ? "clock-in" : "clock-out"} for ${isolate(who)}`,
     fix: "Fix",
     fixTitle: (end: "clock_in" | "clock_out"): string => (end === "clock_in" ? "Add the missing clock-in" : "Add the missing clock-out"),
     fixDescription: (who: string, end: "clock_in" | "clock_out") =>
-        `${who}. Branch local time${end === "clock_out" ? "; a time before the shift's start counts as the next morning." : "."}`,
+        `${isolate(who)}. Branch local time${end === "clock_out" ? "; a time before the shift's start counts as the next morning." : "."}`,
     // import
     punchesAdded: (added: number, skipped: number) =>
         `${plural("en", added, { one: "# punch", other: "# punches" })} added${skipped > 0 ? `, ${skipped} already recorded` : ""}.`,

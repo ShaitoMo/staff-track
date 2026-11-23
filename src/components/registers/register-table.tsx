@@ -28,8 +28,8 @@ export async function RegisterTable({ rows }: { rows: RegisterRow[] }) {
                 <TableBody>
                     {rows.map((row) => (
                         <TableRow key={row.registerId}>
-                            <TableCell className="font-medium">{row.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{row.branchName}</TableCell>
+                            <TableCell className="font-medium"><bdi>{row.name}</bdi></TableCell>
+                            <TableCell className="text-muted-foreground"><bdi>{row.branchName}</bdi></TableCell>
                             <TableCell className="text-end">
                                 <Link
                                     href={`/registers/${row.registerId}/edit`}

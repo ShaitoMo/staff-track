@@ -101,7 +101,7 @@ function PersonChip({
         <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card py-0.5 pe-0.5 ps-2 text-xs">
             {/* in a narrow day column the register wraps under the name, as on the read-only schedule */}
             <span className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
-                {person.name}
+                <bdi>{person.name}</bdi>
                 {tag}
             </span>
             <button
@@ -130,7 +130,7 @@ function PickerOptions({ groups }: { groups: PickerGroup[] }) {
                     {groups.length > 1 ? <SelectLabel>{group.label}</SelectLabel> : null}
                     {group.options.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
-                            {option.name}
+                            <bdi>{option.name}</bdi>
                         </SelectItem>
                     ))}
                 </SelectGroup>
@@ -244,7 +244,7 @@ function RegisterSelect({
                         : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
             >
-                {person.registerName ?? (
+                {person.registerName !== null ? <bdi>{person.registerName}</bdi> : (
                     <>
                         <PlusIcon className="size-3" aria-hidden="true" />
                         {t.schedule.registerTag}
@@ -366,7 +366,7 @@ function PeriodRow({ period, colSpan }: { period: ShiftPeriodView; colSpan: numb
         <TableRow className="hover:bg-transparent">
             <TableHead scope="colgroup" colSpan={colSpan} className="h-10 pt-4 font-semibold text-foreground">
                 <span className="sticky start-2 inline-flex items-baseline gap-2">
-                    {period.name}
+                    <bdi>{period.name}</bdi>
                     <PeriodHours period={period} />
                 </span>
             </TableHead>
@@ -385,7 +385,7 @@ function RowHeader({ title, capitalize = false }: { title: string; capitalize?: 
                 capitalize && "capitalize",
             )}
         >
-            {title}
+            <bdi>{title}</bdi>
         </TableHead>
     );
 }
@@ -512,7 +512,7 @@ export function ScheduleGrid({
                     groups.map(({ period, rows, openRow }) => (
                         <section key={period.periodId} aria-labelledby={`day-period-${period.periodId}`} className="flex flex-col gap-2">
                             <h4 id={`day-period-${period.periodId}`} className="flex items-baseline gap-2 text-sm font-semibold">
-                                {period.name}
+                                <bdi>{period.name}</bdi>
                                 <PeriodHours period={period} />
                             </h4>
                             <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
@@ -521,7 +521,7 @@ export function ScheduleGrid({
                                         key={row.roleId}
                                         className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 px-3 py-3"
                                     >
-                                        <span className="pt-0.5 text-sm font-medium capitalize">{row.roleName}</span>
+                                        <span className="pt-0.5 text-sm font-medium capitalize"><bdi>{row.roleName}</bdi></span>
                                         {roleCell(row, index, openRow)}
                                     </li>
                                 ))}

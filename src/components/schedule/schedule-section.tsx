@@ -259,7 +259,7 @@ function OtherShiftsTable({ shifts, t, locale }: { shifts: OtherShift[]; t: Dict
                                 <TableCell className="font-mono tabular-nums">
                                     <bdi dir="ltr">{shift.startTime}–{shift.endTime}</bdi>
                                 </TableCell>
-                                <TableCell>{shift.name}</TableCell>
+                                <TableCell><bdi>{shift.name}</bdi></TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

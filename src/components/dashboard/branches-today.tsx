@@ -93,7 +93,7 @@ function PeriodRow({ period, t }: { period: DayPeriod; t: Dictionary }) {
     return (
         <li className="flex flex-col gap-0.5 py-2 first:pt-0">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <span className="font-medium">{period.name ?? t.dashboard.otherHours}</span>
+                <span className="font-medium">{period.name === null ? t.dashboard.otherHours : <bdi>{period.name}</bdi>}</span>
                 {period.staffCount === 0 ? (
                     <span className="text-muted-foreground">{t.dashboard.nobodyScheduled}</span>
                 ) : (
@@ -127,7 +127,7 @@ function BranchCard({ branch, date, week, attendanceIn, t }: { branch: BranchSum
                 <div className="flex items-baseline justify-between gap-3">
                     <h2 id={`branch-${branch.branchId}`} className="text-base font-medium">
                         <Link href={`/schedule?branch=${branch.branchId}&week=${week}`} className={pageLinkClass}>
-                            {branch.name}
+                            <bdi>{branch.name}</bdi>
                             <ChevronRightIcon aria-hidden className="size-4 text-muted-foreground rtl:rotate-180" />
                         </Link>
                     </h2>

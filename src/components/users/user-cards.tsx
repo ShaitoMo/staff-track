@@ -16,14 +16,14 @@ export async function UserCards({ rows }: { rows: UserRow[] }) {
                     <CardContent className="flex flex-col gap-2">
                         <div className="flex items-start justify-between gap-2">
                             <div>
-                                <div className="font-medium">{row.name}</div>
+                                <div className="font-medium"><bdi>{row.name}</bdi></div>
                                 <div className="font-mono text-xs text-muted-foreground"><bdi dir="ltr">{row.phone}</bdi></div>
                             </div>
                             <Badge variant="outline" className={cn(!row.isActive && "border-dashed text-muted-foreground")}>
                                 {row.isActive ? t.setup.active : t.setup.inactive}
                             </Badge>
                         </div>
-                        <div className="text-sm capitalize">{row.roleName}</div>
+                        <div className="text-sm capitalize"><bdi>{row.roleName}</bdi></div>
                         <div className="flex flex-wrap gap-1">
                             {row.branchChips.map((chip) => (
                                 <Badge key={chip} variant="secondary">{chip}</Badge>

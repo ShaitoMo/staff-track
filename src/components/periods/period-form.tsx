@@ -99,10 +99,11 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
         });
     }
 
-    const branchLabel = (value: string) =>
-        value === CHAIN_WIDE
-            ? t.periods.allBranches
-            : branches.find((option) => String(option.branchId) === value)?.name ?? t.setup.selectBranch;
+    const branchLabel = (value: string) => {
+        if (value === CHAIN_WIDE) return t.periods.allBranches;
+        const name = branches.find((option) => String(option.branchId) === value)?.name;
+        return name !== undefined ? <bdi>{name}</bdi> : t.setup.selectBranch;
+    };
 
     return (
         <FormCard onSubmit={handleSubmit} className="max-w-3xl">
@@ -132,7 +133,7 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                             ) : null}
                             {branches.map((option) => (
                                 <SelectItem key={option.branchId} value={String(option.branchId)}>
-                                    {option.name}
+                                    <bdi>{option.name}</bdi>
                                 </SelectItem>
                             ))}
                         </SelectContent>

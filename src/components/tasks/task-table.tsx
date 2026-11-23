@@ -35,8 +35,8 @@ export async function TaskTable({ rows }: { rows: TaskRow[] }) {
                     {rows.map((row) => (
                         <TableRow key={row.taskId}>
                             <TableCell className="font-medium"><bdi>{row.title}</bdi></TableCell>
-                            <TableCell className="text-muted-foreground">{row.branchName}</TableCell>
-                            <TableCell className="capitalize">{row.assignee}</TableCell>
+                            <TableCell className="text-muted-foreground"><bdi>{row.branchName}</bdi></TableCell>
+                            <TableCell className="capitalize"><bdi>{row.assignee}</bdi></TableCell>
                             <TableCell>{row.schedule}</TableCell>
                             <TableCell>
                                 <Badge variant="outline" className={cn(!row.active && "border-dashed text-muted-foreground")}>

@@ -1,4 +1,4 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { words } from "./words";
 
 export const guide = {
@@ -23,8 +23,8 @@ export const guide = {
     // active toggle
     deactivateWhat: (what: "section" | "folder") => `Deactivate ${what}`,
     reactivateWhat: (what: "section" | "folder") => `Reactivate ${what}`,
-    deactivateTitle: (name: string) => `Deactivate “${name}”?`,
-    reactivateTitle: (name: string) => `Reactivate “${name}”?`,
+    deactivateTitle: (name: string) => `Deactivate “${isolate(name)}”?`,
+    reactivateTitle: (name: string) => `Reactivate “${isolate(name)}”?`,
     deactivateImpact: (folders: number, photos: number) =>
         `Staff will stop seeing it: ${plural("en", folders, { one: "# folder", other: "# folders" })} and ${plural("en", photos, { one: "# photo", other: "# photos" })} will be hidden. Nothing is deleted.`,
     reactivateImpact: (folders: number, photos: number) =>
@@ -33,11 +33,11 @@ export const guide = {
     reactivate: "Reactivate",
     activate: words.activate,
     // photos
-    photoFailed: (n: number, file: string, reason: string) => `Photo ${n} (${file}): ${reason}`,
+    photoFailed: (n: number, file: string, reason: string) => `Photo ${n} (${isolate(file)}): ${reason}`,
     uploadingOf: (n: number, total: number) => `Uploading ${n} of ${total}`,
     uploading: "Uploading…",
     addPhotos: "Add photos",
-    openPhoto: (title: string | null) => `Open photo${title ? `: ${title}` : ""}`,
+    openPhoto: (title: string | null) => `Open photo${title ? `: ${isolate(title)}` : ""}`,
     referencePhoto: "Reference photo",
     photoOf: (n: number, total: number) => `Photo ${n} of ${total}`,
     photoTitle: words.title,
@@ -60,7 +60,7 @@ export const guide = {
     addSectionType: "Add section type",
     rename: "Rename",
     folderName: "Folder name",
-    newNameFor: (name: string) => `New name for ${name}`,
+    newNameFor: (name: string) => `New name for ${isolate(name)}`,
     // section types page
     sectionTypesTitle: words.sectionTypes,
     sectionTypesIntro:

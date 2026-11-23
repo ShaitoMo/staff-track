@@ -79,14 +79,18 @@ export function TaskReferencePicker({
                 >
                     <SelectTrigger id="reference-section" className="w-full">
                         <SelectValue>
-                            {(id: string) => (id === NONE ? (branchId === null ? t.tasks.chooseBranchFirst : t.tasks.none) : sectionName(id) ?? t.tasks.none)}
+                            {(id: string) => {
+                                if (id === NONE) return branchId === null ? t.tasks.chooseBranchFirst : t.tasks.none;
+                                const name = sectionName(id);
+                                return name !== undefined ? <bdi>{name}</bdi> : t.tasks.none;
+                            }}
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value={NONE}>{t.tasks.none}</SelectItem>
                         {sections.map((section) => (
                             <SelectItem key={section.branchSectionId} value={String(section.branchSectionId)}>
-                                {section.name}
+                                <bdi>{section.name}</bdi>
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -113,7 +117,7 @@ export function TaskReferencePicker({
                             <SelectItem value={NONE}>{t.tasks.sectionOwnPhotos}</SelectItem>
                             {folders.map((folder) => (
                                 <SelectItem key={folder.folderId} value={String(folder.folderId)}>
-                                    {folder.label}
+                                    <bdi>{folder.label}</bdi>
                                 </SelectItem>
                             ))}
                         </SelectContent>

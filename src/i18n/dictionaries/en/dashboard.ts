@@ -1,4 +1,4 @@
-import { plural } from "@/i18n/locales";
+import { isolate, plural } from "@/i18n/locales";
 import { words } from "./words";
 
 export const dashboard = {
@@ -48,7 +48,7 @@ export const dashboard = {
     then: "Then",
     tasksToday: "Tasks today",
     nothingDueToday: "Nothing due today.",
-    atBranch: (branch: string) => `At ${branch}`,
+    atBranch: (branch: string) => `At ${isolate(branch)}`,
     noShift: "No shift",
     tasksDueCount: (n: number) => plural("en", n, { one: "# task due", other: "# tasks due" }),
     missedThisMonth: (time: string) => `${time} missed this month`,

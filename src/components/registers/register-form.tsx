@@ -80,13 +80,16 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                     >
                         <SelectTrigger id="branch" className="w-full" aria-invalid={!!errors.branchId || undefined}>
                             <SelectValue placeholder={t.setup.selectBranch}>
-                                {(value: string) => branches.find((branch) => String(branch.branchId) === value)?.name ?? t.setup.selectBranch}
+                                {(value: string) => {
+                                    const name = branches.find((branch) => String(branch.branchId) === value)?.name;
+                                    return name !== undefined ? <bdi>{name}</bdi> : t.setup.selectBranch;
+                                }}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             {branches.map((branch) => (
                                 <SelectItem key={branch.branchId} value={String(branch.branchId)}>
-                                    {branch.name}
+                                    <bdi>{branch.name}</bdi>
                                 </SelectItem>
                             ))}
                         </SelectContent>
