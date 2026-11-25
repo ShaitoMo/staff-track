@@ -147,13 +147,30 @@ export async function verifyGuideUpload(photoKey: string, thumbKey: string, bran
     await verifyStoredJpeg(thumbKey);
 }
 
+function isMissingObject(error: unknown): boolean {
+    return (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404;
+}
+
+/** Whether the object is still in the bucket: a media row can outlive its file. */
+export async function photoExists(key: string): Promise<boolean> {
+    try {
+        await r2().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
+        return true;
+    } catch (error) {
+        if (isMissingObject(error)) {
+            return false;
+        }
+        throw error;
+    }
+}
+
 async function verifyStoredJpeg(key: string): Promise<void> {
 
     let head;
     try {
         head = await r2().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
     } catch (error) {
-        if ((error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
+        if (isMissingObject(error)) {
             throw new InvalidPhotoError('The photo was not uploaded');
         }
         throw error;

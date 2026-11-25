@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
+import { PhotoImage } from "@/components/layout/photo-image";
 import { StatusBadge } from "@/components/tasks/status-badge";
 import { TaskReferencePhotos } from "@/components/tasks/task-reference";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -89,8 +90,7 @@ export function InstanceDetailDialog({
                                 <div className="flex flex-col gap-1">
                                     <span className="text-xs text-muted-foreground">{t.tasks.theirPhoto}</span>
                                     <a href={`/api/media/${row.photoMediaId}/file`} target="_blank" rel="noreferrer" aria-label={t.tasks.openTheirPhoto}>
-                                        {/* eslint-disable-next-line @next/next/no-img-element -- a signed-URL redirect behind the session; next/image would fetch without the cookie */}
-                                        <img
+                                        <PhotoImage
                                             src={`/api/media/${row.photoMediaId}/file`}
                                             alt=""
                                             className="aspect-[4/3] w-full rounded-lg border border-border bg-muted object-cover"

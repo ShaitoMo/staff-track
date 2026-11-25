@@ -17,6 +17,10 @@ export const common: typeof en = {
     noBranch: "لا يوجد فرع",
     languageName: "العربية",
     listSeparator: "، ",
+    photoUnavailable: {
+        title: "الصورة غير متاحة",
+        description: "حُذفت هذه الصورة، أو لم تعد لديك صلاحية لرؤيتها. أغلق علامة التبويب هذه للعودة.",
+    },
     discardChanges: {
         title: "تجاهل التغييرات؟",
         description: "ما أدخلته هنا لم يُحفظ وسيضيع.",

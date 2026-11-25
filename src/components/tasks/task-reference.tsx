@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BookImageIcon } from "lucide-react";
+import { PhotoImage } from "@/components/layout/photo-image";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
@@ -14,7 +15,7 @@ import type { GuideImageView } from "@/types/shelf-guide";
 /**
  * The shelf-guide photos a task points at, loaded when shown (it only mounts inside an open
  * dialog). A thumbnail opens the full photo in a new tab, like PhotoLink, so a dialog never opens
- * a second one. Plain <img>: the URLs redirect to signed ones behind the session (see PhotoGrid).
+ * a second one.
  */
 export function TaskReferencePhotos({ instanceId, className }: { instanceId: number; className?: string }) {
     const [images, setImages] = useState<GuideImageView[] | null>(null);
@@ -44,8 +45,7 @@ export function TaskReferencePhotos({ instanceId, className }: { instanceId: num
                         className="flex flex-col overflow-hidden rounded-lg border border-border bg-card"
                         aria-label={t.tasks.openReferencePhoto(image.title)}
                     >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- see the component comment */}
-                        <img src={image.thumbUrl} alt="" loading="lazy" className="aspect-[4/3] w-full bg-muted object-cover" />
+                        <PhotoImage src={image.thumbUrl} alt="" loading="lazy" className="aspect-[4/3] w-full bg-muted object-cover" />
                         {image.title ? <span className="truncate px-2 py-1.5 text-xs"><bdi>{image.title}</bdi></span> : null}
                     </a>
                 </li>
