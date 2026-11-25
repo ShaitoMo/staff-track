@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PhotoImage } from "@/components/layout/photo-image";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
 import { ApiError, PhotoUploadError } from "@/lib/api-client";
@@ -15,11 +16,7 @@ import { deleteGuidePhoto, reorderGuidePhotos, replaceGuidePhoto, updateGuidePho
 import { UnreadablePhotoError } from "@/lib/compress-photo";
 import type { GuideImageView } from "@/types/shelf-guide";
 
-/**
- * The photos at one level as a thumbnail grid (thumbnails only; the full photo loads on tap).
- * Plain <img>, not next/image: the optimizer fetches without the session cookie, and these
- * URLs redirect to short-lived signed ones.
- */
+/** The photos at one level as a thumbnail grid (thumbnails only; the full photo loads on tap). */
 export function PhotoGrid({ images, canEdit }: { images: GuideImageView[]; canEdit: boolean }) {
     const [openId, setOpenId] = useState<number | null>(null);
     const index = images.findIndex((image) => image.imageId === openId);
@@ -37,8 +34,7 @@ export function PhotoGrid({ images, canEdit }: { images: GuideImageView[]; canEd
                             className="group flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-start"
                             aria-label={t.guide.openPhoto(image.title)}
                         >
-                            {/* eslint-disable-next-line @next/next/no-img-element -- see the component comment */}
-                            <img
+                            <PhotoImage
                                 src={image.thumbUrl}
                                 alt=""
                                 loading="lazy"
@@ -129,8 +125,7 @@ function PhotoDetail({
                 <DialogDescription>{t.guide.photoOf(position + 1, images.length)}</DialogDescription>
             </DialogHeader>
 
-            {/* eslint-disable-next-line @next/next/no-img-element -- signed-URL redirect behind the session; see PhotoGrid */}
-            <img src={image.fileUrl} alt={image.title ?? t.guide.referencePhoto} className="max-h-[60vh] min-h-48 w-full rounded-lg bg-muted object-contain" />
+            <PhotoImage src={image.fileUrl} alt={image.title ?? t.guide.referencePhoto} className="max-h-[60vh] min-h-48 w-full rounded-lg bg-muted object-contain" />
 
             {error !== null ? (
                 <Alert variant="destructive">

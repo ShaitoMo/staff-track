@@ -6,13 +6,14 @@ jest.mock('@/lib/auth', () => ({ getCurrentUser: jest.fn() }))
 jest.mock('@/lib/logger', () => ({ logger: { error: jest.fn() } }))
 jest.mock('@/lib/storage', () => ({
     getPhotoViewUrl: jest.fn(),
+    photoExists: jest.fn(),
     InvalidPhotoError: class InvalidPhotoError extends Error {},
 }))
 jest.mock('@/services/guide-image-service', () => ({ GuideImageService: { getImage: jest.fn() } }))
 jest.mock('@/services/task-instance-service', () => ({ TaskInstanceService: { getTaskInstanceById: jest.fn() } }))
 
 import { getCurrentUser } from '@/lib/auth'
-import { getPhotoViewUrl } from '@/lib/storage'
+import { getPhotoViewUrl, photoExists } from '@/lib/storage'
 import { GuideImageService } from '@/services/guide-image-service'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error'
@@ -21,6 +22,7 @@ import { GET } from './route'
 const mockedGetCurrentUser = getCurrentUser as jest.Mock
 const mockedGetImage = GuideImageService.getImage as jest.Mock
 const mockedGetPhotoViewUrl = getPhotoViewUrl as jest.Mock
+const mockedPhotoExists = photoExists as jest.Mock
 const mockedGetInstance = TaskInstanceService.getTaskInstanceById as jest.Mock
 
 const staff: AccessTokenPayload = { userId: 5, role: 'cashier', branchIds: [1] }
@@ -35,8 +37,8 @@ const image = (overrides: Partial<{ branchId: number; visibleToStaff: boolean }>
     ...overrides,
 })
 
-function call(imageId = '30', query = '') {
-    const req = new NextRequest(`http://localhost/api/guide-images/${imageId}/file${query}`)
+function call(imageId = '30', query = '', headers: Record<string, string> = {}) {
+    const req = new NextRequest(`http://localhost/api/guide-images/${imageId}/file${query}`, { headers })
     return GET(req, { params: Promise.resolve({ imageId }) } as never)
 }
 
@@ -44,6 +46,7 @@ beforeEach(() => {
     jest.resetAllMocks()
     mockedGetCurrentUser.mockReturnValue(staff)
     mockedGetPhotoViewUrl.mockResolvedValue('https://signed.example/a.jpg')
+    mockedPhotoExists.mockResolvedValue(true)
 })
 
 describe('GET /api/guide-images/:id/file', () => {
@@ -125,6 +128,42 @@ describe('GET /api/guide-images/:id/file', () => {
 
             expect((await call('30', '?instance=12')).status).toBe(302)
             expect(mockedGetInstance).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('opened as a page (a task reference opens the full photo in a new tab)', () => {
+        const openAsPage = () => call('30', '', { 'sec-fetch-dest': 'document' })
+        const redirectPath = (res: Response) => new URL(res.headers.get('Location')!).pathname
+
+        it('sends a photo the caller may not see to the photo-unavailable page', async () => {
+            mockedGetImage.mockResolvedValue(image({ branchId: 2 }))
+
+            const res = await openAsPage()
+
+            expect(res.status).toBe(307)
+            expect(redirectPath(res)).toBe('/photo-unavailable')
+            expect(mockedGetPhotoViewUrl).not.toHaveBeenCalled()
+        })
+
+        it('sends an unknown id to the same page', async () => {
+            mockedGetImage.mockRejectedValue(new GuideImageNotFoundError())
+
+            expect(redirectPath(await openAsPage())).toBe('/photo-unavailable')
+        })
+
+        it('sends a photo whose file is gone from the bucket to the same page', async () => {
+            mockedGetImage.mockResolvedValue(image())
+            mockedPhotoExists.mockResolvedValue(false)
+
+            expect(redirectPath(await openAsPage())).toBe('/photo-unavailable')
+            expect(mockedPhotoExists).toHaveBeenCalledWith('guide/sections/4/a.jpg')
+        })
+
+        it('does not check the bucket for an <img> load', async () => {
+            mockedGetImage.mockResolvedValue(image())
+
+            expect((await call('30', '', { 'sec-fetch-dest': 'image' })).status).toBe(302)
+            expect(mockedPhotoExists).not.toHaveBeenCalled()
         })
     })
 })
