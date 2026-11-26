@@ -2,7 +2,6 @@ export const common = {
     appName: "StaffTrack",
     appDescription: "Scheduling, tasks, attendance, and coverage for StaffTrack's branches.",
     somethingWentWrong: "Something went wrong.",
-    photoUploadFailed: "The photo didn't upload. Check your connection and try again.",
     loading: "Loading",
     close: "Close",
     cancel: "Cancel",

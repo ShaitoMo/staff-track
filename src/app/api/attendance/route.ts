@@ -7,6 +7,7 @@ import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error';
 import { DuplicateAttendanceError } from '@/exceptions/duplicate-attendance-error';
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
@@ -19,11 +20,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }));
-        return NextResponse.json({ error: errors }, { status: 400 });
+        return validationErrorResponse(validationResult.error)
     }
 
     const user = requireAuthenticated(req);
@@ -51,7 +48,7 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch attendance');
-        return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch attendance');
     }
 }
 
@@ -73,17 +70,13 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        return invalidJsonResponse();
     }
 
     const validationResult = CreateAttendanceSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }));
-        return NextResponse.json({ error: errors }, { status: 400 });
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -97,12 +90,12 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof DuplicateAttendanceError) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+            return appErrorResponse(error, 409);
         }
         if (error instanceof BranchNotFoundError || error instanceof UserNotAtBranchError) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return appErrorResponse(error, 400);
         }
         logger.error({ err: error }, 'Failed to create attendance');
-        return NextResponse.json({ error: 'Failed to create attendance' }, { status: 500 });
+        return internalErrorResponse('Failed to create attendance');
     }
 }

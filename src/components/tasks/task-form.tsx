@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createTask, updateTask } from "@/lib/api/tasks";
 import {
     AssigneeCandidate,
@@ -27,6 +27,7 @@ import {
     hasTaskChanges,
     isTaskFormValid,
     Schedule,
+    TASK_FIELDS,
     TaskFormErrors,
     validateTaskForm,
     validateTaskUpdate,
@@ -147,7 +148,9 @@ export function TaskForm({ branches, roles, users, userBranches, mode = "create"
                 router.push("/tasks");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, TASK_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

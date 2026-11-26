@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
 import { login } from "@/lib/api-client";
-import { loginErrorMessage } from "@/lib/login-error";
+import { translateError } from "@/lib/error-messages";
 import { LoginSchema, type LoginInput } from "@/types/auth";
 
 type FieldErrors = Partial<Record<keyof LoginInput, string[]>>;
@@ -43,7 +43,7 @@ export function LoginForm() {
                 router.push("/");
                 router.refresh();
             } catch (error) {
-                setError(loginErrorMessage(error, t.login));
+                setError(translateError(error, t.errors).formMessage);
             }
         });
     }

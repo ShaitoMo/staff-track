@@ -4,6 +4,7 @@ import { CreateBranchSchema } from '@/types/branch'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody } from '@/lib/route-utils'
 import { MANAGER_ROLE, OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { logger } from '@/lib/logger'
+import { internalErrorResponse } from '@/lib/error-response'
 
 /** Owner sees every branch; a manager only their own (FR10). Staff have no branch-management view. */
 export async function GET(req: NextRequest) {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch branches');
-        return NextResponse.json({ error: 'Failed to fetch branches' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch branches');
     }
 }
 
@@ -54,6 +55,6 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to create branch')
-        return NextResponse.json({ error: 'Failed to create branch' }, { status: 500 })
+        return internalErrorResponse('Failed to create branch')
     }
 }

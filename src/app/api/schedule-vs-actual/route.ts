@@ -6,6 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/schedule-vs-actual?branch_id=&user_id=&from=&to= — one row per scheduled shift in the
@@ -24,11 +25,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     const user = requireAuthenticated(req);
@@ -56,9 +53,9 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof BranchNotFoundError || error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to compare schedule with attendance')
-        return NextResponse.json({ error: 'Failed to compare schedule with attendance' }, { status: 500 })
+        return internalErrorResponse('Failed to compare schedule with attendance')
     }
 }

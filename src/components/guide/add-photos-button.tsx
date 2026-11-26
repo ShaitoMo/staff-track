@@ -6,7 +6,7 @@ import { ImagePlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError, PhotoUploadError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { addGuidePhoto } from "@/lib/api/shelf-guide";
 import { UnreadablePhotoError } from "@/lib/compress-photo";
 import { TOUCH_HEIGHT } from "@/lib/touch";
@@ -33,14 +33,7 @@ export function AddPhotosButton({ branchSectionId, folderId }: { branchSectionId
             try {
                 await addGuidePhoto(branchSectionId, file, { folderId });
             } catch (caught) {
-                const reason =
-                    caught instanceof PhotoUploadError
-                        ? t.common.photoUploadFailed
-                        : caught instanceof UnreadablePhotoError
-                          ? t.tasks.unreadablePhoto
-                          : caught instanceof ApiError
-                            ? caught.message
-                            : t.common.somethingWentWrong;
+                const reason = caught instanceof UnreadablePhotoError ? t.tasks.unreadablePhoto : translateError(caught, t.errors).formMessage;
                 setError(files.length > 1 ? t.guide.photoFailed(index + 1, file.name, reason) : reason);
                 break;
             }

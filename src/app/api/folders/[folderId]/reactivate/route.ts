@@ -4,6 +4,7 @@ import { guideErrorResponse } from '@/lib/guide-errors'
 import { requireGuideAccess } from '@/lib/rbac'
 import { GuideFolderService } from '@/services/guide-folder-service'
 import { GuideFolderNotFoundError } from '@/exceptions/guide-folder-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /** POST .../reactivate — the folder and its subtree come back, photos and all (409 while its section or parent is inactive). */
 export async function POST(
@@ -13,7 +14,7 @@ export async function POST(
     const folderId = parseNumericId((await ctx.params).folderId);
 
     if (folderId === null) {
-        return NextResponse.json({ error: 'Invalid folderId' }, { status: 400 });
+        return invalidIdResponse('folderId');
     }
 
     const user = requireAuthenticated(req);

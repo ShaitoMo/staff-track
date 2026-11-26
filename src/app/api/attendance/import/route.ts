@@ -7,6 +7,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error';
 import { UserNotFoundError } from '@/exceptions/user-not-found-error';
 import { logger } from '@/lib/logger'
+import { appErrorResponse, errorResponse, internalErrorResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * POST /api/attendance/import — a clock-machine export (FR5 v1). multipart/form-data: `file`
@@ -25,10 +26,7 @@ export async function POST(req: NextRequest) {
     try {
         formData = await req.formData();
     } catch {
-        return NextResponse.json(
-            { error: 'Expected a multipart/form-data body' },
-            { status: 400 },
-        );
+        return errorResponse(400, 'INVALID_MULTIPART', 'Expected a multipart/form-data body');
     }
 
     const validationResult = ImportAttendanceSchema.safeParse({
@@ -36,18 +34,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }));
-        return NextResponse.json({ error: errors }, { status: 400 });
+        return validationErrorResponse(validationResult.error)
     }
 
     const file = formData.get('file');
 
     // a text field named `file` is not a file; require an actual upload
     if (!(file instanceof File)) {
-        return NextResponse.json({ error: 'file is required' }, { status: 400 });
+        return errorResponse(400, 'VALIDATION_FAILED', 'file is required', { fields: [{ path: 'file', code: 'REQUIRED' }] });
     }
 
     try {
@@ -66,12 +60,12 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof InvalidImportFileError) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return appErrorResponse(error, 400);
         }
         if (error instanceof BranchNotFoundError || error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return appErrorResponse(error, 400);
         }
         logger.error({ err: error }, 'Failed to import attendance');
-        return NextResponse.json({ error: 'Failed to import attendance' }, { status: 500 });
+        return internalErrorResponse('Failed to import attendance');
     }
 }

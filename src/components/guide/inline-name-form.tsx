@@ -7,7 +7,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 
 /** One name and one button that adds a row to the list beside it (new folder, new section type), like "New role". */
@@ -44,7 +44,7 @@ export function InlineNameForm({
                 setName("");
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

@@ -9,9 +9,12 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createRole } from "@/lib/api/roles";
 import { isRoleFormValid, RoleFormErrors, validateRoleForm } from "@/lib/role-form-validation";
+
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const ROLE_FIELDS = { name: "name" } as const satisfies Record<string, keyof RoleFormErrors>;
 
 export function RoleForm() {
     const router = useRouter();
@@ -35,7 +38,9 @@ export function RoleForm() {
                 setName("");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, ROLE_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

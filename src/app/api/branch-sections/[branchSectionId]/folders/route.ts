@@ -6,6 +6,7 @@ import { BranchSectionService } from '@/services/branch-section-service'
 import { GuideFolderService } from '@/services/guide-folder-service'
 import { CreateGuideFolderSchema } from '@/types/shelf-guide'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /**
  * GET .../folders?parentFolderId=&includeInactive=true — one level of folders; no parentFolderId = the section root.
@@ -19,7 +20,7 @@ export async function GET(
     const parentFolderId = queryFolderId(req.nextUrl, 'parentFolderId');
 
     if (branchSectionId === null || parentFolderId === undefined) {
-        return NextResponse.json({ error: 'Invalid branchSectionId or parentFolderId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId or parentFolderId');
     }
 
     const user = requireAuthenticated(req);
@@ -54,7 +55,7 @@ export async function POST(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);

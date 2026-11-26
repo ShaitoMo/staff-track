@@ -15,10 +15,8 @@ export const password = {
         `Set a new password for ${isolate(name)} and give it to them in person. They'll be signed out on every device.`,
     reset: "Reset password",
     resetDone: (name: string) => `Password reset. Give ${isolate(name)} their new password.`,
-    failed: "The password couldn't be changed. Try again.",
     errors: {
         currentRequired: "Enter your current password.",
-        incorrect: "Current password is incorrect.",
         length: "Password must be between 8 and 100 characters.",
         mismatch: "The passwords don't match.",
     },

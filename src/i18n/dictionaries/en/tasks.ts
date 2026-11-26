@@ -72,7 +72,6 @@ export const tasks = {
     openTheirPhoto: "Open their photo",
     declinedBy: "Declined by",
     approvedBy: "Approved by",
-    referencePhotosFailed: "Couldn't load the photos.",
     noReferencePhotos: "No reference photos here yet.",
     openReferencePhoto: (title: string | null) => `Open reference photo${title ? `: ${isolate(title)}` : ""}`,
     // review and row actions

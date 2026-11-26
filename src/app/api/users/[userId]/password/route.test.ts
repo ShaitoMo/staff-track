@@ -74,7 +74,11 @@ describe('PUT /api/users/:userId/password: Change password (own)', () => {
         const res = await call(5, { currentPassword: 'guess', password: 'new-secret' })
 
         expect(res.status).toBe(400)
-        expect(await res.json()).toEqual({ error: 'Current password is incorrect' })
+        expect(await res.json()).toEqual({
+            error: 'Current password is incorrect',
+            code: 'INCORRECT_PASSWORD',
+            fields: [{ path: 'currentPassword', code: 'INCORRECT_PASSWORD' }],
+        })
     })
 
     it('locks out after repeated wrong current passwords, like login', async () => {

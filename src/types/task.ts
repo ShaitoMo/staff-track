@@ -35,6 +35,7 @@ export const UpdateTaskSchema = z.object({
     active: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
+    params: { code: 'NO_FIELDS' },
 }).superRefine((data, ctx) => {
     const { is_recurring: isRecurring, recurrence } = data;
 
@@ -57,12 +58,14 @@ export const UpdateTaskSchema = z.object({
                 code: 'custom',
                 path: ['recurrence'],
                 message: 'A recurring task requires a recurrence rule',
+                params: { code: 'REQUIRED' },
             });
         } else if (!isValidRecurrence(recurrence)) {
             ctx.addIssue({
                 code: 'custom',
                 path: ['recurrence'],
                 message: "Recurrence must be 'daily' or 'weekly:<days>' (e.g. 'weekly:mon,wed')",
+                params: { code: 'INVALID_RECURRENCE' },
             });
         }
 
@@ -108,6 +111,7 @@ export const CreateTaskSchema = z.object({
             code: 'custom',
             path: ['branch_section_id'],
             message: 'A guide folder needs its branch_section_id',
+            params: { code: 'FOLDER_NEEDS_SECTION' },
         });
     }
 
@@ -119,6 +123,7 @@ export const CreateTaskSchema = z.object({
             code: 'custom',
             path: ['assigned_to'],
             message: 'Provide exactly one of assigned_to or assigned_role_id',
+            params: { code: 'ASSIGNEE_XOR_ROLE' },
         });
     }
 
@@ -131,12 +136,14 @@ export const CreateTaskSchema = z.object({
                 code: 'custom',
                 path: ['recurrence'],
                 message: 'A recurring task requires a recurrence rule',
+                params: { code: 'REQUIRED' },
             });
         } else if (!isValidRecurrence(data.recurrence as string)) {
             ctx.addIssue({
                 code: 'custom',
                 path: ['recurrence'],
                 message: "Recurrence must be 'daily' or 'weekly:<days>' (e.g. 'weekly:mon,wed')",
+                params: { code: 'INVALID_RECURRENCE' },
             });
         }
 
@@ -156,6 +163,7 @@ export const CreateTaskSchema = z.object({
             code: 'custom',
             path: ['due_date'],
             message: 'A one-off task requires a due_date',
+            params: { code: 'REQUIRED' },
         });
     }
 

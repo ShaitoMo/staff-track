@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { machineTimeToUtc } from '@/lib/machine-time';
+import { AppError } from '@/exceptions/app-error';
 
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
@@ -15,7 +16,9 @@ const ALLOWED_IMPORT_MIME_TYPES = new Set([
 ]);
 
 /** The file itself is unusable — as opposed to a row inside it, which is reported per row. */
-export class InvalidImportFileError extends Error {
+export class InvalidImportFileError extends AppError {
+    readonly code = 'INVALID_IMPORT_FILE';
+
     constructor(message: string) {
         super(message);
         this.name = 'InvalidImportFileError';

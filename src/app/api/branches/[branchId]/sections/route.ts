@@ -5,6 +5,7 @@ import { canEditGuide, requireGuideAccess } from '@/lib/rbac'
 import { BranchSectionService } from '@/services/branch-section-service'
 import { CreateBranchSectionSchema } from '@/types/shelf-guide'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /** GET /api/branches/:branchId/sections?includeInactive=true — inactive ones only for owner/manager. */
 export async function GET(
@@ -14,7 +15,7 @@ export async function GET(
     const branchId = parseNumericId((await ctx.params).branchId);
 
     if (branchId === null) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const user = requireAuthenticated(req);
@@ -40,7 +41,7 @@ export async function POST(
     const branchId = parseNumericId((await ctx.params).branchId);
 
     if (branchId === null) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const user = requireAuthenticated(req);

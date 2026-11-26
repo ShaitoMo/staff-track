@@ -5,6 +5,7 @@ import { UpdateCoverageRequirementSchema } from '@/types/coverage-requirement'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { CoverageRequirementNotFoundError } from '@/exceptions/coverage-requirement-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 /** PATCH /api/coverage-requirements/:id — requiredCount is the only editable field. */
 export async function PATCH(
@@ -14,7 +15,7 @@ export async function PATCH(
     const { requirementId: requirementIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(requirementIdParam)) {
-        return NextResponse.json({ error: 'Invalid requirementId' }, { status: 400 });
+        return invalidIdResponse('requirementId');
     }
 
     const requirementId = Number(requirementIdParam);
@@ -28,24 +29,20 @@ export async function PATCH(
     const existing = await CoverageRequirementService.getRequirementById(requirementId);
 
     if (!existing) {
-        return NextResponse.json({ error: 'Coverage requirement not found' }, { status: 404 });
+        return appErrorResponse(new CoverageRequirementNotFoundError(), 404);
     }
 
     let body
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = UpdateCoverageRequirementSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -59,10 +56,10 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof CoverageRequirementNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to update coverage requirement')
-        return NextResponse.json({ error: 'Failed to update coverage requirement' }, { status: 500 })
+        return internalErrorResponse('Failed to update coverage requirement')
     }
 }
 
@@ -74,7 +71,7 @@ export async function DELETE(
     const { requirementId: requirementIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(requirementIdParam)) {
-        return NextResponse.json({ error: 'Invalid requirementId' }, { status: 400 });
+        return invalidIdResponse('requirementId');
     }
 
     const requirementId = Number(requirementIdParam);
@@ -88,7 +85,7 @@ export async function DELETE(
     const existing = await CoverageRequirementService.getRequirementById(requirementId);
 
     if (!existing) {
-        return NextResponse.json({ error: 'Coverage requirement not found' }, { status: 404 });
+        return appErrorResponse(new CoverageRequirementNotFoundError(), 404);
     }
 
     try {
@@ -102,9 +99,9 @@ export async function DELETE(
             return forbidden;
         }
         if (error instanceof CoverageRequirementNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to delete coverage requirement')
-        return NextResponse.json({ error: 'Failed to delete coverage requirement' }, { status: 500 })
+        return internalErrorResponse('Failed to delete coverage requirement')
     }
 }

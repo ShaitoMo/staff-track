@@ -9,8 +9,9 @@ import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions, refreshCo
 import { clearLoginAttempts, isLoginLocked, recordFailedLogin } from '@/lib/login-rate-limit'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { IncorrectPasswordError } from '@/exceptions/incorrect-password-error'
-import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, errorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, unauthenticatedResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * PUT /api/users/:userId/password — Change password when it's your own (current password required,
@@ -26,7 +27,7 @@ export async function PUT(
     const userId = parseNumericId(userIdParam);
 
     if (userId === null) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const user = requireAuthenticated(req);
@@ -39,13 +40,13 @@ export async function PUT(
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = UpdatePasswordSchema.safeParse(body);
 
     if (!validationResult.success) {
-        return zodErrorResponse(validationResult.error)
+        return validationErrorResponse(validationResult.error, body)
     }
 
     const { password, currentPassword } = validationResult.data
@@ -65,10 +66,10 @@ export async function PUT(
             return forbidden;
         }
         if (error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to update password')
-        return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
+        return internalErrorResponse('Failed to update password')
     }
 }
 
@@ -94,7 +95,7 @@ async function liftLockout(userId: number): Promise<void> {
  */
 async function changeOwnPassword(userId: number, currentPassword: string | undefined, password: string): Promise<NextResponse> {
     if (currentPassword === undefined) {
-        return NextResponse.json({ error: 'Current password is required' }, { status: 400 })
+        return errorResponse(400, 'VALIDATION_FAILED', 'Current password is required', { fields: [{ path: 'currentPassword', code: 'REQUIRED' }] })
     }
 
     const self = await UserService.getUserById(userId)
@@ -105,11 +106,11 @@ async function changeOwnPassword(userId: number, currentPassword: string | undef
 
     // deactivated, but the access token hasn't run out yet: refuse before anything changes
     if (!self.isActive) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+        return unauthenticatedResponse()
     }
 
     if (isLoginLocked(self.phone)) {
-        return NextResponse.json({ error: 'Too many failed attempts. Try again later.' }, { status: 429 })
+        return errorResponse(429, 'TOO_MANY_ATTEMPTS', 'Too many failed attempts. Try again later.')
     }
 
     // check and count with no await between them, so parallel requests can't all slip past the check
@@ -119,7 +120,7 @@ async function changeOwnPassword(userId: number, currentPassword: string | undef
         await UserService.changeOwnPassword(userId, currentPassword, password)
     } catch (error) {
         if (error instanceof IncorrectPasswordError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         throw error
     }
@@ -129,7 +130,7 @@ async function changeOwnPassword(userId: number, currentPassword: string | undef
 
     // deactivated between the check and now: the password changed, but they can't sign in any more
     if (session === null) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+        return unauthenticatedResponse()
     }
 
     const res = new NextResponse(null, { status: 204 })

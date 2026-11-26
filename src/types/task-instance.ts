@@ -42,6 +42,7 @@ export const UserTaskInstanceFiltersSchema = z.object({
             code: 'custom',
             path: ['due_to'],
             message: 'due_to must be on or after due_from',
+            params: { code: 'END_BEFORE_START' },
         });
     }
 });
@@ -74,6 +75,18 @@ export const ReviewTaskInstanceSchema = z.object({
 export type ReviewTaskInstanceInput = z.infer<typeof ReviewTaskInstanceSchema>;
 
 // ---------- Response shapes ----------
+
+/**
+ * `current` on a 409 INSTANCE_ALREADY_COMPLETED: who completed it first and when, so the row can
+ * update in place instead of showing an error.
+ */
+export const CompletedInstanceStateSchema = z.object({
+    status: z.enum(TASK_STATUSES),
+    completed_by_name: z.string().nullable(),
+    completed_at: z.string().nullable(),
+});
+
+export type CompletedInstanceState = z.infer<typeof CompletedInstanceStateSchema>;
 
 export interface MediaView {
     media_id: number;

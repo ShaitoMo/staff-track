@@ -3,6 +3,8 @@ import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { TaskInstanceService } from '@/services/task-instance-service'
 import { requireTaskInstanceAccess } from '@/lib/rbac'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
+import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 
 /** GET /api/task-instances/:instanceId — owner unrestricted, manager their branches; staff if assigned by name, if they completed it, or if it targets their role at a branch they work at (see requireTaskInstanceAccess). */
 export async function GET(
@@ -12,7 +14,7 @@ export async function GET(
     const { instanceId: instanceIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(instanceIdParam)) {
-        return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
+        return invalidIdResponse('instanceId');
     }
 
     const user = requireAuthenticated(req);
@@ -25,7 +27,7 @@ export async function GET(
         const instance = await TaskInstanceService.getTaskInstanceById(Number(instanceIdParam));
 
         if (!instance) {
-            return NextResponse.json({ error: 'Task instance not found' }, { status: 404 });
+            return appErrorResponse(new TaskInstanceNotFoundError(), 404);
         }
 
         await requireTaskInstanceAccess(user, instance)
@@ -37,6 +39,6 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch task instance')
-        return NextResponse.json({ error: 'Failed to fetch task instance' }, { status: 500 })
+        return internalErrorResponse('Failed to fetch task instance')
     }
 }

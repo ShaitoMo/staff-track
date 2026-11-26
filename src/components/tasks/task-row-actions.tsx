@@ -16,7 +16,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { updateTask } from "@/lib/api/tasks";
 
 /**
@@ -38,7 +38,7 @@ export function TaskRowActions({ taskId, title, active }: { taskId: number; titl
                 await updateTask(taskId, { active: !active });
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             } finally {
                 setConfirming(false);
             }

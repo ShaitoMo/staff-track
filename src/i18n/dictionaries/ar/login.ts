@@ -8,7 +8,5 @@ export const login: typeof en = {
     password: words.password,
     phoneRequired: words.phoneRequired,
     passwordRequired: "كلمة المرور مطلوبة.",
-    invalidCredentials: "رقم الهاتف أو كلمة المرور غير صحيحة.",
-    cantReachServer: "تعذّر الوصول إلى الخادم. تحقّق من اتصالك وحاول مرة أخرى.",
     signIn: "تسجيل الدخول",
 };

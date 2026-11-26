@@ -6,6 +6,7 @@ import { BranchSectionService } from '@/services/branch-section-service'
 import { GuideImageService } from '@/services/guide-image-service'
 import { CreateGuideImageSchema } from '@/types/shelf-guide'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /** GET .../guide-images?folderId= — the photos at one level, in order; no folderId = the section root. */
 export async function GET(
@@ -16,7 +17,7 @@ export async function GET(
     const folderId = queryFolderId(req.nextUrl, 'folderId');
 
     if (branchSectionId === null || folderId === undefined) {
-        return NextResponse.json({ error: 'Invalid branchSectionId or folderId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId or folderId');
     }
 
     const user = requireAuthenticated(req);
@@ -43,7 +44,7 @@ export async function POST(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);

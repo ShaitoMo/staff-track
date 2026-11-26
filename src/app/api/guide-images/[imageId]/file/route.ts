@@ -5,6 +5,7 @@ import { requireGuidePhotoAccess } from '@/lib/guide-photo-access'
 import { openedAsPage, photoUnavailableRedirect } from '@/lib/photo-unavailable'
 import { getPhotoViewUrl, photoExists } from '@/lib/storage'
 import { GuideImageService } from '@/services/guide-image-service'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /**
  * GET /api/guide-images/:id/file — The full photo. Same access as the photo (a manager can still open one in
@@ -21,7 +22,7 @@ export async function GET(
     const imageId = parseNumericId((await ctx.params).imageId);
 
     if (imageId === null) {
-        return NextResponse.json({ error: 'Invalid imageId' }, { status: 400 });
+        return invalidIdResponse('imageId');
     }
 
     const user = requireAuthenticated(req);

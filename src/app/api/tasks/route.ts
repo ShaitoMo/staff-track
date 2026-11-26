@@ -10,6 +10,7 @@ import { InvalidTaskAssignmentError } from "@/exceptions/invalid-task-assignment
 import { InvalidRecurrenceError } from "@/exceptions/invalid-recurrence-error";
 import { InvalidTaskReferenceError } from "@/exceptions/invalid-task-reference-error";
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET(req: NextRequest) {
     const user = requireAuthenticated(req);
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch tasks');
-        return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch tasks');
     }
 }
 
@@ -51,17 +52,13 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = CreateTaskSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -82,9 +79,9 @@ export async function POST(req: NextRequest) {
             error instanceof InvalidRecurrenceError ||
             error instanceof InvalidTaskReferenceError
         ) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to create task')
-        return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
+        return internalErrorResponse('Failed to create task')
     }
 }

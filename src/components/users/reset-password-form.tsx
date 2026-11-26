@@ -9,7 +9,7 @@ import { FieldDescription } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { PasswordField } from "@/components/users/password-field";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { resetPassword } from "@/lib/api/users";
 import { newPasswordErrors } from "@/lib/user-form-validation";
 
@@ -17,6 +17,9 @@ import { newPasswordErrors } from "@/lib/user-form-validation";
  * Reset password, on Edit user: its own card with its own button, so saving a name never touches the
  * password. Outline, not primary: the user form above already holds this page's one blue button.
  */
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const RESET_FIELDS = { password: "password" } as const;
+
 export function ResetPasswordForm({ userId, name }: { userId: number; name: string }) {
     const t = useT();
     const [password, setPassword] = useState("");
@@ -42,7 +45,9 @@ export function ResetPasswordForm({ userId, name }: { userId: number; name: stri
                 setConfirm("");
                 setDone(true);
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.password.failed);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, RESET_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

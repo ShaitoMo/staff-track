@@ -3,8 +3,9 @@ import { RoleService } from '@/services/role-service'
 import { CreateRoleSchema } from '@/types/role'
 import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
-import { requireAuthenticated, forbiddenResponse, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET() {
     try {
@@ -12,7 +13,7 @@ export async function GET() {
         return NextResponse.json(roles, { status: 200 });
     } catch (error) {
         logger.error({ err: error }, 'Failed to fetch roles');
-        return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch roles');
     }
 }
 
@@ -27,13 +28,13 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = CreateRoleSchema.safeParse(body);
 
     if (!validationResult.success) {
-        return zodErrorResponse(validationResult.error)
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -46,9 +47,9 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof DuplicateRoleNameError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to create role')
-        return NextResponse.json({ error: 'Failed to create role' }, { status: 500 })
+        return internalErrorResponse('Failed to create role')
     }
 }

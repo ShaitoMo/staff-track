@@ -5,6 +5,7 @@ import { requireGuideAccess } from '@/lib/rbac'
 import { BranchSectionService } from '@/services/branch-section-service'
 import { GuideImageService } from '@/services/guide-image-service'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /**
  * POST .../guide-images/photo-upload — no body. Step one of adding or replacing a photo: signed PUT
@@ -18,7 +19,7 @@ export async function POST(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);

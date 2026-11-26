@@ -4,8 +4,9 @@ import { CreateRoleSchema } from '@/types/role'
 import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { DuplicateRoleNameError } from '@/exceptions/duplicate-role-name-error'
 import { RoleNotFoundError } from '@/exceptions/role-not-found-error'
-import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET(
     _req: NextRequest,
@@ -16,20 +17,20 @@ export async function GET(
     const roleId = parseNumericId(roleIdParam);
 
     if (roleId === null) {
-        return NextResponse.json({ error: 'Invalid roleId' }, { status: 400 });
+        return invalidIdResponse('roleId');
     }
 
     try {
         const role = await RoleService.getRoleById(roleId);
 
         if (!role) {
-            return NextResponse.json({ error: 'Role not found' }, { status: 404 });
+            return appErrorResponse(new RoleNotFoundError(), 404);
         }
 
         return NextResponse.json(role, { status: 200 });
     } catch (error) {
         logger.error({ err: error }, 'Failed to fetch role');
-        return NextResponse.json({ error: 'Failed to fetch role' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch role');
     }
 }
 
@@ -42,7 +43,7 @@ export async function PATCH(
     const roleId = parseNumericId(roleIdParam);
 
     if (roleId === null) {
-        return NextResponse.json({ error: 'Invalid roleId' }, { status: 400 });
+        return invalidIdResponse('roleId');
     }
 
     const user = requireAuthenticated(req);
@@ -55,13 +56,13 @@ export async function PATCH(
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = CreateRoleSchema.safeParse(body);
 
     if (!validationResult.success) {
-        return zodErrorResponse(validationResult.error)
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -74,12 +75,12 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof RoleNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         if (error instanceof DuplicateRoleNameError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to update role')
-        return NextResponse.json({ error: 'Failed to update role' }, { status: 500 })
+        return internalErrorResponse('Failed to update role')
     }
 }

@@ -63,6 +63,7 @@ export const CreateShiftSchema = z.object({
             code: 'custom',
             path: [startTime === undefined ? 'start_time' : 'end_time'],
             message: 'start_time and end_time are required when period_id is not given',
+            params: { code: 'REQUIRED' },
         });
         return;
     }
@@ -80,6 +81,7 @@ export const CreateShiftSchema = z.object({
             code: 'custom',
             path: ['end_time'],
             message: 'end_time must be after start_time',
+            params: { code: 'END_BEFORE_START' },
         });
     }
 });
@@ -105,6 +107,7 @@ export const UpdateShiftSchema = z.object({
     end_time: TimeOnlySchema.optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
+    params: { code: 'NO_FIELDS' },
 }).superRefine((data, ctx) => {
     const { start_time: startTime, end_time: endTime } = data;
 
@@ -131,6 +134,7 @@ export const UpdateShiftSchema = z.object({
             code: 'custom',
             path: ['end_time'],
             message: 'end_time must be after start_time',
+            params: { code: 'END_BEFORE_START' },
         });
     }
 });

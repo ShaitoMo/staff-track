@@ -5,6 +5,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { RegisterNotFoundError } from '@/exceptions/register-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -15,7 +16,7 @@ export async function GET(
     const registerId = parseNumericId(registerIdParam);
 
     if (registerId === null) {
-        return NextResponse.json({ error: 'Invalid registerId' }, { status: 400 });
+        return invalidIdResponse('registerId');
     }
 
     const user = requireAuthenticated(req);
@@ -37,10 +38,10 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof RegisterNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to fetch register');
-        return NextResponse.json({ error: 'Failed to fetch register' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch register');
     }
 }
 
@@ -53,7 +54,7 @@ export async function PATCH(
     const registerId = parseNumericId(registerIdParam);
 
     if (registerId === null) {
-        return NextResponse.json({ error: 'Invalid registerId' }, { status: 400 });
+        return invalidIdResponse('registerId');
     }
 
     const user = requireAuthenticated(req);
@@ -82,9 +83,9 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof RegisterNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to update register')
-        return NextResponse.json({ error: 'Failed to update register' }, { status: 500 })
+        return internalErrorResponse('Failed to update register')
     }
 }

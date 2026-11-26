@@ -1,0 +1,103 @@
+import { isolate } from "@/i18n/locales";
+
+/**
+ * What an API error says, keyed by the `code` the server sends (ADR 0002). A code missing here
+ * falls back to the server's English text, so a new server code shows something before it's
+ * translated; `ar` is typed against this file, so adding one here means adding it there too.
+ */
+export const errors = {
+    cantReachServer: "Can't reach the server. Check your connection and try again.",
+    somethingWentWrong: "Something went wrong.",
+    /** Shown in place of an error when a teammate completed the task first; worded like tasks.sentForReview. */
+    alreadyCompletedBy: (task: string, name: string, time: string) =>
+        `Already done by ${isolate(name)} at ${isolate(time)}: ${isolate(task)}. Your photo wasn't needed.`,
+    /** Short, under the field whose label already says what it is. */
+    fields: {
+        REQUIRED: "Required.",
+        TOO_LONG: "Too long.",
+        TOO_SHORT: "Too short.",
+        INVALID_FORMAT: "Not in the right format.",
+        OUT_OF_RANGE: "Out of range.",
+        INVALID: "Not valid.",
+        ASSIGNEE_XOR_ROLE: "Pick a person or a role, not both.",
+        INVALID_RECURRENCE: "Pick at least one day.",
+        END_BEFORE_START: "Must be after the start.",
+        FOLDER_NEEDS_SECTION: "Pick the section the folder is in.",
+    },
+    codes: {
+        // request shape
+        VALIDATION_FAILED: "Some details aren't valid. Check them and try again.",
+        NO_FIELDS: "Nothing was changed, so there's nothing to save.",
+        INVALID_JSON: "The request couldn't be read. Reload the page and try again.",
+        INVALID_ID: "That link isn't valid. Go back and try again.",
+        INVALID_MULTIPART: "The file couldn't be read. Try again.",
+        // session and permission
+        UNAUTHENTICATED: "You're not signed in. Sign in again to continue.",
+        INVALID_CREDENTIALS: "Invalid phone or password.",
+        INVALID_REFRESH_TOKEN: "Your session has ended. Sign in again to continue.",
+        SESSION_REFRESH_UNAVAILABLE: "The server is busy. Try again in a moment.",
+        TOO_MANY_ATTEMPTS: "Too many failed attempts. Try again later.",
+        INCORRECT_PASSWORD: "Current password is incorrect.",
+        FORBIDDEN: "You're not allowed to do this.",
+        INSUFFICIENT_ROLE: "Your role isn't allowed to do this.",
+        BRANCH_ACCESS_DENIED: "You don't have access to this branch.",
+        NOT_ASSIGNEE: "Only the person this task is for can complete it.",
+        NOT_BRANCH_MANAGER: "Only a manager of this branch can review this task.",
+        SELF_REVIEW: "You can't review a task you completed yourself.",
+        SELF_ROLE_CHANGE: "You can't change your own role.",
+        SELF_STATUS_CHANGE: "You can't deactivate yourself.",
+        // not found
+        ATTENDANCE_NOT_FOUND: "This attendance record no longer exists. Go back to the list.",
+        BRANCH_NOT_FOUND: "This branch no longer exists. Go back to the list.",
+        COVERAGE_REQUIREMENT_NOT_FOUND: "This coverage rule no longer exists. Go back to the list.",
+        FOLDER_NOT_FOUND: "This folder no longer exists. Go back to the list.",
+        MEDIA_NOT_FOUND: "This photo no longer exists.",
+        PERIOD_NOT_FOUND: "This period no longer exists. Go back to the list.",
+        PHOTO_NOT_FOUND: "This photo no longer exists.",
+        REGISTER_NOT_FOUND: "This register no longer exists. Go back to the list.",
+        ROLE_NOT_FOUND: "This role no longer exists. Go back to the list.",
+        SECTION_NOT_FOUND: "This section no longer exists. Go back to the list.",
+        SECTION_TYPE_NOT_FOUND: "This section type no longer exists. Go back to the list.",
+        SHIFT_NOT_FOUND: "This shift no longer exists. Reload the schedule.",
+        TASK_INSTANCE_NOT_FOUND: "This task no longer exists. Go back to the list.",
+        TASK_NOT_FOUND: "This task no longer exists. Go back to the list.",
+        USER_BRANCH_NOT_FOUND: "This person isn't linked to that branch any more.",
+        USER_NOT_FOUND: "This person no longer exists. Go back to the list.",
+        // conflicts and rules
+        DUPLICATE_ATTENDANCE: "This person already has a punch at this time.",
+        DUPLICATE_COVERAGE_REQUIREMENT: "There's already a coverage rule for this role and period at this branch.",
+        DUPLICATE_MACHINE_EMPLOYEE_ID: "This machine ID is already used at this branch.",
+        DUPLICATE_PERIOD_NAME: "A period with this name already exists.",
+        DUPLICATE_PHONE: "This phone number is already in use.",
+        DUPLICATE_ROLE_NAME: "A role with this name already exists.",
+        DUPLICATE_SECTION: "This branch already has that section.",
+        DUPLICATE_SECTION_TYPE_NAME: "A section type with this name already exists.",
+        DUPLICATE_USER_BRANCH: "This person is already linked to this branch.",
+        INSTANCE_ALREADY_COMPLETED: "Someone else already completed this task.",
+        TASK_INACTIVE: "This task has been turned off.",
+        INVALID_STATUS_TRANSITION: "This task has already been reviewed.",
+        PHOTO_REQUIRED: "Add a photo to complete this task.",
+        INVALID_PHOTO: "The photo didn't upload properly. Take it again.",
+        PHOTO_UPLOAD_FAILED: "The photo didn't upload. Check your connection and try again.",
+        PHOTO_KEY_IN_USE: "That photo was already saved. Add it again.",
+        INACTIVE_GUIDE_PARENT: "Turn the section or parent folder back on first.",
+        INVALID_GUIDE_ORDER: "The photos changed while you were reordering. Reload and try again.",
+        INVALID_IMPORT_FILE: "This file isn't a machine export that can be read.",
+        INVALID_ATTENDANCE_TIMES: "Clock-out must be after clock-in.",
+        INVALID_DATE_RANGE: "The end date must be on or after the start date.",
+        INVALID_RECURRENCE: "Pick at least one day.",
+        INVALID_ROLE: "Pick a role that exists.",
+        INVALID_SCHEDULE_CHANGE: "A task can't switch between one-off and recurring. Create a new task instead.",
+        INVALID_TASK_ASSIGNMENT: "Pick a person or a role, not both.",
+        INVALID_TASK_REFERENCE: "Pick a section or folder that's still active at this branch.",
+        PERIOD_IN_USE: "This period is used by shifts or coverage rules, so it can't be deleted. Turn it off instead.",
+        PERIOD_INACTIVE: "This period is turned off.",
+        PERIOD_NOT_AT_BRANCH: "This period belongs to another branch.",
+        REGISTER_NOT_AT_BRANCH: "This register belongs to another branch.",
+        REGISTER_OVERLAP: "Someone already has this register at this time.",
+        SHIFT_OVERLAP: "This person already has a shift at this time.",
+        USER_NOT_AT_BRANCH: "This person doesn't work at this branch.",
+        // anything else
+        INTERNAL: "Something went wrong on the server. Try again.",
+    },
+};

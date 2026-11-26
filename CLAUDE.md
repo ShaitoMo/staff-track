@@ -76,7 +76,8 @@ no separate API project or client app.
 validate the request with a Zod schema (`src/types/*`) → `getCurrentUser(req)` (`src/lib/auth.ts`) →
 an RBAC check from `src/lib/rbac.ts` (`requireRole`, `requireBranchAccess`, `requireSelfOrRole`) →
 call into `src/services/*` → `src/repository/*` (all Prisma access lives here) → map thrown
-`src/exceptions/*` classes to an HTTP status in the route's own `catch`. **Auth/RBAC checks live in the
+`src/exceptions/*` classes to an HTTP status in the route's own `catch`, building every error body with
+`src/lib/error-response.ts` (`{ error, code, fields? }`, ADR 0002; each exception carries its `code`). **Auth/RBAC checks live in the
 route handlers, not the services** — a service has no awareness of the caller, so the invariant is that
 **no caller reaches a service without an RBAC check first**. `/api/*` is the default path and the only
 one that exists today: Server Components read through it over HTTP and Client Components mutate through
@@ -123,7 +124,8 @@ Server Components read `await getDictionary()`, or `await getI18n()` for `{ t, l
 component with no directive that both sides import can do neither, so it is made a client component or
 split. Dates go through the locale-aware formatters in `src/lib/coverage-rows.ts` / `attendance-rows.ts`,
 whose `locale` is required. Counts go through `plural()` (`src/i18n/locales.ts`) in both languages. API
-error text stays English for now.
+errors are shown through `translateError()` (`src/lib/error-messages.ts`), which looks the response's `code` up in
+the `errors` dictionary and falls back to the server's English `error` text for a code not translated yet.
 
 **Shared contracts (`src/types/*`):** one file per domain, each a Zod schema plus its inferred type.
 Wire format is mixed, per file: snake_case (`branch_id`, `assigned_to`, ...) in `task`, `task-instance`,

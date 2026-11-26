@@ -7,6 +7,7 @@ import { GuideFolderRecord } from '@/repository/guide-folder-repository'
 import { UpdateGuideFolderSchema } from '@/types/shelf-guide'
 import { GuideFolderNotFoundError } from '@/exceptions/guide-folder-not-found-error'
 import { AccessTokenPayload } from '@/types/auth'
+import { invalidIdResponse } from '@/lib/error-response'
 
 function requireFolderAccess(user: AccessTokenPayload, folder: GuideFolderRecord, mode: 'read' | 'edit'): void {
     requireGuideAccess(user, folder, GuideFolderNotFoundError, mode)
@@ -19,7 +20,7 @@ export async function GET(
     const folderId = parseNumericId((await ctx.params).folderId);
 
     if (folderId === null) {
-        return NextResponse.json({ error: 'Invalid folderId' }, { status: 400 });
+        return invalidIdResponse('folderId');
     }
 
     const user = requireAuthenticated(req);
@@ -45,7 +46,7 @@ export async function PATCH(
     const folderId = parseNumericId((await ctx.params).folderId);
 
     if (folderId === null) {
-        return NextResponse.json({ error: 'Invalid folderId' }, { status: 400 });
+        return invalidIdResponse('folderId');
     }
 
     const user = requireAuthenticated(req);
@@ -77,7 +78,7 @@ export async function DELETE(
     const folderId = parseNumericId((await ctx.params).folderId);
 
     if (folderId === null) {
-        return NextResponse.json({ error: 'Invalid folderId' }, { status: 400 });
+        return invalidIdResponse('folderId');
     }
 
     const user = requireAuthenticated(req);

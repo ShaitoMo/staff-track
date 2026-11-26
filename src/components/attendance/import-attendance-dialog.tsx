@@ -10,7 +10,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { importAttendance } from "@/lib/api/attendance";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import type { ImportAttendanceResult } from "@/types/attendance-import";
@@ -78,7 +78,7 @@ export function ImportAttendanceDialog({ branchId, quiet = false }: { branchId: 
                 setResult(await importAttendance(branchId, file));
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.attendance.importFailed);
+                setSubmitError(translateError(error, t.errors).formMessage);
             }
         });
     }

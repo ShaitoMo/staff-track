@@ -2,22 +2,20 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { CircleCheckIcon } from "lucide-react";
-import { useT } from "@/i18n/client";
 
 const SHOWN_MS = 6000;
 
 /** Outside a provider (the manager screens) completing a task announces nothing extra. */
-const AnnounceContext = createContext<(taskLabel: string) => void>(() => {});
+const AnnounceContext = createContext<(text: string) => void>(() => {});
 
 export const useAnnounceCompletion = () => useContext(AnnounceContext);
 
 /**
- * Says a task went for review once its card is gone. The card unmounts on the refresh that follows a
+ * Says what became of a task once its card is gone: sent for review, or already done by a teammate. The card unmounts on the refresh that follows a
  * completion, so the message lives here, above the list, and focus moves to the page instead of
  * falling back to <body>. The live region is always mounted, so screen readers announce it.
  */
 export function CompletionNoticeProvider({ children }: { children: React.ReactNode }) {
-    const t = useT();
     const [notice, setNotice] = useState<{ id: number; text: string } | null>(null);
 
     useEffect(() => {
@@ -26,13 +24,10 @@ export function CompletionNoticeProvider({ children }: { children: React.ReactNo
         return () => clearTimeout(timer);
     }, [notice]);
 
-    const announce = useCallback(
-        (taskLabel: string) => {
-            setNotice((previous) => ({ id: (previous?.id ?? 0) + 1, text: t.tasks.sentForReview(taskLabel) }));
-            document.getElementById("main")?.focus({ preventScroll: true });
-        },
-        [t],
-    );
+    const announce = useCallback((text: string) => {
+        setNotice((previous) => ({ id: (previous?.id ?? 0) + 1, text }));
+        document.getElementById("main")?.focus({ preventScroll: true });
+    }, []);
 
     return (
         <AnnounceContext.Provider value={announce}>

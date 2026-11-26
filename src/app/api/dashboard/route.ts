@@ -7,6 +7,7 @@ import { ForbiddenError } from '@/exceptions/forbidden-error'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { InvalidDateRangeError } from '@/exceptions/invalid-date-range-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, unauthenticatedResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/dashboard?branch_id=&from=&to= — attendance, task and coverage summary for a range
@@ -24,17 +25,13 @@ export async function GET(req: NextRequest) {
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     const user = getCurrentUser(req)
 
     if (!user) {
-        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+        return unauthenticatedResponse()
     }
 
     try {
@@ -52,15 +49,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(dashboard, { status: 200 })
     } catch (error) {
         if (error instanceof ForbiddenError) {
-            return NextResponse.json({ error: error.message }, { status: 403 })
+            return appErrorResponse(error, 403)
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         if (error instanceof InvalidDateRangeError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to build dashboard')
-        return NextResponse.json({ error: 'Failed to build dashboard' }, { status: 500 })
+        return internalErrorResponse('Failed to build dashboard')
     }
 }

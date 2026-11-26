@@ -4,6 +4,7 @@ import { guideErrorResponse } from '@/lib/guide-errors'
 import { OWNER_ROLE, requireRole } from '@/lib/rbac'
 import { SectionTypeService } from '@/services/section-type-service'
 import { UpdateSectionTypeSchema } from '@/types/shelf-guide'
+import { invalidIdResponse } from '@/lib/error-response'
 
 export async function PATCH(
     req: NextRequest,
@@ -12,7 +13,7 @@ export async function PATCH(
     const sectionTypeId = parseNumericId((await ctx.params).sectionTypeId);
 
     if (sectionTypeId === null) {
-        return NextResponse.json({ error: 'Invalid sectionTypeId' }, { status: 400 });
+        return invalidIdResponse('sectionTypeId');
     }
 
     const user = requireAuthenticated(req);
@@ -44,7 +45,7 @@ export async function DELETE(
     const sectionTypeId = parseNumericId((await ctx.params).sectionTypeId);
 
     if (sectionTypeId === null) {
-        return NextResponse.json({ error: 'Invalid sectionTypeId' }, { status: 400 });
+        return invalidIdResponse('sectionTypeId');
     }
 
     const user = requireAuthenticated(req);

@@ -8,6 +8,7 @@ import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-er
 import { PeriodInUseError } from '@/exceptions/period-in-use-error'
 import { DuplicatePeriodNameError } from '@/exceptions/duplicate-period-name-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 /** A chain-wide period (branchId null) is owner-only to touch; a branch's own just needs access to it. */
 function assertMayTouchPeriod(user: AccessTokenPayload, branchId: number | null): void {
@@ -31,7 +32,7 @@ export async function GET(
     const periodId = parseNumericId((await ctx.params).periodId);
 
     if (periodId === null) {
-        return NextResponse.json({ error: 'Invalid periodId' }, { status: 400 });
+        return invalidIdResponse('periodId');
     }
 
     const user = requireAuthenticated(req);
@@ -46,7 +47,7 @@ export async function GET(
         const period = await PeriodService.getPeriodView(periodId);
 
         if (!period) {
-            return NextResponse.json({ error: 'Period not found' }, { status: 404 });
+            return appErrorResponse(new ShiftPeriodNotFoundError('Period not found'), 404);
         }
 
         if (period.branchId !== null) {
@@ -60,7 +61,7 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch period')
-        return NextResponse.json({ error: 'Failed to fetch period' }, { status: 500 })
+        return internalErrorResponse('Failed to fetch period')
     }
 }
 
@@ -72,7 +73,7 @@ export async function PATCH(
     const periodId = parseNumericId((await ctx.params).periodId);
 
     if (periodId === null) {
-        return NextResponse.json({ error: 'Invalid periodId' }, { status: 400 });
+        return invalidIdResponse('periodId');
     }
 
     const user = requireAuthenticated(req);
@@ -84,7 +85,7 @@ export async function PATCH(
     const existing = await PeriodService.getPeriodById(periodId);
 
     if (!existing) {
-        return NextResponse.json({ error: 'Period not found' }, { status: 404 });
+        return appErrorResponse(new ShiftPeriodNotFoundError('Period not found'), 404);
     }
 
     // one readable message on a 400, so the periods form can show it as is
@@ -104,13 +105,13 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof ShiftPeriodNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         if (error instanceof DuplicatePeriodNameError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to update period')
-        return NextResponse.json({ error: 'Failed to update period' }, { status: 500 })
+        return internalErrorResponse('Failed to update period')
     }
 }
 
@@ -122,7 +123,7 @@ export async function DELETE(
     const periodId = parseNumericId((await ctx.params).periodId);
 
     if (periodId === null) {
-        return NextResponse.json({ error: 'Invalid periodId' }, { status: 400 });
+        return invalidIdResponse('periodId');
     }
 
     const user = requireAuthenticated(req);
@@ -134,7 +135,7 @@ export async function DELETE(
     const existing = await PeriodService.getPeriodById(periodId);
 
     if (!existing) {
-        return NextResponse.json({ error: 'Period not found' }, { status: 404 });
+        return appErrorResponse(new ShiftPeriodNotFoundError('Period not found'), 404);
     }
 
     try {
@@ -147,12 +148,12 @@ export async function DELETE(
             return forbidden;
         }
         if (error instanceof ShiftPeriodNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         if (error instanceof PeriodInUseError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to delete period')
-        return NextResponse.json({ error: 'Failed to delete period' }, { status: 500 })
+        return internalErrorResponse('Failed to delete period')
     }
 }

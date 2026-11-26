@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { getTaskReference } from "@/lib/api/task-instances";
 import { cn } from "@/lib/utils";
 import type { GuideImageView } from "@/types/shelf-guide";
@@ -26,7 +26,7 @@ export function TaskReferencePhotos({ instanceId, className }: { instanceId: num
         let cancelled = false;
         getTaskReference(instanceId)
             .then((loaded) => { if (!cancelled) setImages(loaded); })
-            .catch((caught) => { if (!cancelled) setError(caught instanceof ApiError ? caught.message : t.tasks.referencePhotosFailed); });
+            .catch((caught) => { if (!cancelled) setError(translateError(caught, t.errors).formMessage); });
         return () => { cancelled = true; };
     }, [instanceId, t]);
 

@@ -4,6 +4,8 @@ import { GuideImageService } from '@/services/guide-image-service'
 import { requireTaskInstanceAccess } from '@/lib/rbac'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
+import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 
 /**
  * GET /api/task-instances/:instanceId/reference — the shelf-guide photos showing how the task should
@@ -18,7 +20,7 @@ export async function GET(
     const instanceId = parseNumericId((await ctx.params).instanceId);
 
     if (instanceId === null) {
-        return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
+        return invalidIdResponse('instanceId');
     }
 
     const user = requireAuthenticated(req);
@@ -31,7 +33,7 @@ export async function GET(
         const instance = await TaskInstanceService.getTaskInstanceById(instanceId);
 
         if (!instance) {
-            return NextResponse.json({ error: 'Task instance not found' }, { status: 404 });
+            return appErrorResponse(new TaskInstanceNotFoundError(), 404);
         }
 
         await requireTaskInstanceAccess(user, instance)
@@ -45,6 +47,6 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch task reference')
-        return NextResponse.json({ error: 'Failed to fetch task reference' }, { status: 500 })
+        return internalErrorResponse('Failed to fetch task reference')
     }
 }

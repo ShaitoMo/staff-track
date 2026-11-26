@@ -7,7 +7,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createSection } from "@/lib/api/shelf-guide";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import type { SectionTypeView } from "@/types/shelf-guide";
@@ -31,7 +31,7 @@ export function AddSectionForm({ branchId, types, primary }: { branchId: number;
                 setSectionTypeId("");
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

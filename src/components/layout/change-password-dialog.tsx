@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Spinner } from "@/components/ui/spinner";
 import { PasswordField } from "@/components/users/password-field";
 import { useT } from "@/i18n/client";
-import { INCORRECT_PASSWORD_MESSAGE } from "@/exceptions/incorrect-password-error";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { changeOwnPassword } from "@/lib/api/users";
 import { newPasswordErrors } from "@/lib/user-form-validation";
 
@@ -18,6 +17,9 @@ interface Errors {
     password?: string;
     confirm?: string;
 }
+
+/** Wire paths of the fields this dialog shows, onto its own error keys. */
+const CHANGE_PASSWORD_FIELDS = { currentPassword: "current", password: "password" } as const satisfies Record<string, keyof Errors>;
 
 /**
  * Change password: the signed-in User replaces their own. A wrong current password comes back as a
@@ -55,12 +57,10 @@ export function ChangePasswordDialog({ userId, open, onOpenChange }: { userId: n
                 await changeOwnPassword(userId, current, password);
                 setDone(true);
             } catch (error) {
-                // only a wrong current password belongs to a field; any other rejection is form-level
-                if (error instanceof ApiError && error.status === 400 && error.message === INCORRECT_PASSWORD_MESSAGE) {
-                    setErrors({ current: t.password.errors.incorrect });
-                } else {
-                    setSubmitError(error instanceof ApiError ? error.message : t.password.failed);
-                }
+                // a wrong current password (INCORRECT_PASSWORD) comes back on currentPassword and lands under that field
+                const { formMessage, fieldMessages } = translateError(error, t.errors, CHANGE_PASSWORD_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

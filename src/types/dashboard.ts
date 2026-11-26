@@ -25,6 +25,7 @@ export const DashboardFiltersSchema = z.object({
             code: 'custom',
             path: ['to'],
             message: 'to must be on or after from',
+            params: { code: 'END_BEFORE_START' },
         });
     }
 });

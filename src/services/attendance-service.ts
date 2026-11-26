@@ -58,7 +58,7 @@ export class AttendanceService {
         })
 
         if (links.length === 0) {
-            throw new UserNotAtBranchError('User does not work at this branch')
+            throw new UserNotAtBranchError('user_id', 'User does not work at this branch')
         }
 
         return AttendanceRepository.createAttendance(data)

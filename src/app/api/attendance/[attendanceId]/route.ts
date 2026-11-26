@@ -6,6 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { DuplicateAttendanceError } from '@/exceptions/duplicate-attendance-error';
 import { InvalidAttendanceTimesError } from '@/exceptions/invalid-attendance-times-error';
 import { logger } from '@/lib/logger'
+import { appErrorResponse, errorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * PATCH /api/attendance/:attendanceId — fills in or corrects either end of a punch, usually the
@@ -22,7 +23,7 @@ export async function PATCH(
     const attendanceId = parseNumericId(attendanceIdParam);
 
     if (attendanceId === null) {
-        return NextResponse.json({ error: 'Invalid attendanceId' }, { status: 400 });
+        return invalidIdResponse('attendanceId');
     }
 
     const user = requireAuthenticated(req);
@@ -35,7 +36,7 @@ export async function PATCH(
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+        return invalidJsonResponse();
     }
 
     // named one by one, which keeps user, branch and source out of an edit
@@ -45,11 +46,7 @@ export async function PATCH(
     });
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }));
-        return NextResponse.json({ error: errors }, { status: 400 });
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -58,7 +55,7 @@ export async function PATCH(
         const existing = await AttendanceService.getAttendanceById(attendanceId);
 
         if (!existing) {
-            return NextResponse.json({ error: 'Attendance record not found' }, { status: 404 });
+            return errorResponse(404, 'ATTENDANCE_NOT_FOUND', 'Attendance record not found');
         }
 
         requireBranchAccess(user, existing.branch_id)
@@ -71,12 +68,12 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof InvalidAttendanceTimesError) {
-            return NextResponse.json({ error: error.message }, { status: 422 });
+            return appErrorResponse(error, 422);
         }
         if (error instanceof DuplicateAttendanceError) {
-            return NextResponse.json({ error: error.message }, { status: 409 });
+            return appErrorResponse(error, 409);
         }
         logger.error({ err: error }, 'Failed to update attendance');
-        return NextResponse.json({ error: 'Failed to update attendance' }, { status: 500 });
+        return internalErrorResponse('Failed to update attendance');
     }
 }

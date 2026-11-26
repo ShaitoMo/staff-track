@@ -20,6 +20,7 @@ export const CreateAttendanceSchema = z.object({
             code: 'custom',
             path: ['clock_out'],
             message: 'clock_out must be after clock_in',
+            params: { code: 'END_BEFORE_START' },
         });
     }
 });
@@ -36,6 +37,7 @@ export const UpdateAttendanceSchema = z.object({
     clock_out: TimestampSchema.optional(),
 }).refine((data) => data.clock_in !== undefined || data.clock_out !== undefined, {
     message: 'At least one of clock_in or clock_out must be provided',
+    params: { code: 'NO_FIELDS' },
 });
 
 export type UpdateAttendanceInput = z.infer<typeof UpdateAttendanceSchema>;
@@ -65,6 +67,7 @@ export const AttendanceFiltersSchema = z.object({
             code: 'custom',
             path: ['to'],
             message: 'to must be on or after from',
+            params: { code: 'END_BEFORE_START' },
         });
     }
 });
