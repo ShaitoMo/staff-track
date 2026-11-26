@@ -5,6 +5,7 @@ import { ApproveScheduleSchema } from '@/types/schedule-builder'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse } from '@/lib/error-response'
 
 /**
  * POST /api/schedule-builder/approve — saves the proposal the manager kept as ordinary shifts.
@@ -34,9 +35,9 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to approve a schedule')
-        return NextResponse.json({ error: 'Failed to approve a schedule' }, { status: 500 })
+        return internalErrorResponse('Failed to approve a schedule')
     }
 }

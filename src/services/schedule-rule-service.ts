@@ -34,7 +34,7 @@ export class ScheduleRuleService {
 
         const named = [...data.keepApart.flat(), ...data.periodLimits.map((limit) => limit.userId)]
         if (named.some((userId) => !userIds.has(userId))) {
-            throw new UserNotAtBranchError('A rule names someone who does not work at this branch')
+            throw new UserNotAtBranchError(undefined, 'A rule names someone who does not work at this branch')
         }
         if (data.periodLimits.some((limit) => limit.periodIds.some((periodId) => !periodIds.has(periodId)))) {
             throw new ShiftPeriodNotAtBranchError('A rule names a period that is not offered at this branch')

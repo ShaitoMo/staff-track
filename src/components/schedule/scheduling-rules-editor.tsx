@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { saveScheduleRules } from "@/lib/api/schedule-builder";
 import type { ScheduleRules } from "@/types/schedule-builder";
 
@@ -120,7 +120,7 @@ export function SchedulingRulesEditor({
                 setMessage(t.schedulingRules.saved);
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthenticated, forbiddenResponse, parseJsonBody, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseJsonBody } from '@/lib/route-utils'
 import { ScheduleRuleService } from '@/services/schedule-rule-service'
 import { SaveScheduleRulesSchema, ScheduleRulesQuerySchema } from '@/types/schedule-builder'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
@@ -7,6 +7,7 @@ import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, validationErrorResponse } from '@/lib/error-response'
 
 /** GET /api/schedule-rules?branchId= — the branch's scheduling rules (keep-apart pairs and period limits). */
 export async function GET(req: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!query.success) {
-        return zodErrorResponse(query.error)
+        return validationErrorResponse(query.error)
     }
 
     const user = requireAuthenticated(req);
@@ -35,10 +36,10 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to fetch scheduling rules')
-        return NextResponse.json({ error: 'Failed to fetch scheduling rules' }, { status: 500 })
+        return internalErrorResponse('Failed to fetch scheduling rules')
     }
 }
 
@@ -71,9 +72,9 @@ export async function PUT(req: NextRequest) {
             error instanceof UserNotAtBranchError ||
             error instanceof ShiftPeriodNotAtBranchError
         ) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to save scheduling rules')
-        return NextResponse.json({ error: 'Failed to save scheduling rules' }, { status: 500 })
+        return internalErrorResponse('Failed to save scheduling rules')
     }
 }

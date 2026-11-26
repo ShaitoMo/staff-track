@@ -15,6 +15,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import { useLocale, useT } from "@/i18n/client";
 import { isolate } from "@/i18n/locales";
 import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { approveSchedule, proposeSchedule } from "@/lib/api/schedule-builder";
 import { countChanges, groupByDay, ProposalRow, shortReason, swapCandidates, toRows } from "@/lib/auto-fill-rows";
 import { formatDay, formatDayStacked, formatWeekRange, weekDates } from "@/lib/coverage-rows";
@@ -141,7 +142,7 @@ export function AutoFillButton({
             try {
                 await action();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.schedule.autoFillFailed);
+                setError(caught instanceof ApiError ? translateError(caught, t.errors).formMessage : t.schedule.autoFillFailed);
             }
         });
     }
