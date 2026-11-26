@@ -1,4 +1,4 @@
-import { SchedulerUnavailableError } from '@/exceptions/scheduler-unavailable-error'
+import { SchedulerFailureCode, SchedulerUnavailableError } from '@/exceptions/scheduler-unavailable-error'
 import { logger } from '@/lib/logger'
 import { SolverRequest, SolverResponse, SolverResponseSchema } from '@/types/schedule-builder'
 
@@ -34,8 +34,7 @@ export async function solveSchedule(request: SolverRequest): Promise<SolverRespo
 
     if (!res.ok) {
         logger.error({ status: res.status }, 'Scheduler answered with an error status')
-        // a 4xx means it refused what we sent; a 5xx is its own trouble and may pass
-        throw new SchedulerUnavailableError(res.status < 500 ? 'SOLVER_CONTRACT_MISMATCH' : 'SOLVER_UNAVAILABLE')
+        throw new SchedulerUnavailableError(failureForStatus(res.status))
     }
 
     let body: unknown
@@ -57,4 +56,13 @@ export async function solveSchedule(request: SolverRequest): Promise<SolverRespo
     }
 
     return parsed.data
+}
+
+/**
+ * 401/403: it refused our secret, so the setup is wrong. Any other 4xx: it refused what we sent.
+ * A 5xx is its own trouble and may pass.
+ */
+function failureForStatus(status: number): SchedulerFailureCode {
+    if (status === 401 || status === 403) return 'SOLVER_NOT_CONFIGURED'
+    return status < 500 ? 'SOLVER_CONTRACT_MISMATCH' : 'SOLVER_UNAVAILABLE'
 }

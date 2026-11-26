@@ -24,6 +24,12 @@ describe('solveSchedule', () => {
         await expect(solveSchedule(request)).rejects.toMatchObject({ code: 'SOLVER_NOT_CONFIGURED' })
     })
 
+    it.each([401, 403])('fails with SOLVER_NOT_CONFIGURED when the solver refuses our secret (%i)', async (status) => {
+        jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status }))
+
+        await expect(solveSchedule(request)).rejects.toMatchObject({ code: 'SOLVER_NOT_CONFIGURED' })
+    })
+
     it('fails with SOLVER_CONTRACT_MISMATCH when the solver rejects the request', async () => {
         jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status: 422 }))
 
