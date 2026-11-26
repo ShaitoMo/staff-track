@@ -97,6 +97,10 @@ export const errors = {
         REGISTER_OVERLAP: "Someone already has this register at this time.",
         SHIFT_OVERLAP: "This person already has a shift at this time.",
         USER_NOT_AT_BRANCH: "This person doesn't work at this branch.",
+        // auto-fill
+        SOLVER_NOT_CONFIGURED: "Auto-fill isn't set up yet. Ask whoever runs the system to set it up.",
+        SOLVER_UNAVAILABLE: "Auto-fill is unavailable right now. Try again in a moment.",
+        SOLVER_CONTRACT_MISMATCH: "Auto-fill couldn't handle this request. Report it to whoever runs the system.",
         // anything else
         INTERNAL: "Something went wrong on the server. Try again.",
     },

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlertCircleIcon, CircleCheckIcon } from "lucide-react";
+import { AutoFillButton, AutoFillNotice } from "@/components/schedule/auto-fill-button";
 import { CopyWeekButton, ScheduleGrid } from "@/components/schedule/schedule-grid";
 import { ScheduleRoster } from "@/components/schedule/schedule-roster";
 import { WeekNav } from "@/components/layout/week-nav";
@@ -135,7 +136,19 @@ export async function ScheduleSection({
     const roleRows = buildRoleRows(shifts, week, roles, sortedPeriods, requirements, weekStart, editing ? staff.map((member) => member.roleId) : []);
     const openRegisterRows = buildOpenRegisterRows(week, registers, sortedPeriods, weekStart);
     const otherShifts = toOtherShifts(shifts, week, sortedPeriods);
+    const summary = summarizeWeek(roleRows);
     const today = todayDateString();
+    // auto-fill only fills days not yet over, so a past week doesn't offer it
+    const autoFill = weekEnd >= today
+        ? <AutoFillButton key={weekStart} branchId={branchId} weekStart={weekStart} periods={sortedPeriods} roles={roles} />
+        : null;
+    // the two ways to fill a week, always side by side; both outline, so the page keeps one blue button
+    const fillActions = (
+        <div className="flex flex-wrap items-center gap-3">
+            {autoFill}
+            <CopyWeekButton branchId={branchId} weekStart={weekStart} />
+        </div>
+    );
     const toolbar = (
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
             {showWeekNav ? (
@@ -146,7 +159,9 @@ export async function ScheduleSection({
                     query={{ branch: String(branchId), ...(editing && { mode: "edit" }) }}
                 />
             ) : null}
-            {editing ? <CopyWeekButton branchId={branchId} weekStart={weekStart} /> : null}
+            {/* outside the buttons, which can unmount when the approval fills the week */}
+            <AutoFillNotice key={weekStart} branchId={branchId} weekStart={weekStart} />
+            {editing ? fillActions : null}
         </div>
     );
 
@@ -182,9 +197,7 @@ export async function ScheduleSection({
                         <EmptyTitle>{t.schedule.nothingScheduled(formatWeekRange(weekStart, locale))}</EmptyTitle>
                         <EmptyDescription>{t.schedule.nothingScheduledDescription}</EmptyDescription>
                     </EmptyHeader>
-                    <EmptyContent>
-                        <CopyWeekButton branchId={branchId} weekStart={weekStart} />
-                    </EmptyContent>
+                    <EmptyContent>{fillActions}</EmptyContent>
                 </Empty>
             </div>
         );
@@ -195,8 +208,12 @@ export async function ScheduleSection({
             {toolbar}
             {/* paper carries no week nav, so it says which week it is */}
             <p className="hidden text-sm font-medium print:-mt-2 print:block">{t.schedule.weekOf(formatWeekRange(weekStart, locale))}</p>
-            <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 print:hidden">
-                <CoverageSummary summary={summarizeWeek(roleRows)} t={t} />
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 print:hidden">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <CoverageSummary summary={summary} t={t} />
+                    {/* the roster offers the fix where the shortfall is named; editing has it in the toolbar */}
+                    {!editing && summary.shortSlots > 0 ? autoFill : null}
+                </div>
                 {editing ? <GridLegend t={t} /> : null}
             </div>
             {requirements.length === 0 ? (
