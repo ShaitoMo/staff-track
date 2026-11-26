@@ -60,13 +60,19 @@ describe('GET /api/periods/:id', () => {
         mockedGetCurrentUser.mockReturnValue(manager)
         mockedGetPeriodView.mockResolvedValue(period(2))
 
-        expect((await call('3')).status).toBe(403)
+        const res = await call('3')
+
+        expect(res.status).toBe(403)
+        expect(await res.json()).toMatchObject({ code: 'BRANCH_ACCESS_DENIED' })
     })
 
     it('refuses staff before looking the period up', async () => {
         mockedGetCurrentUser.mockReturnValue(staff)
 
-        expect((await call('3')).status).toBe(403)
+        const res = await call('3')
+
+        expect(res.status).toBe(403)
+        expect(await res.json()).toMatchObject({ code: 'INSUFFICIENT_ROLE' })
         expect(mockedGetPeriodView).not.toHaveBeenCalled()
     })
 
@@ -74,7 +80,12 @@ describe('GET /api/periods/:id', () => {
         mockedGetCurrentUser.mockReturnValue(manager)
         mockedGetPeriodView.mockResolvedValue(null)
 
-        expect((await call('3')).status).toBe(404)
-        expect((await call('abc')).status).toBe(400)
+        const missing = await call('3')
+        expect(missing.status).toBe(404)
+        expect(await missing.json()).toMatchObject({ code: 'PERIOD_NOT_FOUND' })
+
+        const malformed = await call('abc')
+        expect(malformed.status).toBe(400)
+        expect(await malformed.json()).toMatchObject({ code: 'INVALID_ID' })
     })
 })
