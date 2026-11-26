@@ -39,6 +39,7 @@ export const CreatePeriodSchema = z.object({
             code: 'custom',
             path: ['defaultEnd'],
             message: 'defaultEnd must be after defaultStart',
+            params: { code: 'END_BEFORE_START' },
         })
     }
 })
@@ -60,6 +61,7 @@ export const UpdatePeriodSchema = z.object({
     active: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
+    params: { code: 'NO_FIELDS' },
 }).superRefine((data, ctx) => {
     const { defaultStart, defaultEnd } = data
 
@@ -85,6 +87,7 @@ export const UpdatePeriodSchema = z.object({
             code: 'custom',
             path: ['defaultEnd'],
             message: 'defaultEnd must be after defaultStart',
+            params: { code: 'END_BEFORE_START' },
         })
     }
 })

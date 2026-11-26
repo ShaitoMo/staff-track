@@ -21,7 +21,7 @@ export const UpdateSectionTypeSchema = z.object({
     name: z.string().trim().min(1).max(128).optional(),
     displayOrder: DisplayOrderSchema.optional(),
     isActive: z.boolean().optional(),
-}).refine(atLeastOneField, { message: 'At least one field must be provided' })
+}).refine(atLeastOneField, { message: 'At least one field must be provided', params: { code: 'NO_FIELDS' } })
 
 export type UpdateSectionTypeInput = z.infer<typeof UpdateSectionTypeSchema>
 
@@ -70,7 +70,7 @@ export type CreateGuideFolderInput = z.infer<typeof CreateGuideFolderSchema>
 export const UpdateGuideFolderSchema = z.object({
     name: z.string().trim().min(1).max(200).optional(),
     displayOrder: DisplayOrderSchema.optional(),
-}).refine(atLeastOneField, { message: 'At least one field must be provided' })
+}).refine(atLeastOneField, { message: 'At least one field must be provided', params: { code: 'NO_FIELDS' } })
 
 export type UpdateGuideFolderInput = z.infer<typeof UpdateGuideFolderSchema>
 
@@ -121,6 +121,7 @@ export const UpdateGuideImageSchema = z.object({
     thumbKey: z.string().min(1).optional(),
 }).refine(atLeastOneField, {
     message: 'At least one field must be provided',
+    params: { code: 'NO_FIELDS' },
 }).refine(data => (data.photoKey === undefined) === (data.thumbKey === undefined), {
     message: 'Send photoKey and thumbKey together',
     path: ['thumbKey'],

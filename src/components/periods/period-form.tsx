@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createPeriod, updatePeriod } from "@/lib/api/periods";
 import {
     isPeriodFormValid,
@@ -22,6 +22,9 @@ import {
     validatePeriodForm,
 } from "@/lib/period-form-validation";
 import { Branch } from "@/types/branch";
+
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const PERIOD_FIELDS = { branchId: "branch", name: "name", defaultStart: "defaultStart", defaultEnd: "defaultEnd", sortOrder: "sortOrder" } as const satisfies Record<string, keyof PeriodFormErrors>;
 
 const CHAIN_WIDE = "chain-wide";
 
@@ -96,7 +99,9 @@ export function PeriodForm({ mode, branches, canPickChainWide, defaultBranchId, 
                 router.push("/periods");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, PERIOD_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

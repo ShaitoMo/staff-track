@@ -12,6 +12,7 @@ import {
 import { AuthService } from '@/services/auth-service'
 import { InvalidRefreshTokenError } from '@/exceptions/invalid-refresh-token-error'
 import { logger } from '@/lib/logger'
+import { errorResponse, unauthenticatedResponse } from '@/lib/error-response'
 
 /** Reachable without a session — login/refresh can't require what they grant, logout must survive an expired token, and /login is where an unauthenticated page request gets sent. */
 const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/logout', '/login'])
@@ -48,7 +49,7 @@ export async function proxy(request: NextRequest) {
 
     if (!user) {
         if (request.nextUrl.pathname.startsWith('/api/')) {
-            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+            return unauthenticatedResponse()
         }
         return NextResponse.redirect(new URL('/login', request.url))
     }
@@ -98,7 +99,7 @@ function refreshUnavailable(request: NextRequest): NextResponse {
     const message = 'Service temporarily unavailable, please try again'
 
     if (request.nextUrl.pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: message }, { status: 503 })
+        return errorResponse(503, 'SESSION_REFRESH_UNAVAILABLE', message)
     }
     return new NextResponse(message, { status: 503 })
 }

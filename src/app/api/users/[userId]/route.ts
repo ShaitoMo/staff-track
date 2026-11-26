@@ -5,8 +5,9 @@ import { MANAGER_ROLE, OWNER_ROLE, requireCallerCanReachUser, requireSelfOrRole,
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
-import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -17,7 +18,7 @@ export async function GET(
     const userId = parseNumericId(userIdParam);
 
     if (userId === null) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const caller = requireAuthenticated(req);
@@ -32,7 +33,7 @@ export async function GET(
         const user = await UserService.getUserById(userId);
 
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return appErrorResponse(new UserNotFoundError(), 404);
         }
 
         await requireCallerCanReachUser(caller, userId)
@@ -44,7 +45,7 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch user');
-        return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch user');
     }
 }
 
@@ -57,7 +58,7 @@ export async function PATCH(
     const userId = parseNumericId(userIdParam);
 
     if (userId === null) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const caller = requireAuthenticated(req);
@@ -70,13 +71,13 @@ export async function PATCH(
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = UserUpdateSchema.safeParse(body);
 
     if (!validationResult.success) {
-        return zodErrorResponse(validationResult.error)
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -85,7 +86,7 @@ export async function PATCH(
         const existing = await UserService.getUserById(userId);
 
         if (!existing) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return appErrorResponse(new UserNotFoundError(), 404);
         }
 
         await requireCallerCanReachUser(caller, userId)
@@ -98,15 +99,15 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         if (error instanceof DuplicatePhoneError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         if (error instanceof InvalidRoleError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to update user')
-        return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
+        return internalErrorResponse('Failed to update user')
     }
 }

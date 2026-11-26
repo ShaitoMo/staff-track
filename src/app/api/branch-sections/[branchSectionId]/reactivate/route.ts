@@ -4,6 +4,7 @@ import { guideErrorResponse } from '@/lib/guide-errors'
 import { requireGuideAccess } from '@/lib/rbac'
 import { BranchSectionService } from '@/services/branch-section-service'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /** POST .../reactivate — the section and its folders come back, photos and all. Returns the counts. */
 export async function POST(
@@ -13,7 +14,7 @@ export async function POST(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);

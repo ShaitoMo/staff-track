@@ -5,6 +5,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse } from '@/lib/error-response'
 
 export async function POST(req: NextRequest) {
     const user = requireAuthenticated(req);
@@ -30,9 +31,9 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to create register')
-        return NextResponse.json({ error: 'Failed to create register' }, { status: 500 })
+        return internalErrorResponse('Failed to create register')
     }
 }

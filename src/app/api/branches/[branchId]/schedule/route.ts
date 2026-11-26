@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthenticated, forbiddenResponse, parseNumericId, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { ShiftService } from '@/services/shift-service'
 import { BranchScheduleQuerySchema } from '@/types/shift'
 import { requireBranchAccess } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/branches/:branchId/schedule?week_start=YYYY-MM-DD
@@ -21,7 +22,7 @@ export async function GET(
     const branchId = parseNumericId(branchIdParam);
 
     if (branchId === null) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const user = requireAuthenticated(req);
@@ -35,7 +36,7 @@ export async function GET(
     })
 
     if (!validationResult.success) {
-        return zodErrorResponse(validationResult.error)
+        return validationErrorResponse(validationResult.error)
     }
 
     try {
@@ -48,9 +49,9 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to fetch branch schedule');
-        return NextResponse.json({ error: 'Failed to fetch branch schedule' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch branch schedule');
     }
 }

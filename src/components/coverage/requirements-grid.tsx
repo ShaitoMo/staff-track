@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createRequirement, updateRequirement } from "@/lib/api/coverage-requirements";
 import { GridCell, GridRow, MAX_REQUIRED_COUNT, parseRequiredCount } from "@/lib/coverage-rows";
 import { TOUCH_HEIGHT } from "@/lib/touch";
@@ -65,7 +65,7 @@ function RequirementCell({
                 router.refresh();
             } catch (caught) {
                 setValue(saved);
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

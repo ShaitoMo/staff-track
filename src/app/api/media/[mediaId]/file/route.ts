@@ -6,6 +6,7 @@ import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
 import { openedAsPage, photoUnavailableRedirect } from '@/lib/photo-unavailable'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 /**
  * GET /api/media/:mediaId/file — the photo itself. Same access rule as its parent task instance;
@@ -26,7 +27,7 @@ export async function GET(
     const mediaId = parseNumericId(mediaIdParam);
 
     if (mediaId === null) {
-        return NextResponse.json({ error: 'Invalid mediaId' }, { status: 400 });
+        return invalidIdResponse('mediaId');
     }
 
     const user = requireAuthenticated(req);
@@ -60,9 +61,9 @@ export async function GET(
             return forbidden;
         }
         if (notFound) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to serve photo')
-        return NextResponse.json({ error: 'Failed to serve photo' }, { status: 500 })
+        return internalErrorResponse('Failed to serve photo')
     }
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { reviewInstance } from "@/lib/api/task-instances";
 
 /** Approve or decline one completed instance. Decline is final, so it asks once more first. */
@@ -24,7 +24,7 @@ export function ReviewActions({ instanceId }: { instanceId: number }) {
                 router.refresh();
             } catch (caught) {
                 setConfirmingDecline(false);
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

@@ -35,8 +35,8 @@ export interface TaskFormErrors {
 /** One message per field, in the viewer's language; the English set is the default. */
 export type TaskFieldMessages = Dictionary["tasks"]["errors"];
 
-/** Maps the schema's snake_case issue paths onto the form's fields. */
-const PATH_TO_FIELD: Record<string, keyof TaskFormErrors> = {
+/** Maps the schema's snake_case issue paths onto the form's fields; the server's field errors use the same paths. */
+export const TASK_FIELDS: Record<string, keyof TaskFormErrors> = {
     title: "title",
     branch_id: "branchId",
     assigned_to: "assignee",
@@ -57,7 +57,7 @@ function issuesToErrors(
     errors: TaskFormErrors = {},
 ): TaskFormErrors {
     for (const issue of issues) {
-        const field = PATH_TO_FIELD[String(issue.path[0])];
+        const field = TASK_FIELDS[String(issue.path[0])];
         if (field) {
             errors[field] = messages[field];
         }

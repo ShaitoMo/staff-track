@@ -5,6 +5,7 @@ import { UserShiftFiltersSchema } from '@/types/shift'
 import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/users/:userId/shifts?from=&to=
@@ -18,7 +19,7 @@ export async function GET(
     const { userId: userIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(userIdParam)) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const userId = Number(userIdParam);
@@ -37,11 +38,7 @@ export async function GET(
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     try {
@@ -54,9 +51,9 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to fetch shifts');
-        return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch shifts');
     }
 }

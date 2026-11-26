@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { appErrorResponse, internalErrorResponse } from '@/lib/error-response'
+import type { AppError } from '@/exceptions/app-error'
 import { forbiddenResponse } from '@/lib/route-utils'
 import { InvalidPhotoError } from '@/lib/storage'
 import { logger } from '@/lib/logger'
@@ -13,7 +15,7 @@ import { InactiveGuideParentError } from '@/exceptions/inactive-guide-parent-err
 import { InvalidGuideOrderError } from '@/exceptions/invalid-guide-order-error'
 import { SectionTypeNotFoundError } from '@/exceptions/section-type-not-found-error'
 
-const STATUS_BY_ERROR: [new () => Error, number][] = [
+const STATUS_BY_ERROR: [new () => AppError, number][] = [
     [BranchNotFoundError, 404],
     [SectionTypeNotFoundError, 404],
     [BranchSectionNotFoundError, 404],
@@ -34,16 +36,16 @@ export function guideErrorResponse(error: unknown, failureMessage: string): Next
     }
 
     if (error instanceof InvalidPhotoError) {
-        return NextResponse.json({ error: error.message }, { status: 400 })
+        return appErrorResponse(error, 400)
     }
 
     const match = STATUS_BY_ERROR.find(([ErrorClass]) => error instanceof ErrorClass)
     if (match) {
-        return NextResponse.json({ error: (error as Error).message }, { status: match[1] })
+        return appErrorResponse(error as AppError, match[1])
     }
 
     logger.error({ err: error }, failureMessage)
-    return NextResponse.json({ error: failureMessage }, { status: 500 })
+    return internalErrorResponse(failureMessage)
 }
 
 /** `?name=true` query flags (includeInactive, all). */

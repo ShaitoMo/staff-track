@@ -50,8 +50,18 @@ describe('proxy — refreshing an expired session', () => {
 
         expect(page.status).toBe(503)
         expect(api.status).toBe(503)
+        expect(await api.json()).toMatchObject({ code: 'SESSION_REFRESH_UNAVAILABLE' })
         // the refresh cookie is left alone, so the next request can try again
         expect(page.headers.get('set-cookie')).toBeNull()
+    })
+
+    it('answers an API request with UNAUTHENTICATED when the refresh token is invalid', async () => {
+        mockedRefresh.mockRejectedValue(new InvalidRefreshTokenError())
+
+        const res = await proxy(expiredSession('/api/tasks'))
+
+        expect(res.status).toBe(401)
+        expect(await res.json()).toEqual({ error: 'Not authenticated', code: 'UNAUTHENTICATED' })
     })
 
     it('lets the request through with a fresh access cookie when the refresh succeeds', async () => {

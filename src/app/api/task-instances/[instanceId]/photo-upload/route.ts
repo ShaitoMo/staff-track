@@ -6,6 +6,8 @@ import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { InactiveTaskError } from '@/exceptions/inactive-task-error'
 import { logger } from '@/lib/logger'
+import { instanceAlreadyCompletedResponse } from '@/lib/instance-completed-response'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 /**
  * POST .../photo-upload — no body. Returns a short-lived signed URL the browser PUTs the compressed
@@ -21,7 +23,7 @@ export async function POST(
     const instanceId = parseNumericId(instanceIdParam);
 
     if (instanceId === null) {
-        return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
+        return invalidIdResponse('instanceId');
     }
 
     const user = requireAuthenticated(req);
@@ -41,16 +43,25 @@ export async function POST(
         return NextResponse.json(view, { status: 200 })
     } catch (error) {
         if (error instanceof TaskInstanceNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         const forbidden = forbiddenResponse(error);
         if (forbidden) {
             return forbidden;
         }
-        if (error instanceof InvalidStatusTransitionError || error instanceof InactiveTaskError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+        // the only transition these routes attempt is to completed, so this means a teammate got there first;
+        // the completion checks have already passed, so the caller may see who it was
+        if (error instanceof InvalidStatusTransitionError) {
+            const current = await TaskInstanceService.getTaskInstanceById(instanceId).catch((err) => {
+                logger.error({ err }, 'Failed to load the already-completed task instance')
+                return null
+            })
+            return instanceAlreadyCompletedResponse(current)
+        }
+        if (error instanceof InactiveTaskError) {
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to create photo upload')
-        return NextResponse.json({ error: 'Failed to create photo upload' }, { status: 500 })
+        return internalErrorResponse('Failed to create photo upload')
     }
 }

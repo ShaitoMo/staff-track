@@ -14,6 +14,7 @@ import { ShiftPeriodNotFoundError } from '@/exceptions/shift-period-not-found-er
 import { ShiftPeriodNotAtBranchError } from '@/exceptions/shift-period-not-at-branch-error'
 import { ShiftPeriodInactiveError } from '@/exceptions/shift-period-inactive-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 //GET /api/shifts?branch_id=&user_id=&register_id=&from=&to=
 
@@ -29,11 +30,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     const user = requireAuthenticated(req);
@@ -61,7 +58,7 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch shifts')
-        return NextResponse.json({ error: 'Failed to fetch shifts' }, { status: 500 })
+        return internalErrorResponse('Failed to fetch shifts')
     }
 }
 
@@ -80,17 +77,13 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = CreateShiftSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -104,10 +97,10 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof ShiftOverlapError || error instanceof RegisterOverlapError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         if (error instanceof RegisterNotAtBranchError) {
-            return NextResponse.json({ error: error.message }, { status: 422 })
+            return appErrorResponse(error, 422)
         }
         if (
             error instanceof UserNotFoundError ||
@@ -118,9 +111,9 @@ export async function POST(req: NextRequest) {
             error instanceof ShiftPeriodNotAtBranchError ||
             error instanceof ShiftPeriodInactiveError
         ) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to create shift')
-        return NextResponse.json({ error: 'Failed to create shift' }, { status: 500 })
+        return internalErrorResponse('Failed to create shift')
     }
 }

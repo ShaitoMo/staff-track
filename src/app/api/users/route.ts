@@ -4,8 +4,9 @@ import { UserService } from '@/services/user-service'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
 import { InvalidRoleError } from '@/exceptions/invalid-role-error'
-import { requireAuthenticated, forbiddenResponse, zodErrorResponse } from '@/lib/route-utils'
+import { requireAuthenticated, forbiddenResponse } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function POST(req: NextRequest) {
     const caller = requireAuthenticated(req);
@@ -18,13 +19,13 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = UserValidateSchema.safeParse(body);
 
     if (!validationResult.success) {
-        return zodErrorResponse(validationResult.error)
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -37,13 +38,13 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof DuplicatePhoneError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         if (error instanceof InvalidRoleError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to create user')
-        return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+        return internalErrorResponse('Failed to create user')
     }
 }
 /**
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
     const branchIdParam = req.nextUrl.searchParams.get('branch_id')
 
     if (branchIdParam !== null && !/^\d+$/.test(branchIdParam)) {
-        return NextResponse.json({ error: 'Invalid branch_id' }, { status: 400 })
+        return invalidIdResponse('branch_id')
     }
 
     try {
@@ -83,6 +84,6 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch users');
-        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch users');
     }
 }

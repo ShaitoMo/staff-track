@@ -5,6 +5,7 @@ import { requireGuideAccess } from '@/lib/rbac'
 import { BranchSectionService } from '@/services/branch-section-service'
 import { UpdateBranchSectionSchema } from '@/types/shelf-guide'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -13,7 +14,7 @@ export async function GET(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);
@@ -39,7 +40,7 @@ export async function PATCH(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);
@@ -72,7 +73,7 @@ export async function DELETE(
     const branchSectionId = parseNumericId((await ctx.params).branchSectionId);
 
     if (branchSectionId === null) {
-        return NextResponse.json({ error: 'Invalid branchSectionId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId');
     }
 
     const user = requireAuthenticated(req);

@@ -20,6 +20,7 @@ export const UserUpdateSchema = z.object({
     isActive: z.boolean().optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
+    params: { code: 'NO_FIELDS' },
 })
 
 export type UpdateUserInput = z.infer<typeof UserUpdateSchema>

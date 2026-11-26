@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useLocale, useT } from "@/i18n/client";
 import { isolate } from "@/i18n/locales";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { updateAttendance } from "@/lib/api/attendance";
 import { fixTimeToIso, type MissingEnd } from "@/lib/attendance-rows";
 import { formatDay } from "@/lib/coverage-rows";
@@ -75,7 +75,10 @@ export function FixPunchDialog({
                 setOpen(false);
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.attendance.saveFailed);
+                // the one field here is whichever end is missing, so a time error from the server lands under it
+                const { formMessage, fieldMessages } = translateError(error, t.errors, { [end]: "time" as const });
+                setTimeError(fieldMessages.time ?? null);
+                setSubmitError(formMessage);
             }
         });
     }

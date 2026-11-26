@@ -12,6 +12,7 @@ import { RegisterOverlapError } from '@/exceptions/register-overlap-error'
 import { ShiftNotFoundError } from '@/exceptions/shift-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -22,7 +23,7 @@ export async function GET(
     const shiftId = parseNumericId(shiftIdParam);
 
     if (shiftId === null) {
-        return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
+        return invalidIdResponse('shiftId');
     }
 
     const user = requireAuthenticated(req);
@@ -35,7 +36,7 @@ export async function GET(
         const shift = await ShiftService.getShiftById(shiftId);
 
         if (!shift) {
-            return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+            return appErrorResponse(new ShiftNotFoundError(), 404);
         }
 
         requireRole(user, [OWNER_ROLE, MANAGER_ROLE])
@@ -48,7 +49,7 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch shift');
-        return NextResponse.json({ error: 'Failed to fetch shift' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch shift');
     }
 }
 
@@ -68,7 +69,7 @@ export async function PATCH(
     const shiftId = parseNumericId(shiftIdParam);
 
     if (shiftId === null) {
-        return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
+        return invalidIdResponse('shiftId');
     }
 
     const user = requireAuthenticated(req);
@@ -80,14 +81,14 @@ export async function PATCH(
     const existing = await ShiftService.getShiftById(shiftId);
 
     if (!existing) {
-        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+        return appErrorResponse(new ShiftNotFoundError(), 404);
     }
 
     let body
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     // named one by one, which is also what keeps created_by out of an edit
@@ -103,11 +104,7 @@ export async function PATCH(
     });
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
@@ -126,13 +123,13 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof ShiftNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         if (error instanceof ShiftOverlapError || error instanceof RegisterOverlapError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         if (error instanceof RegisterNotAtBranchError) {
-            return NextResponse.json({ error: error.message }, { status: 422 })
+            return appErrorResponse(error, 422)
         }
         if (
             error instanceof UserNotFoundError ||
@@ -140,10 +137,10 @@ export async function PATCH(
             error instanceof RegisterNotFoundError ||
             error instanceof UserNotAtBranchError
         ) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to update shift')
-        return NextResponse.json({ error: 'Failed to update shift' }, { status: 500 })
+        return internalErrorResponse('Failed to update shift')
     }
 }
 
@@ -157,7 +154,7 @@ export async function DELETE(
     const shiftId = parseNumericId(shiftIdParam);
 
     if (shiftId === null) {
-        return NextResponse.json({ error: 'Invalid shiftId' }, { status: 400 });
+        return invalidIdResponse('shiftId');
     }
 
     const user = requireAuthenticated(req);
@@ -169,7 +166,7 @@ export async function DELETE(
     const existing = await ShiftService.getShiftById(shiftId);
 
     if (!existing) {
-        return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+        return appErrorResponse(new ShiftNotFoundError(), 404);
     }
 
     try {
@@ -183,9 +180,9 @@ export async function DELETE(
             return forbidden;
         }
         if (error instanceof ShiftNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to delete shift')
-        return NextResponse.json({ error: 'Failed to delete shift' }, { status: 500 })
+        return internalErrorResponse('Failed to delete shift')
     }
 }

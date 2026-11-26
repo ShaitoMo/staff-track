@@ -82,8 +82,6 @@ export const attendance = {
     choosePerson: "Choose a person.",
     enterDate: "Enter a date.",
     enterClockIn: "Enter a clock-in time.",
-    alreadyRecorded: "This punch is already recorded for that person.",
-    addFailed: "Couldn't add the punch. Try again.",
     addPunch: "Add punch",
     addPunchTitle: "Add a punch",
     addPunchDescription: "For a clock-in the machine missed. Times are the branch's local time.",
@@ -95,7 +93,6 @@ export const attendance = {
     // fix punch
     endLabels: { clock_in: "Clock-in time", clock_out: "Clock-out time" },
     enterTime: "Enter a time.",
-    saveFailed: "Couldn't save the punch. Try again.",
     fixLabel: (end: "clock_in" | "clock_out", who: string) => `Fix ${end === "clock_in" ? "clock-in" : "clock-out"} for ${isolate(who)}`,
     fix: "Fix",
     fixTitle: (end: "clock_in" | "clock_out"): string => (end === "clock_in" ? "Add the missing clock-in" : "Add the missing clock-out"),
@@ -107,7 +104,6 @@ export const attendance = {
     rowsFailed: (n: number) => `${plural("en", n, { one: "# row", other: "# rows" })} could not be imported:`,
     row: (n: number) => `Row ${n}`,
     chooseFile: "Choose a file to import.",
-    importFailed: "Couldn't import the file. Try again.",
     importFile: "Import file",
     importTitle: "Import attendance",
     importDescription:

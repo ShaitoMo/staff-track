@@ -8,8 +8,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError, PhotoUploadError } from "@/lib/api-client";
+import { alreadyCompletedState, translateError } from "@/lib/error-messages";
 import { completeInstance } from "@/lib/api/task-instances";
+import { formatMachineTime } from "@/lib/attendance-rows";
 import { compressPhoto, UnreadablePhotoError } from "@/lib/compress-photo";
 import { MAX_PHOTO_BYTES } from "@/lib/photo-limits";
 
@@ -92,15 +93,19 @@ export function CompleteTaskForm({ instanceId, taskLabel }: { instanceId: number
             try {
                 await completeInstance(instanceId, file);
                 router.refresh();
-                announceCompletion(taskLabel);
+                announceCompletion(t.tasks.sentForReview(taskLabel));
             } catch (caught) {
-                setError(
-                    caught instanceof PhotoUploadError
-                        ? t.common.photoUploadFailed
-                        : caught instanceof ApiError
-                          ? caught.message
-                          : t.common.somethingWentWrong,
-                );
+                // a teammate got there first: not an error, so the refresh shows the card as done and the notice says who
+                const completed = alreadyCompletedState(caught);
+                if (completed !== null) {
+                    router.refresh();
+                    const { completed_by_name: name, completed_at: at } = completed;
+                    announceCompletion(name !== null && at !== null
+                        ? t.errors.alreadyCompletedBy(taskLabel, name, formatMachineTime(at))
+                        : t.errors.codes.INSTANCE_ALREADY_COMPLETED);
+                    return;
+                }
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

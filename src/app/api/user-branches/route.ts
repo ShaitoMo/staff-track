@@ -8,6 +8,7 @@ import { DuplicateUserBranchError } from '@/exceptions/duplicate-user-branch-err
 import { DuplicateMachineEmployeeIdError } from '@/exceptions/duplicate-machine-employee-id-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 export async function GET(req: NextRequest) {
     const userIdParam = req.nextUrl.searchParams.get('userId');
@@ -16,13 +17,13 @@ export async function GET(req: NextRequest) {
     const userId = userIdParam === null ? undefined : parseNumericId(userIdParam);
 
     if (userId === null) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const branchId = branchIdParam === null ? undefined : parseNumericId(branchIdParam);
 
     if (branchId === null) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const user = requireAuthenticated(req);
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch user branches');
-        return NextResponse.json({ error: 'Failed to fetch user branches' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch user branches');
     }
 }
 
@@ -80,18 +81,18 @@ export async function POST(req: NextRequest) {
             return forbidden;
         }
         if (error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         if (error instanceof DuplicateUserBranchError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         if (error instanceof DuplicateMachineEmployeeIdError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to assign user to branch')
-        return NextResponse.json({ error: 'Failed to assign user to branch' }, { status: 500 })
+        return internalErrorResponse('Failed to assign user to branch')
     }
 }

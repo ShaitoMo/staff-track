@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createAttendance } from "@/lib/api/attendance";
 import { punchToIso } from "@/lib/attendance-rows";
 import { TOUCH_HEIGHT } from "@/lib/touch";
@@ -21,7 +21,11 @@ interface PunchErrors {
     userId?: string;
     date?: string;
     clockIn?: string;
+    clockOut?: string;
 }
+
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const PUNCH_FIELDS = { user_id: "userId", clock_in: "clockIn", clock_out: "clockOut" } as const satisfies Record<string, keyof PunchErrors>;
 
 /**
  * A clock-in the machine missed. Times are the branch's wall clock; an earlier clock-out means the
@@ -93,13 +97,9 @@ export function AddPunchDialog({
                 setOpen(false);
                 router.refresh();
             } catch (error) {
-                setSubmitError(
-                    error instanceof ApiError && error.status === 409
-                        ? t.attendance.alreadyRecorded
-                        : error instanceof ApiError
-                          ? error.message
-                          : t.attendance.addFailed,
-                );
+                const { formMessage, fieldMessages } = translateError(error, t.errors, PUNCH_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }
@@ -165,10 +165,11 @@ export function AddPunchDialog({
                                 <Input id="punch-in" type="time" value={clockIn} disabled={pending} onChange={(e) => setClockIn(e.target.value)} />
                                 <FieldError>{errors.clockIn}</FieldError>
                             </Field>
-                            <Field>
+                            <Field data-invalid={!!errors.clockOut || undefined}>
                                 <FieldLabel htmlFor="punch-out">{t.attendance.clockOut}</FieldLabel>
                                 <Input id="punch-out" type="time" value={clockOut} disabled={pending} onChange={(e) => setClockOut(e.target.value)} />
                                 <FieldDescription>{t.attendance.optional}</FieldDescription>
+                                <FieldError>{errors.clockOut}</FieldError>
                             </Field>
                         </div>
                     </FieldGroup>

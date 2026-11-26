@@ -217,7 +217,7 @@ export class TaskService {
             });
 
             if (links.length === 0) {
-                throw new UserNotAtBranchError();
+                throw new UserNotAtBranchError('assigned_to');
             }
 
             return;
@@ -269,7 +269,7 @@ export class TaskService {
             });
 
             if (links.length === 0) {
-                throw new UserNotAtBranchError();
+                throw new UserNotAtBranchError('assigned_to');
             }
 
             return;

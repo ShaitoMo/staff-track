@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import {
     deactivateNode,
     getDeactivationImpact,
@@ -42,7 +42,7 @@ export function ActiveToggle({ node, name, active }: { node: GuideNode; name: st
             try {
                 await action();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
                 setImpact(null);
             }
         });

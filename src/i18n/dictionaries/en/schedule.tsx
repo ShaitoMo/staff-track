@@ -64,7 +64,6 @@ export const schedule = {
         const copied = `Copied ${plural("en", created, { one: "# shift", other: "# shifts" })}`;
         return skipped > 0 ? `${copied}; skipped ${skipped} already booked or no longer at the branch.` : `${copied}.`;
     },
-    copyFailed: "Couldn't copy the week. Try again.",
     copyPrevious: "Copy previous week",
     copyTitle: (source: string) => `Copy the week of ${source}?`,
     copyDescription:

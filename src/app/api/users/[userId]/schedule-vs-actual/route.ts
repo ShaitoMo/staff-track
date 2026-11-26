@@ -5,6 +5,7 @@ import { ScheduleVsActualFiltersSchema } from '@/types/schedule-vs-actual'
 import { MANAGER_ROLE, OWNER_ROLE, requireCallerCanReachUser, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/users/:userId/schedule-vs-actual?from=&to=
@@ -21,7 +22,7 @@ export async function GET(
     const userId = parseNumericId(userIdParam);
 
     if (userId === null) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const user = requireAuthenticated(req);
@@ -38,11 +39,7 @@ export async function GET(
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     try {
@@ -64,9 +61,9 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to compare schedule with attendance');
-        return NextResponse.json({ error: 'Failed to compare schedule with attendance' }, { status: 500 });
+        return internalErrorResponse('Failed to compare schedule with attendance');
     }
 }

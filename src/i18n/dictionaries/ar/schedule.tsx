@@ -60,7 +60,6 @@ export const schedule: typeof enSchedule = {
         const copied = `نُسخت ${shifts(created)}`;
         return skipped > 0 ? `${copied}؛ وتُخطّيت ${skipped} محجوزة مسبقًا أو لم يعد أصحابها في الفرع.` : `${copied}.`;
     },
-    copyFailed: "تعذّر نسخ الأسبوع. حاول مجددًا.",
     copyPrevious: "نسخ الأسبوع السابق",
     copyTitle: (source) => `نسخ أسبوع ${source}؟`,
     copyDescription:

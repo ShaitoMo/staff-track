@@ -4,6 +4,7 @@ import { AttendanceService } from '@/services/attendance-service'
 import { requireBranchAccess } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 /**
  * GET /api/branches/:id/attendance-freshness
@@ -18,7 +19,7 @@ export async function GET(
     const { branchId: branchIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(branchIdParam)) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const branchId = Number(branchIdParam);
@@ -39,9 +40,9 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to fetch attendance freshness');
-        return NextResponse.json({ error: 'Failed to fetch attendance freshness' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch attendance freshness');
     }
 }

@@ -17,6 +17,7 @@ export const BranchUpdateSchema = z.object({
     location: z.string().min(3).max(100).optional(),
 }).refine(data => Object.values(data).some(value => value !== undefined), {
     message: 'At least one field must be provided',
+    params: { code: 'NO_FIELDS' },
 })
 
 export type BranchUpdateInput = z.infer<typeof BranchUpdateSchema>

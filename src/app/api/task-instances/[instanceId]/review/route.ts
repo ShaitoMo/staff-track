@@ -5,6 +5,7 @@ import { ReviewTaskInstanceSchema } from '@/types/task-instance'
 import { TaskInstanceNotFoundError } from '@/exceptions/task-instance-not-found-error'
 import { InvalidStatusTransitionError } from '@/exceptions/invalid-status-transition-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 /** PATCH .../review — body is just { decision }; the reviewer is the session, not a request field. */
 export async function PATCH(
@@ -14,7 +15,7 @@ export async function PATCH(
     const { instanceId: instanceIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(instanceIdParam)) {
-        return NextResponse.json({ error: 'Invalid instanceId' }, { status: 400 });
+        return invalidIdResponse('instanceId');
     }
 
     const user = requireAuthenticated(req);
@@ -27,7 +28,7 @@ export async function PATCH(
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const { decision } = body;
@@ -35,11 +36,7 @@ export async function PATCH(
     const validationResult = ReviewTaskInstanceSchema.safeParse({ decision });
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     try {
@@ -52,16 +49,16 @@ export async function PATCH(
         return NextResponse.json(instance, { status: 200 })
     } catch (error) {
         if (error instanceof TaskInstanceNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         const forbidden = forbiddenResponse(error);
         if (forbidden) {
             return forbidden;
         }
         if (error instanceof InvalidStatusTransitionError) {
-            return NextResponse.json({ error: error.message }, { status: 409 })
+            return appErrorResponse(error, 409)
         }
         logger.error({ err: error }, 'Failed to review task instance')
-        return NextResponse.json({ error: 'Failed to review task instance' }, { status: 500 })
+        return internalErrorResponse('Failed to review task instance')
     }
 }

@@ -5,6 +5,7 @@ import { CoverageGapsFiltersSchema } from '@/types/coverage-gap'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/branches/:id/coverage?weekStart=
@@ -20,7 +21,7 @@ export async function GET(
     const { branchId: branchIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(branchIdParam)) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const branchId = Number(branchIdParam);
@@ -37,11 +38,7 @@ export async function GET(
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     try {
@@ -55,9 +52,9 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to compute coverage gaps')
-        return NextResponse.json({ error: 'Failed to compute coverage gaps' }, { status: 500 })
+        return internalErrorResponse('Failed to compute coverage gaps')
     }
 }

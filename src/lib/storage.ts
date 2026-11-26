@@ -10,6 +10,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MAX_PHOTO_BYTES } from '@/lib/photo-limits';
 import { logger } from '@/lib/logger';
+import { AppError } from '@/exceptions/app-error';
 
 /**
  * Photos live in a private Cloudflare R2 bucket, reached through its S3-compatible API. The bucket
@@ -30,7 +31,9 @@ const UPLOAD_URL_TTL_SECONDS = 60;
 /** How long a signed view URL stays valid. */
 const VIEW_URL_TTL_SECONDS = 5 * 60;
 
-export class InvalidPhotoError extends Error {
+export class InvalidPhotoError extends AppError {
+    readonly code = 'INVALID_PHOTO';
+
     constructor(message: string) {
         super(message);
         this.name = 'InvalidPhotoError';

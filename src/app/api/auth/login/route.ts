@@ -6,6 +6,7 @@ import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, accessCookieOptions, refreshCo
 import { InvalidCredentialsError } from '@/exceptions/invalid-credentials-error'
 import { clearLoginAttempts, isLoginLocked, recordFailedLogin } from '@/lib/login-rate-limit'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, errorResponse, internalErrorResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 /** POST /api/auth/login — verifies phone + password, sets the access and refresh cookies. */
 export async function POST(req: NextRequest) {
@@ -13,23 +14,19 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json()
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = LoginSchema.safeParse(body)
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map((issue) => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error, body)
     }
 
     const { phone } = validationResult.data
 
     if (isLoginLocked(phone)) {
-        return NextResponse.json({ error: 'Too many failed login attempts. Try again later.' }, { status: 429 })
+        return errorResponse(429, 'TOO_MANY_ATTEMPTS', 'Too many failed login attempts. Try again later.')
     }
 
     try {
@@ -44,9 +41,9 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         if (error instanceof InvalidCredentialsError) {
             recordFailedLogin(phone)
-            return NextResponse.json({ error: error.message }, { status: 401 })
+            return appErrorResponse(error, 401)
         }
         logger.error({ err: error }, 'Failed to log in')
-        return NextResponse.json({ error: 'Failed to log in' }, { status: 500 })
+        return internalErrorResponse('Failed to log in')
     }
 }

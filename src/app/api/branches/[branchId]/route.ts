@@ -5,6 +5,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseJsonBody, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -15,7 +16,7 @@ export async function GET(
     const branchId = parseNumericId(branchIdParam);
 
     if (branchId === null) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const user = requireAuthenticated(req);
@@ -31,7 +32,7 @@ export async function GET(
         const branch = await BranchService.getBranchById(branchId);
 
         if (!branch) {
-            return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+            return appErrorResponse(new BranchNotFoundError(), 404);
         }
 
         return NextResponse.json(branch, { status: 200 });
@@ -41,7 +42,7 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch branch');
-        return NextResponse.json({ error: 'Failed to fetch branch' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch branch');
     }
 }
 
@@ -54,7 +55,7 @@ export async function PATCH(
     const branchId = parseNumericId(branchIdParam);
 
     if (branchId === null) {
-        return NextResponse.json({ error: 'Invalid branchId' }, { status: 400 });
+        return invalidIdResponse('branchId');
     }
 
     const user = requireAuthenticated(req);
@@ -80,9 +81,9 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof BranchNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to update branch')
-        return NextResponse.json({ error: 'Failed to update branch' }, { status: 500 })
+        return internalErrorResponse('Failed to update branch')
     }
 }

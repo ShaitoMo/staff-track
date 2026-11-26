@@ -5,6 +5,7 @@ import { requireGuideAccess } from '@/lib/rbac'
 import { GuideImageService } from '@/services/guide-image-service'
 import { UpdateGuideImageSchema } from '@/types/shelf-guide'
 import { GuideImageNotFoundError } from '@/exceptions/guide-image-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -13,7 +14,7 @@ export async function GET(
     const imageId = parseNumericId((await ctx.params).imageId);
 
     if (imageId === null) {
-        return NextResponse.json({ error: 'Invalid imageId' }, { status: 400 });
+        return invalidIdResponse('imageId');
     }
 
     const user = requireAuthenticated(req);
@@ -39,7 +40,7 @@ export async function PATCH(
     const imageId = parseNumericId((await ctx.params).imageId);
 
     if (imageId === null) {
-        return NextResponse.json({ error: 'Invalid imageId' }, { status: 400 });
+        return invalidIdResponse('imageId');
     }
 
     const user = requireAuthenticated(req);
@@ -72,7 +73,7 @@ export async function DELETE(
     const imageId = parseNumericId((await ctx.params).imageId);
 
     if (imageId === null) {
-        return NextResponse.json({ error: 'Invalid imageId' }, { status: 400 });
+        return invalidIdResponse('imageId');
     }
 
     const user = requireAuthenticated(req);

@@ -12,10 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createRegister, updateRegister } from "@/lib/api/registers";
 import { isRegisterFormValid, RegisterFormErrors, validateRegisterForm } from "@/lib/register-form-validation";
 import { Branch } from "@/types/branch";
+
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const REGISTER_FIELDS = { branchId: "branchId", name: "name" } as const satisfies Record<string, keyof RegisterFormErrors>;
 
 interface RegisterFormProps {
     mode: "create" | "edit";
@@ -56,7 +59,9 @@ export function RegisterForm({ mode, branches, registerId, initialValues }: Regi
                 router.push("/registers");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, REGISTER_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

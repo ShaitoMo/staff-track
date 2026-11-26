@@ -145,3 +145,61 @@ describe('PATCH /api/tasks/:taskId', () => {
         expect(res.status).toBe(200)
     })
 })
+
+describe('PATCH /api/tasks/:taskId error bodies', () => {
+    it('answers a logged-out caller with UNAUTHENTICATED', async () => {
+        mockedGetCurrentUser.mockReturnValue(null)
+
+        const res = await patch()
+
+        expect(res.status).toBe(401)
+        expect(await res.json()).toEqual({ error: 'Not authenticated', code: 'UNAUTHENTICATED' })
+    })
+
+    it("names a role refusal by the ForbiddenError subclass's own code", async () => {
+        mockedGetCurrentUser.mockReturnValue(staff)
+
+        const res = await patch()
+
+        expect(await res.json()).toMatchObject({ code: 'INSUFFICIENT_ROLE' })
+    })
+
+    it('answers a body that is not JSON with INVALID_JSON', async () => {
+        mockedGetCurrentUser.mockReturnValue(manager)
+        const req = new NextRequest('http://localhost/api/tasks/9', { method: 'PATCH', body: '{not json' })
+
+        const res = await PATCH(req, { params: Promise.resolve({ taskId: '9' }) } as never)
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toMatchObject({ code: 'INVALID_JSON' })
+    })
+
+    it('reports a too-long title as TOO_LONG on that field', async () => {
+        mockedGetCurrentUser.mockReturnValue(manager)
+
+        const res = await patch({ title: 'x'.repeat(256) })
+
+        expect(res.status).toBe(400)
+        expect(await res.json()).toMatchObject({
+            code: 'VALIDATION_FAILED',
+            fields: [{ path: 'title', code: 'TOO_LONG' }],
+        })
+    })
+
+    it("reports a custom rule by the rule's own code", async () => {
+        mockedGetCurrentUser.mockReturnValue(manager)
+
+        const res = await patch({ is_recurring: true, recurrence: 'fortnightly' })
+
+        expect(await res.json()).toMatchObject({ fields: [{ path: 'recurrence', code: 'INVALID_RECURRENCE' }] })
+    })
+
+    it('answers an unexpected failure with INTERNAL and no detail', async () => {
+        mockedGetCurrentUser.mockReturnValue(manager)
+        mockedGetTaskById.mockRejectedValue(new Error('db down'))
+
+        const res = await patch()
+
+        expect(await res.json()).toEqual({ error: 'Failed to update task', code: 'INTERNAL' })
+    })
+})

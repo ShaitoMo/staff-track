@@ -6,6 +6,7 @@ import { BranchSectionService } from '@/services/branch-section-service'
 import { GuideImageService } from '@/services/guide-image-service'
 import { ReorderGuideImagesSchema } from '@/types/shelf-guide'
 import { BranchSectionNotFoundError } from '@/exceptions/branch-section-not-found-error'
+import { invalidIdResponse } from '@/lib/error-response'
 
 /** PUT .../guide-images/order?folderId= — body lists exactly the photos at that level, in their new order. */
 export async function PUT(
@@ -16,7 +17,7 @@ export async function PUT(
     const folderId = queryFolderId(req.nextUrl, 'folderId');
 
     if (branchSectionId === null || folderId === undefined) {
-        return NextResponse.json({ error: 'Invalid branchSectionId or folderId' }, { status: 400 });
+        return invalidIdResponse('branchSectionId or folderId');
     }
 
     const user = requireAuthenticated(req);

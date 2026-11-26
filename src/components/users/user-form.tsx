@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
 import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createUser, linkUserBranch, unlinkUserBranch, updateUser } from "@/lib/api/users";
 import { BranchLinkInput, diffBranchLinks } from "@/lib/branch-link-diff";
 import { isUserFormValid, UserFormErrors, validateUserForm } from "@/lib/user-form-validation";
@@ -35,6 +36,9 @@ interface UserFormProps {
         branchLinks: BranchLinkInput[];
     };
 }
+
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const USER_FIELDS = { name: "name", phone: "phone", password: "password", roleId: "roleId" } as const satisfies Record<string, keyof UserFormErrors>;
 
 interface BranchSelection {
     selected: boolean;
@@ -112,7 +116,7 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
         addResults.forEach((result, index) => {
             if (result.status === "fulfilled") return;
             const branchName = branches.find((b) => b.branchId === addLinks[index].branchId)?.name ?? t.users.fallbackBranch(addLinks[index].branchId);
-            const reason = result.reason instanceof ApiError ? result.reason.message : null;
+            const reason = result.reason instanceof ApiError ? translateError(result.reason, t.errors).formMessage : null;
             warnings.push({ branchId: addLinks[index].branchId, message: t.users.couldNotLink(branchName, reason) });
         });
 
@@ -170,7 +174,9 @@ export function UserForm({ mode, userId, roles, branches, canEditRoleAndStatus, 
                 router.push("/users");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, USER_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

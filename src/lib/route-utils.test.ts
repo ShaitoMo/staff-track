@@ -25,7 +25,7 @@ describe('requireAuthenticated', () => {
 
         expect(result).toBeInstanceOf(NextResponse)
         expect((result as NextResponse).status).toBe(401)
-        expect(await (result as NextResponse).json()).toEqual({ error: 'Not authenticated' })
+        expect(await (result as NextResponse).json()).toEqual({ error: 'Not authenticated', code: 'UNAUTHENTICATED' })
     })
 
     it('returns the decoded identity once proxy.ts has stamped the auth headers', () => {
@@ -37,11 +37,11 @@ describe('requireAuthenticated', () => {
 })
 
 describe('forbiddenResponse', () => {
-    it('maps a ForbiddenError to a 403 carrying its message', async () => {
+    it('maps a ForbiddenError to a 403 carrying its message and code', async () => {
         const result = forbiddenResponse(new ForbiddenError('You do not have access to this branch'))
 
         expect(result?.status).toBe(403)
-        expect(await result?.json()).toEqual({ error: 'You do not have access to this branch' })
+        expect(await result?.json()).toEqual({ error: 'You do not have access to this branch', code: 'FORBIDDEN' })
     })
 
     it('returns null for any other error, leaving it to the route to handle', () => {

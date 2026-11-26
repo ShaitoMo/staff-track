@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createFolder, createSectionType, renameFolder, updateSectionType } from "@/lib/api/shelf-guide";
 
 // Client wrappers: a server page can't hand InlineNameForm the function it calls.
@@ -72,7 +72,7 @@ function RenameInPlace({ name, label, maxLength, save }: { name: string; label: 
                 setError(null);
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }
@@ -121,7 +121,7 @@ export function SectionTypeActions({ sectionTypeId, name, active }: { sectionTyp
                 await updateSectionType(sectionTypeId, { isActive: !active });
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }

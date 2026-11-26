@@ -4,6 +4,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireSelfOrRole } from '@/lib/rbac'
 import { UserNotFoundError } from '@/exceptions/user-not-found-error'
 import { requireAuthenticated, forbiddenResponse, parseNumericId } from '@/lib/route-utils'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -14,7 +15,7 @@ export async function GET(
     const userId = parseNumericId(userIdParam);
 
     if (userId === null) {
-        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+        return invalidIdResponse('userId');
     }
 
     const user = requireAuthenticated(req);
@@ -33,9 +34,9 @@ export async function GET(
             return forbidden;
         }
         if (error instanceof UserNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         logger.error({ err: error }, 'Failed to fetch branches');
-        return NextResponse.json({ error: 'Failed to fetch branches' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch branches');
     }
 }

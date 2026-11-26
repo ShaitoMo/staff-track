@@ -4,6 +4,7 @@ import { TaskInstanceService } from '@/services/task-instance-service'
 import { TaskInstanceFiltersSchema } from '@/types/task-instance'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess } from '@/lib/rbac'
 import { logger } from '@/lib/logger'
+import { internalErrorResponse, validationErrorResponse } from '@/lib/error-response'
 
 /**
  * GET /api/task-instances?user_id=&date=&branch_id=&status=
@@ -20,11 +21,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error)
     }
 
     const user = requireAuthenticated(req);
@@ -56,6 +53,6 @@ export async function GET(req: NextRequest) {
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch task instances')
-        return NextResponse.json({ error: 'Failed to fetch task instances' }, { status: 500 })
+        return internalErrorResponse('Failed to fetch task instances')
     }
 }

@@ -323,7 +323,7 @@ export class ShiftService {
         const links = await UserBranchRepository.getUserBranches({ userId, branchId })
 
         if (links.length === 0) {
-            throw new UserNotAtBranchError()
+            throw new UserNotAtBranchError('user_id')
         }
     }
 

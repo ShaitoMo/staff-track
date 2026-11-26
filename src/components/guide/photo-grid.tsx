@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PhotoImage } from "@/components/layout/photo-image";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError, PhotoUploadError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { deleteGuidePhoto, reorderGuidePhotos, replaceGuidePhoto, updateGuidePhotoTitle } from "@/lib/api/shelf-guide";
 import { UnreadablePhotoError } from "@/lib/compress-photo";
 import type { GuideImageView } from "@/types/shelf-guide";
@@ -93,15 +93,7 @@ function PhotoDetail({
                 if (close) onClose();
                 router.refresh();
             } catch (caught) {
-                setError(
-                    caught instanceof PhotoUploadError
-                    ? t.common.photoUploadFailed
-                    : caught instanceof UnreadablePhotoError
-                      ? t.tasks.unreadablePhoto
-                      : caught instanceof ApiError
-                        ? caught.message
-                        : t.common.somethingWentWrong,
-                );
+                setError(caught instanceof UnreadablePhotoError ? t.tasks.unreadablePhoto : translateError(caught, t.errors).formMessage);
             }
         });
     }

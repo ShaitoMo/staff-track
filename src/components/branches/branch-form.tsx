@@ -11,10 +11,13 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { createBranch, updateBranch } from "@/lib/api/branches";
 import { BranchFormErrors, isBranchFormValid, validateBranchForm } from "@/lib/branch-form-validation";
 import type { BranchUpdateInput } from "@/types/branch";
+
+/** Wire paths of the fields this form shows, onto its own error keys. */
+const BRANCH_FIELDS = { name: "name", location: "location" } as const satisfies Record<string, keyof BranchFormErrors>;
 
 interface BranchFormProps {
     mode: "create" | "edit";
@@ -68,7 +71,9 @@ export function BranchForm({ mode, branchId, initialValues }: BranchFormProps) {
                 router.push("/branches");
                 router.refresh();
             } catch (error) {
-                setSubmitError(error instanceof ApiError ? error.message : t.common.somethingWentWrong);
+                const { formMessage, fieldMessages } = translateError(error, t.errors, BRANCH_FIELDS);
+                setErrors(fieldMessages);
+                setSubmitError(formMessage);
             }
         });
     }

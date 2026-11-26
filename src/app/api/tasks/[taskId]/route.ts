@@ -9,6 +9,7 @@ import { UserNotAtBranchError } from '@/exceptions/user-not-at-branch-error'
 import { InvalidTaskAssignmentError } from '@/exceptions/invalid-task-assignment-error'
 import { InvalidScheduleChangeError } from '@/exceptions/invalid-schedule-change-error'
 import { logger } from '@/lib/logger'
+import { appErrorResponse, internalErrorResponse, invalidIdResponse, invalidJsonResponse, validationErrorResponse } from '@/lib/error-response'
 
 export async function GET(
     req: NextRequest,
@@ -17,7 +18,7 @@ export async function GET(
     const { taskId: taskIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(taskIdParam)) {
-        return NextResponse.json({ error: 'Invalid taskId' }, { status: 400 });
+        return invalidIdResponse('taskId');
     }
 
     const taskId = Number(taskIdParam);
@@ -34,7 +35,7 @@ export async function GET(
         const task = await TaskService.getTaskById(taskId);
 
         if (!task) {
-            return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+            return appErrorResponse(new TaskNotFoundError(), 404);
         }
 
         requireBranchAccess(user, task.branch_id)
@@ -46,7 +47,7 @@ export async function GET(
             return forbidden;
         }
         logger.error({ err: error }, 'Failed to fetch task');
-        return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
+        return internalErrorResponse('Failed to fetch task');
     }
 }
 
@@ -57,7 +58,7 @@ export async function PATCH(
     const { taskId: taskIdParam } = await ctx.params;
 
     if (!/^\d+$/.test(taskIdParam)) {
-        return NextResponse.json({ error: 'Invalid taskId' }, { status: 400 });
+        return invalidIdResponse('taskId');
     }
 
     const taskId = Number(taskIdParam);
@@ -82,24 +83,20 @@ export async function PATCH(
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return invalidJsonResponse()
     }
 
     const validationResult = UpdateTaskSchema.safeParse(body);
 
     if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-        }))
-        return NextResponse.json({ error: errors }, { status: 400 })
+        return validationErrorResponse(validationResult.error, body)
     }
 
     try {
         const existing = await TaskService.getTaskById(taskId);
 
         if (!existing) {
-            return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+            return appErrorResponse(new TaskNotFoundError(), 404);
         }
 
         requireBranchAccess(user, existing.branch_id)
@@ -111,7 +108,7 @@ export async function PATCH(
             return forbidden;
         }
         if (error instanceof TaskNotFoundError) {
-            return NextResponse.json({ error: error.message }, { status: 404 })
+            return appErrorResponse(error, 404)
         }
         if (
             error instanceof InvalidTaskAssignmentError ||
@@ -119,9 +116,9 @@ export async function PATCH(
             error instanceof RoleNotFoundError ||
             error instanceof UserNotAtBranchError
         ) {
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            return appErrorResponse(error, 400)
         }
         logger.error({ err: error }, 'Failed to update task')
-        return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
+        return internalErrorResponse('Failed to update task')
     }
 }

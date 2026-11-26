@@ -16,7 +16,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/client";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { deletePeriod, setPeriodActive } from "@/lib/api/periods";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,7 @@ export function PeriodRowActions({ periodId, name, active }: { periodId: number;
                 await action();
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             } finally {
                 setConfirming(null);
             }

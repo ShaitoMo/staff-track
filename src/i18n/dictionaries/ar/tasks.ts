@@ -72,7 +72,6 @@ export const tasks: typeof en = {
     openTheirPhoto: "فتح صورتهم",
     declinedBy: "رفضها",
     approvedBy: "اعتمدها",
-    referencePhotosFailed: "تعذّر تحميل الصور.",
     noReferencePhotos: "لا توجد صور مرجعية هنا بعد.",
     openReferencePhoto: (title) => `فتح الصورة المرجعية${title ? `: ${isolate(title)}` : ""}`,
     declineFinal: "لا يمكن إعادة تنفيذ مهمة مرفوضة.",

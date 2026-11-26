@@ -22,7 +22,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import type { Dictionary } from "@/i18n/dictionaries";
 import { useLocale, useT } from "@/i18n/client";
 import { isolate } from "@/i18n/locales";
-import { ApiError } from "@/lib/api-client";
+import { translateError } from "@/lib/error-messages";
 import { copyWeek, createShift, deleteShift, setShiftRegister } from "@/lib/api/shifts";
 import { addDays, formatDay, formatDayStacked } from "@/lib/coverage-rows";
 import {
@@ -75,7 +75,7 @@ function useScheduleAction() {
                 await action();
                 router.refresh();
             } catch (caught) {
-                setError(caught instanceof ApiError ? caught.message : t.common.somethingWentWrong);
+                setError(translateError(caught, t.errors).formMessage);
             }
         });
     }
@@ -616,7 +616,7 @@ export function CopyWeekButton({ branchId, weekStart }: { branchId: number; week
                 setMessage({ text: copyOutcome(created, skipped, sourceLabel, t), isError: false });
                 router.refresh();
             } catch (caught) {
-                setMessage({ text: caught instanceof ApiError ? caught.message : t.schedule.copyFailed, isError: true });
+                setMessage({ text: translateError(caught, t.errors).formMessage, isError: true });
             }
             setConfirming(false);
         });
