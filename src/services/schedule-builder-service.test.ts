@@ -188,7 +188,7 @@ describe('ScheduleBuilderService.propose', () => {
         getCoverageGaps.mockResolvedValue([gap('2026-11-02', 1, 0)]);
         getAllUsers.mockResolvedValue([user(10)]);
         getShifts.mockResolvedValue([]);
-        solve.mockRejectedValue(new SchedulerUnavailableError());
+        solve.mockRejectedValue(new SchedulerUnavailableError('SOLVER_UNAVAILABLE'));
 
         await expect(ScheduleBuilderService.propose(input)).rejects.toThrow(SchedulerUnavailableError);
     });

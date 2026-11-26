@@ -6,7 +6,7 @@ import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/li
 import { BranchNotFoundError } from '@/exceptions/branch-not-found-error'
 import { SchedulerUnavailableError } from '@/exceptions/scheduler-unavailable-error'
 import { logger } from '@/lib/logger'
-import { appErrorResponse, errorResponse, internalErrorResponse } from '@/lib/error-response'
+import { appErrorResponse, internalErrorResponse } from '@/lib/error-response'
 
 /**
  * POST /api/schedule-builder/propose — the auto-scheduler's suggestion for the branch's open
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
             return appErrorResponse(error, 400)
         }
         if (error instanceof SchedulerUnavailableError) {
-            return errorResponse(503, 'SOLVER_UNAVAILABLE', error.message)
+            return appErrorResponse(error, 503)
         }
         logger.error({ err: error }, 'Failed to propose a schedule')
         return internalErrorResponse('Failed to propose a schedule')

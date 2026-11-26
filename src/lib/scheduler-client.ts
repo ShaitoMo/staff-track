@@ -6,44 +6,54 @@ import { SolverRequest, SolverResponse, SolverResponseSchema } from '@/types/sch
 const TIMEOUT_MS = 20_000
 
 /**
- * Calls the OR-Tools service in scheduler/. Every way it can fail (env vars missing, network
- * error, timeout, non-2xx, a body that isn't the contract) is one SchedulerUnavailableError, so the
- * route answers a clean 503 and the cause goes to the log only. The env vars are read per call,
- * so importing this in tests needs no env.
+ * Calls the OR-Tools service in scheduler/. Every way it can fail is a SchedulerUnavailableError
+ * whose code names the kind (see that class), so the route answers a clean 503 and the cause goes
+ * to the log only. The env vars are read per call, so importing this in tests needs no env.
  */
 export async function solveSchedule(request: SolverRequest): Promise<SolverResponse> {
     const url = process.env.SCHEDULER_URL
     const secret = process.env.SCHEDULER_SECRET
 
     if (!url || !secret) {
-        throw new SchedulerUnavailableError('Auto-fill service is not configured')
+        throw new SchedulerUnavailableError('SOLVER_NOT_CONFIGURED', 'Auto-fill service is not configured')
     }
 
-    let body: unknown
+    let res: Response
 
     try {
-        const res = await fetch(`${url}/solve`, {
+        res = await fetch(`${url}/solve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Scheduler-Secret': secret },
             body: JSON.stringify(request),
             signal: AbortSignal.timeout(TIMEOUT_MS),
         })
-
-        if (!res.ok) {
-            throw new Error(`scheduler answered ${res.status}`)
-        }
-
-        body = await res.json()
     } catch (error) {
         logger.error({ err: error }, 'Scheduler request failed')
-        throw new SchedulerUnavailableError()
+        throw new SchedulerUnavailableError('SOLVER_UNAVAILABLE')
+    }
+
+    if (!res.ok) {
+        logger.error({ status: res.status }, 'Scheduler answered with an error status')
+        // a 4xx means it refused what we sent; a 5xx is its own trouble and may pass
+        throw new SchedulerUnavailableError(res.status < 500 ? 'SOLVER_CONTRACT_MISMATCH' : 'SOLVER_UNAVAILABLE')
+    }
+
+    let body: unknown
+
+    try {
+        body = await res.json()
+    } catch (error) {
+        // the timeout also covers reading the body, and running out of time isn't a bad reply
+        const timedOut = error instanceof DOMException && error.name === 'TimeoutError'
+        logger.error({ err: error }, timedOut ? 'Scheduler reply timed out' : 'Scheduler response was not JSON')
+        throw new SchedulerUnavailableError(timedOut ? 'SOLVER_UNAVAILABLE' : 'SOLVER_CONTRACT_MISMATCH')
     }
 
     const parsed = SolverResponseSchema.safeParse(body)
 
     if (!parsed.success) {
         logger.error({ err: parsed.error }, 'Scheduler response did not match the contract')
-        throw new SchedulerUnavailableError()
+        throw new SchedulerUnavailableError('SOLVER_CONTRACT_MISMATCH')
     }
 
     return parsed.data
