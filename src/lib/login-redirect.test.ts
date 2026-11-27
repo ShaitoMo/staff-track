@@ -13,6 +13,8 @@ describe("nextPath — where a sign-in lands", () => {
         ["absolute URL", "https://evil.example/tasks"],
         ["the login page", "/login"],
         ["the login page with a query", "/login?next=/tasks"],
+        ["the login page with a trailing slash", "/login/"],
+        ["a protocol-relative URL hidden by a tab", "/\t/evil.example"],
     ])("falls back to / when next is %s", (_, next) => {
         expect(nextPath(next)).toBe("/");
     });
