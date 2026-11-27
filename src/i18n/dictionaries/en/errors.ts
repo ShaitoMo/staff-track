@@ -32,7 +32,7 @@ export const errors = {
         INVALID_ID: "That link isn't valid. Go back and try again.",
         INVALID_MULTIPART: "The file couldn't be read. Try again.",
         // session and permission
-        UNAUTHENTICATED: "You're not signed in. Sign in again to continue.",
+        UNAUTHENTICATED: "Your session ended. Sign in again.",
         INVALID_CREDENTIALS: "Invalid phone or password.",
         INVALID_REFRESH_TOKEN: "Your session has ended. Sign in again to continue.",
         SESSION_REFRESH_UNAVAILABLE: "The server is busy. Try again in a moment.",

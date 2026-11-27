@@ -5,6 +5,7 @@ import { AccountMenu } from "@/components/layout/account-menu";
 import { BranchSwitcher } from "@/components/layout/branch-switcher";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { OfflineBanner } from "@/components/layout/offline-banner";
+import { SessionEndedNotice } from "@/components/layout/session-ended-notice";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { StaffNav, StaffTabBar } from "@/components/layout/staff-nav";
 import { getDictionary } from "@/i18n/server";
@@ -107,6 +108,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </div>
             </div>
             {canManage ? null : <StaffTabBar />}
+            <SessionEndedNotice />
         </div>
     );
 }

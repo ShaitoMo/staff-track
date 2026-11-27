@@ -47,6 +47,9 @@ export async function throwApiError(res: Response, fallback: string): Promise<ne
     throw new ApiError(message, res.status);
 }
 
+/** Fired when a call finds the session gone, so the shell can offer to sign in again (SessionEndedNotice). */
+export const SESSION_ENDED_EVENT = "stafftrack:session-ended";
+
 export async function request(path: string, init: RequestInit & { json?: unknown } = {}): Promise<Response> {
     const { json, ...rest } = init;
     const res = await fetch(path, {
@@ -56,7 +59,14 @@ export async function request(path: string, init: RequestInit & { json?: unknown
     });
 
     if (!res.ok) {
-        await throwApiError(res, `Request to ${path} failed (${res.status})`);
+        try {
+            await throwApiError(res, `Request to ${path} failed (${res.status})`);
+        } catch (error) {
+            if (error instanceof ApiError && error.code === "UNAUTHENTICATED") {
+                window.dispatchEvent(new Event(SESSION_ENDED_EVENT));
+            }
+            throw error;
+        }
     }
     return res;
 }

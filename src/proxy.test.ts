@@ -33,13 +33,15 @@ beforeEach(() => {
 })
 
 describe('proxy — refreshing an expired session', () => {
-    it('sends a page request to /login when the refresh token is invalid', async () => {
+    it('sends a page request to /login, carrying the page and its query as next', async () => {
         mockedRefresh.mockRejectedValue(new InvalidRefreshTokenError())
 
-        const res = await proxy(expiredSession('/tasks'))
+        const res = await proxy(expiredSession('/tasks?branch=2&week=2026-11-23'))
 
         expect(res.status).toBe(307)
-        expect(res.headers.get('location')).toBe('http://localhost/login')
+        const location = new URL(res.headers.get('location')!)
+        expect(location.pathname).toBe('/login')
+        expect(location.searchParams.get('next')).toBe('/tasks?branch=2&week=2026-11-23')
     })
 
     it('answers 503, not a logout, when the refresh fails for another reason', async () => {

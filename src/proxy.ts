@@ -13,6 +13,7 @@ import { AuthService } from '@/services/auth-service'
 import { InvalidRefreshTokenError } from '@/exceptions/invalid-refresh-token-error'
 import { logger } from '@/lib/logger'
 import { errorResponse, unauthenticatedResponse } from '@/lib/error-response'
+import { loginHref } from '@/lib/login-redirect'
 
 /** Reachable without a session — login/refresh can't require what they grant, logout must survive an expired token, and /login is where an unauthenticated page request gets sent. */
 const PUBLIC_PATHS = new Set(['/api/auth/login', '/api/auth/refresh', '/api/auth/logout', '/login'])
@@ -51,7 +52,8 @@ export async function proxy(request: NextRequest) {
         if (request.nextUrl.pathname.startsWith('/api/')) {
             return unauthenticatedResponse()
         }
-        return NextResponse.redirect(new URL('/login', request.url))
+        const { pathname, search } = request.nextUrl
+        return NextResponse.redirect(new URL(loginHref(pathname + search), request.url))
     }
 
     headers.set(AUTH_HEADER_USER_ID, String(user.userId))
