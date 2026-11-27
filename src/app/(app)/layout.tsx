@@ -103,14 +103,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {/* staff pages leave room for the tab bar (64px plus the home indicator) on a phone */}
                 <div className="flex min-w-0 flex-1 flex-col">
                     {/* in the page column, so it sticks under the top bar without covering the left bar */}
-                    <div className="sticky top-14 z-20 print:hidden">
-                        <OfflineBanner />
-                        <SessionEndedNotice />
-                    </div>
+                    <OfflineBanner />
                     <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 px-4 py-6 lg:px-6 print:p-0", !canManage && "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6")}>{children}</main>
                 </div>
             </div>
             {canManage ? null : <StaffTabBar />}
+            <SessionEndedNotice />
         </div>
     );
 }
