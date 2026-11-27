@@ -24,6 +24,7 @@ export const words: typeof en = {
     role: "الدور",
     roles: "الأدوار",
     rolesAndCoverage: "الأدوار والتغطية",
+    coverage: "التغطية",
     register: "الصندوق",
     registers: "الصناديق",
     periods: "الفترات",

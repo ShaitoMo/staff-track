@@ -24,6 +24,10 @@ export interface NavItem {
     href: string;
     label: NavLabel;
     icon: LucideIcon;
+    /** An Owner-only catalogue: a Manager can't change it, so it isn't in their sidebar. */
+    ownerOnly?: true;
+    /** What a Manager sees it called, when they can only use part of the page. */
+    managerLabel?: NavLabel;
 }
 
 /** Imported by the client nav components directly: an icon is a component, which can't cross from the server layout as a prop. */
@@ -45,12 +49,26 @@ export const MANAGER_NAV_GROUPS: { label: NavLabel; items: NavItem[] }[] = [
             { href: "/branches", label: "branches", icon: Store },
             { href: "/registers", label: "registers", icon: ScanBarcode },
             { href: "/periods", label: "periods", icon: Timer },
-            { href: "/roles", label: "roles", icon: ShieldCheck },
+            { href: "/roles", label: "roles", managerLabel: "coverage", icon: ShieldCheck },
             { href: "/scheduling-rules", label: "schedulingRules", icon: SlidersHorizontal },
-            { href: "/section-types", label: "sectionTypes", icon: LayoutGrid },
+            { href: "/section-types", label: "sectionTypes", icon: LayoutGrid, ownerOnly: true },
         ],
     },
 ];
+
+/**
+ * The sections this viewer sees. A Manager loses the Owner-only items, and sees the roles page as
+ * Coverage: only the Owner changes Roles, but a Manager sets their branch's coverage there.
+ */
+export function navGroupsFor(isOwner: boolean): typeof MANAGER_NAV_GROUPS {
+    if (isOwner) return MANAGER_NAV_GROUPS;
+    return MANAGER_NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items
+            .filter((item) => !item.ownerOnly)
+            .map((item) => (item.managerLabel ? { ...item, label: item.managerLabel } : item)),
+    }));
+}
 
 /** Staff land on their today and tomorrow at "/"; the schedule and their attendance are read-only for them. */
 export const STAFF_NAV: NavItem[] = [

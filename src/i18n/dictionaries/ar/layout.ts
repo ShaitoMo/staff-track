@@ -45,6 +45,7 @@ export const nav: typeof enNav = {
     registers: words.registers,
     periods: words.periods,
     roles: words.rolesAndCoverage,
+    coverage: words.coverage,
     schedulingRules: "قواعد الجدولة",
     sectionTypes: words.sectionTypes,
     home: "الرئيسية",

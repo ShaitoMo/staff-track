@@ -146,7 +146,7 @@ export const roles = {
     noAccess: "You don't have access to view roles and coverage.",
     roles: words.roles,
     onlyYourBranches: "Showing only the people in your branches.",
-    coverage: "Coverage",
+    coverage: words.coverage,
     coverageFor: (branch: string) => `Coverage for ${isolate(branch)}`,
     noBranches: words.noBranches,
     noBranchesDescription: "Coverage is set per branch, and there are no branches to show.",

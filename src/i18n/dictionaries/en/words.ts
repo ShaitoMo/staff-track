@@ -27,6 +27,7 @@ export const words = {
     role: "Role",
     roles: "Roles",
     rolesAndCoverage: "Roles & coverage",
+    coverage: "Coverage",
     register: "Register",
     registers: "Registers",
     periods: "Periods",

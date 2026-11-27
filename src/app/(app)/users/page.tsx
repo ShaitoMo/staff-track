@@ -8,7 +8,8 @@ import { UserTable } from "@/components/users/user-table";
 import { ApiError } from "@/lib/api-client";
 import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
-import { getSelectedBranchId } from "@/lib/session";
+import { OWNER_ROLE } from "@/lib/rbac";
+import { getSelectedBranchId, getSession } from "@/lib/session";
 import { buildUserRows } from "@/lib/user-rows";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
@@ -24,7 +25,9 @@ export default async function UsersPage({
 }: {
     searchParams: Promise<{ branch?: string }>;
 }) {
-    const [{ branch }, t] = await Promise.all([searchParams, getDictionary()]);
+    const [{ branch }, session, t] = await Promise.all([searchParams, getSession(), getDictionary()]);
+    // only the Owner adds a User; the API refuses anyone else, so a Manager isn't offered it
+    const isOwner = session?.role === OWNER_ROLE;
     let branchId: number | undefined;
     let users: SafeUser[];
     let roles: Role[];
@@ -56,9 +59,11 @@ export default async function UsersPage({
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-xl font-semibold">{t.users.title}</h1>
-                <Link href="/users/new" className={buttonVariants({ size: "sm" })}>
-                    {t.users.addUser}
-                </Link>
+                {isOwner && (
+                    <Link href="/users/new" className={buttonVariants({ size: "sm" })}>
+                        {t.users.addUser}
+                    </Link>
+                )}
             </div>
             {rows.length === 0 ? (
                 <Empty>

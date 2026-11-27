@@ -153,7 +153,7 @@ export const roles: typeof enRoles = {
     noAccess: "ليس لديك صلاحية عرض الأدوار والتغطية.",
     roles: words.roles,
     onlyYourBranches: "يُعرض فقط الأشخاص في فروعك.",
-    coverage: "التغطية",
+    coverage: words.coverage,
     coverageFor: (branch) => `التغطية في ${isolate(branch)}`,
     noBranches: words.noBranches,
     noBranchesDescription: "تُحدَّد التغطية لكل فرع، ولا توجد فروع لعرضها.",
