@@ -23,7 +23,7 @@ export const errors: typeof en = {
         INVALID_JSON: "تعذّرت قراءة الطلب. أعد تحميل الصفحة وحاول مرة أخرى.",
         INVALID_ID: "هذا الرابط غير صالح. ارجع وحاول مرة أخرى.",
         INVALID_MULTIPART: "تعذّرت قراءة الملف. حاول مرة أخرى.",
-        UNAUTHENTICATED: "لم تسجّل الدخول. سجّل الدخول مجددًا للمتابعة.",
+        UNAUTHENTICATED: "انتهت جلستك. سجّل الدخول مجددًا.",
         INVALID_CREDENTIALS: "رقم الهاتف أو كلمة المرور غير صحيحة.",
         INVALID_REFRESH_TOKEN: "انتهت جلستك. سجّل الدخول مجددًا للمتابعة.",
         SESSION_REFRESH_UNAVAILABLE: "الخادم مشغول. حاول مرة أخرى بعد قليل.",

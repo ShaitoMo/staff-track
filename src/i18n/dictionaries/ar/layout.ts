@@ -21,6 +21,8 @@ export const layout: typeof enLayout = {
     thisWeek: "هذا الأسبوع",
     backToThisWeek: "العودة إلى هذا الأسبوع",
     offline: "أنت غير متصل بالإنترنت. لا يمكن حفظ أي شيء حتى يعود الاتصال.",
+    sessionEnded: "انتهت جلستك.",
+    signInAgain: "سجّل الدخول مجددًا",
     branchesFailed: (failed, consequence) =>
         `${plural("ar", failed, { one: "تعذّر تحميل أحد فروعك", two: "تعذّر تحميل فرعين من فروعك", few: "تعذّر تحميل # فروع من فروعك", other: "تعذّر تحميل # فرعًا من فروعك" })}، لذلك ${consequence}. أعد تحميل الصفحة للمحاولة مجددًا.`,
 };

@@ -17,7 +17,8 @@ import { LoginSchema, type LoginInput } from "@/types/auth";
 
 type FieldErrors = Partial<Record<keyof LoginInput, string[]>>;
 
-export function LoginForm() {
+/** `next` is where a successful sign-in lands, already checked by `nextPath`. */
+export function LoginForm({ next }: { next: string }) {
     const router = useRouter();
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
@@ -40,7 +41,7 @@ export function LoginForm() {
         startTransition(async () => {
             try {
                 await login(result.data);
-                router.push("/");
+                router.push(next);
                 router.refresh();
             } catch (error) {
                 setError(translateError(error, t.errors).formMessage);

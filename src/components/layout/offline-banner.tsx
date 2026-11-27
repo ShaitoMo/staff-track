@@ -22,7 +22,7 @@ export function OfflineBanner() {
     const online = useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
 
     return (
-        <div role="status" className="sticky top-14 z-20 print:hidden">
+        <div role="status">
             {online ? null : (
                 <p className="flex items-center gap-2 border-b border-border bg-muted px-4 py-2 text-sm text-foreground lg:px-6">
                     <WifiOffIcon className="size-4 shrink-0" aria-hidden />

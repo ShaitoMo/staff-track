@@ -20,6 +20,8 @@ export const layout = {
     thisWeek: "This week",
     backToThisWeek: "Back to this week",
     offline: "You're offline. Nothing can be saved until you're back online.",
+    sessionEnded: "Your session ended.",
+    signInAgain: "Sign in again",
     branchesFailed: (failed: number, consequence: string) =>
         plural("en", failed, {
             one: `One of your branches couldn't be loaded, so ${consequence}. Reload the page to try again.`,
