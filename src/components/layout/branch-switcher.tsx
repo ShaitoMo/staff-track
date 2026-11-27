@@ -66,9 +66,11 @@ export function BranchSwitcher({ branches, preference }: { branches: { branchId:
 
     function choose(value: string) {
         document.cookie = branchCookieString(value);
-        // drop a ?branch= link so the new choice isn't overruled; keep the rest (week, date, view)
+        // drop a ?branch= link so the new choice isn't overruled, and ?page= since another branch's list
+        // starts over; keep the rest (week, date, view)
         const params = new URLSearchParams(searchParams);
         params.delete("branch");
+        params.delete("page");
         const query = params.toString();
         startTransition(() => {
             router.replace(query === "" ? pathname : `${pathname}?${query}`, { scroll: false });

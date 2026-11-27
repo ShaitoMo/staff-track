@@ -13,6 +13,20 @@ export type CreateUserInput = Omit<User, 'password'> & { passwordHash: string }
 
 export type SafeUser = Omit<CreateUserInput, 'passwordHash'> & { userId: number, isActive: boolean, createdAt: Date }
 
+export const USERS_PAGE_DEFAULT_LIMIT = 50
+export const USERS_PAGE_MAX_LIMIT = 100
+
+/** `?page=&limit=` on GET /api/users; a limit over the cap is clamped to it, not refused. */
+export const UserPageQuerySchema = z.object({
+    page: z.coerce.number().int().min(1),
+    limit: z.coerce.number().int().min(1).default(USERS_PAGE_DEFAULT_LIMIT)
+        .transform((limit) => Math.min(limit, USERS_PAGE_MAX_LIMIT)),
+})
+
+export type UserPageQuery = z.infer<typeof UserPageQuerySchema>
+
+export type UserPage = { items: SafeUser[], total: number, page: number, limit: number }
+
 export const UserUpdateSchema = z.object({
     name: z.string().min(3).max(50).optional(),
     phone: z.string().min(1).optional(),

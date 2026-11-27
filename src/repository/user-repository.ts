@@ -45,11 +45,23 @@ export class UserRepository {
     /** branchIds scopes to users assigned to at least one of them; omitted, every user comes back. */
     static async getAllUsers(branchIds?: number[]): Promise<SafeUser[]> {
         return db.user.findMany({
-            where: branchIds !== undefined
-                ? { branchLinks: { some: { branchId: { in: branchIds } } } }
-                : undefined,
+            where: UserRepository.branchScope(branchIds),
             select: SAFE_USER_SELECT,
         });
+    }
+    /** One page of getAllUsers by name (id breaks ties, so pages don't overlap), and how many match in all. */
+    static async getUsersPage(branchIds: number[] | undefined, skip: number, take: number): Promise<{ items: SafeUser[], total: number }> {
+        const where = UserRepository.branchScope(branchIds)
+        const [items, total] = await db.$transaction([
+            db.user.findMany({ where, select: SAFE_USER_SELECT, orderBy: [{ name: 'asc' }, { userId: 'asc' }], skip, take }),
+            db.user.count({ where }),
+        ])
+        return { items, total }
+    }
+    private static branchScope(branchIds?: number[]): Prisma.UserWhereInput | undefined {
+        return branchIds !== undefined
+            ? { branchLinks: { some: { branchId: { in: branchIds } } } }
+            : undefined
     }
     static async getUserById(userId: number): Promise<SafeUser | null> {
         return db.user.findUnique({

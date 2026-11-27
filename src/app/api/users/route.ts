@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { UserValidateSchema } from '@/types/user'
+import { UserPage, UserPageQuery, UserPageQuerySchema, UserValidateSchema } from '@/types/user'
 import { UserService } from '@/services/user-service'
 import { MANAGER_ROLE, OWNER_ROLE, requireBranchAccess, requireRole } from '@/lib/rbac'
 import { DuplicatePhoneError } from '@/exceptions/duplicate-phone-error'
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
 /**
  * Owner sees every user; a manager only those assigned to at least one of their own branches.
  * An optional `branch_id` narrows to one branch — owner may pass any, a manager only their own.
+ * With `page` (and optional `limit`, default 50, capped at 100) it answers `{ items, total, page, limit }`.
  */
 export async function GET(req: NextRequest) {
     const caller = requireAuthenticated(req);
@@ -58,10 +59,22 @@ export async function GET(req: NextRequest) {
         return caller;
     }
 
-    const branchIdParam = req.nextUrl.searchParams.get('branch_id')
+    const searchParams = req.nextUrl.searchParams
+    const branchIdParam = searchParams.get('branch_id')
 
     if (branchIdParam !== null && !/^\d+$/.test(branchIdParam)) {
         return invalidIdResponse('branch_id')
+    }
+
+    // paging is opt-in: without ?page the full list comes back, as the User pickers expect
+    let pageQuery: UserPageQuery | undefined
+    if (searchParams.has('page')) {
+        const query = { page: searchParams.get('page'), limit: searchParams.get('limit') ?? undefined }
+        const parsed = UserPageQuerySchema.safeParse(query)
+        if (!parsed.success) {
+            return validationErrorResponse(parsed.error, query)
+        }
+        pageQuery = parsed.data
     }
 
     try {
@@ -76,8 +89,15 @@ export async function GET(req: NextRequest) {
             branchIds = caller.role === OWNER_ROLE ? undefined : caller.branchIds
         }
 
-        const users = await UserService.getAllUsers(branchIds);
-        return NextResponse.json(users, { status: 200 });
+        if (pageQuery === undefined) {
+            const users = await UserService.getAllUsers(branchIds);
+            return NextResponse.json(users, { status: 200 });
+        }
+
+        const { page, limit } = pageQuery
+        const { items, total } = await UserService.getUsersPage(branchIds, page, limit)
+        const body: UserPage = { items, total, page, limit }
+        return NextResponse.json(body, { status: 200 });
     } catch (error) {
         const forbidden = forbiddenResponse(error);
         if (forbidden) {

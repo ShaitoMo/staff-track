@@ -20,6 +20,14 @@ export const common: typeof en = {
         title: "الصورة غير متاحة",
         description: "حُذفت هذه الصورة، أو لم تعد لديك صلاحية لرؤيتها. أغلق علامة التبويب هذه للعودة.",
     },
+    pagination: {
+        label: "الصفحات",
+        previous: "السابق",
+        next: "التالي",
+        pageOf: (page, pages) => `صفحة ${page} من ${pages}`,
+        pastTheEnd: "هذه الصفحة بعد نهاية القائمة.",
+        backToFirst: "العودة إلى الصفحة 1",
+    },
     discardChanges: {
         title: "تجاهل التغييرات؟",
         description: "ما أدخلته هنا لم يُحفظ وسيضيع.",
