@@ -59,11 +59,11 @@ export default async function UsersPage({
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-xl font-semibold">{t.users.title}</h1>
-                {isOwner && (
+                {isOwner ? (
                     <Link href="/users/new" className={buttonVariants({ size: "sm" })}>
                         {t.users.addUser}
                     </Link>
-                )}
+                ) : null}
             </div>
             {rows.length === 0 ? (
                 <Empty>

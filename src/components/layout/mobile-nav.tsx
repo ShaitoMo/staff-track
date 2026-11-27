@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 /**
  * Below `lg` the left bar becomes this slide-out menu. It is open only while the page it was opened
  * on is still showing, so choosing a section closes it once the new page arrives — closing it from
- * the link's own click unmounted the link before Next could navigate.
+ * the link's own click unmounted the link before Next could navigate. `isOwner` picks which
+ * sections it lists (navGroupsFor).
  */
-/** `isOwner` picks which sections the menu lists (navGroupsFor). */
 export function MobileNav({ isOwner }: { isOwner: boolean }) {
     const pathname = usePathname();
     const [openOn, setOpenOn] = useState<string | null>(null);
