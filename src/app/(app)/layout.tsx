@@ -30,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
 
     const canManage = session.role === OWNER_ROLE || session.role === MANAGER_ROLE;
+    const isOwner = session.role === OWNER_ROLE;
     const [userResult, branchesResult, preference] = await Promise.all([
         fetchApi<SafeUser>(`/api/users/${session.userId}`).then(
             (user) => user,
@@ -74,7 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 >
                     {canManage ? (
                         <div className="lg:hidden">
-                            <MobileNav />
+                            <MobileNav isOwner={isOwner} />
                         </div>
                     ) : null}
                     <Link href="/" className="text-base font-semibold whitespace-nowrap">
@@ -97,7 +98,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="flex flex-1">
                 {canManage ? (
                     <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 overflow-y-auto bg-sidebar px-3 py-5 text-sidebar-foreground lg:block print:hidden">
-                        <SidebarNav />
+                        <SidebarNav isOwner={isOwner} />
                     </aside>
                 ) : null}
                 {/* staff pages leave room for the tab bar (64px plus the home indicator) on a phone */}

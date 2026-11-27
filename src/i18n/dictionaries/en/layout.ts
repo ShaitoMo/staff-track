@@ -47,6 +47,7 @@ export const nav = {
     registers: words.registers,
     periods: words.periods,
     roles: words.rolesAndCoverage,
+    coverage: words.coverage,
     schedulingRules: "Scheduling rules",
     sectionTypes: words.sectionTypes,
     home: "Home",

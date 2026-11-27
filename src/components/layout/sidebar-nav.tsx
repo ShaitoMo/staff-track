@@ -3,7 +3,7 @@
 import { useId } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { isActive, MANAGER_NAV_GROUPS } from "@/components/layout/nav-items";
+import { isActive, navGroupsFor } from "@/components/layout/nav-items";
 import { useT } from "@/i18n/client";
 import { TOUCH_HEIGHT } from "@/lib/touch";
 import { cn } from "@/lib/utils";
@@ -12,9 +12,9 @@ import { cn } from "@/lib/utils";
  * The owner/manager sections, grouped by what they're for, on the dark sidebar tokens (globals.css);
  * the active one sits on a lighter Ledger Ink step in white. Shared by the desktop left bar and the
  * slide-out menu on narrow screens; `onCurrentPage` lets the menu close when the page already
- * showing is chosen, since that link doesn't navigate.
+ * showing is chosen, since that link doesn't navigate. A Manager doesn't get the Owner-only catalogues.
  */
-export function SidebarNav({ onCurrentPage }: { onCurrentPage?: () => void }) {
+export function SidebarNav({ isOwner, onCurrentPage }: { isOwner: boolean; onCurrentPage?: () => void }) {
     const pathname = usePathname();
     // the bar and the phone menu can both be mounted, so each copy gets its own label ids
     const idPrefix = useId();
@@ -22,7 +22,7 @@ export function SidebarNav({ onCurrentPage }: { onCurrentPage?: () => void }) {
 
     return (
         <nav aria-label={t.layout.sections} className="flex flex-col gap-5">
-            {MANAGER_NAV_GROUPS.map((group) => (
+            {navGroupsFor(isOwner).map((group) => (
                 <div key={group.label} className="flex flex-col gap-0.5">
                     {/* a label, not a heading: as h2s they came before every page's h1 in the heading list */}
                     <p id={`${idPrefix}-${group.label}`} className="px-2.5 pb-1 text-xs font-medium ltr:tracking-[0.02em] text-sidebar-muted-foreground">

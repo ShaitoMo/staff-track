@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api-client";
 import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
+import { getSession } from "@/lib/session";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 
@@ -13,7 +14,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NewUserPage() {
-    const t = await getDictionary();
+    const [session, t] = await Promise.all([getSession(), getDictionary()]);
+
+    // the reads below are open to a Manager, so without this they'd get a form whose save is refused
+    if (session?.role !== OWNER_ROLE) {
+        return <AccessMessage title={t.users.newTitle} message={t.users.noCreateAccess} />;
+    }
+
     let roles: Role[];
     let branches: Branch[];
 
