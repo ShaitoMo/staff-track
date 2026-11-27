@@ -20,6 +20,10 @@ export class UserService {
     static async getAllUsers(branchIds?: number[]): Promise<SafeUser[]> {
         return UserRepository.getAllUsers(branchIds);
     }
+    /** `page` counts from 1; a page past the end comes back with no items, not an error. */
+    static async getUsersPage(branchIds: number[] | undefined, page: number, limit: number): Promise<{ items: SafeUser[], total: number }> {
+        return UserRepository.getUsersPage(branchIds, (page - 1) * limit, limit);
+    }
     static async getUserById(userId: number): Promise<SafeUser | null> {
         return UserRepository.getUserById(userId);
     }

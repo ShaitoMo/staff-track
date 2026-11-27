@@ -20,6 +20,15 @@ export const common = {
         title: "Photo unavailable",
         description: "This photo was removed, or you no longer have access to it. Close this tab to go back.",
     },
+    /** The Previous / Next pager under a long list. */
+    pagination: {
+        label: "Pages",
+        previous: "Previous",
+        next: "Next",
+        pageOf: (page: number, pages: number) => `Page ${page} of ${pages}`,
+        pastTheEnd: "This page is past the end of the list.",
+        backToFirst: "Back to page 1",
+    },
     /** Asked before a form with unsaved changes is closed or left. */
     discardChanges: {
         title: "Discard your changes?",
