@@ -11,7 +11,9 @@ import { getDictionary } from "@/i18n/server";
 import { fetchApi } from "@/lib/api-server";
 import { OWNER_ROLE } from "@/lib/rbac";
 import { getSelectedBranchId, getSession } from "@/lib/session";
+import { TOUCH_HEIGHT } from "@/lib/touch";
 import { buildUserRows } from "@/lib/user-rows";
+import { cn } from "@/lib/utils";
 import { Branch } from "@/types/branch";
 import { Role } from "@/types/role";
 import { UserPage, UserPageQuerySchema } from "@/types/user";
@@ -83,7 +85,7 @@ export default async function UsersPage({
                         <EmptyDescription>{t.common.pagination.pastTheEnd}</EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
-                        <Link href={pageHref("/users", query, 1)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                        <Link href={pageHref("/users", query, 1)} className={cn(buttonVariants({ variant: "outline", size: "sm" }), TOUCH_HEIGHT)}>
                             {t.common.pagination.backToFirst}
                         </Link>
                     </EmptyContent>
